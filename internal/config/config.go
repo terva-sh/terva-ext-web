@@ -28,6 +28,16 @@ type Config struct {
 	// under zot's 60s tool budget).
 	FetchTimeoutSec int `json:"fetch_timeout_sec"`
 
+	// FetchInlineImages keeps image URLs inline in web_fetch output. Default
+	// false: images are replaced with `[image:N]` placeholders and the URLs
+	// are retrieved separately via the web_images tool.
+	FetchInlineImages bool `json:"fetch_inline_images"`
+	// FetchCacheTTLSec is how long a fetched+rendered page stays cached so a
+	// follow-up web_images call needs no network. Default 600s. 0 disables.
+	FetchCacheTTLSec int `json:"fetch_cache_ttl_sec"`
+	// FetchCacheMaxEntries bounds the in-memory page cache (LRU). Default 32.
+	FetchCacheMaxEntries int `json:"fetch_cache_max_entries"`
+
 	// AllowLocalHosts is the SSRF escape hatch: targets that resolve to
 	// private/reserved addresses are refused UNLESS they match an entry here.
 	// Each entry is a hostname (matched against the request host), an IP, or
@@ -38,9 +48,11 @@ type Config struct {
 // Load reads dataDir/config.json (if present), then applies env overrides.
 func Load(dataDir string) Config {
 	c := Config{
-		SearchBackend:   "tavily",
-		FetchMaxBytes:   2 << 20, // 2 MiB
-		FetchTimeoutSec: 25,
+		SearchBackend:        "tavily",
+		FetchMaxBytes:        2 << 20, // 2 MiB
+		FetchTimeoutSec:      25,
+		FetchCacheTTLSec:     600,
+		FetchCacheMaxEntries: 32,
 	}
 	if dataDir != "" {
 		if b, err := os.ReadFile(filepath.Join(dataDir, "config.json")); err == nil {
@@ -74,6 +86,21 @@ func Load(dataDir string) Config {
 			c.FetchTimeoutSec = n
 		}
 	}
+	if v := os.Getenv("ZOT_WEB_FETCH_INLINE_IMAGES"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			c.FetchInlineImages = b
+		}
+	}
+	if v := os.Getenv("ZOT_WEB_FETCH_CACHE_TTL_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			c.FetchCacheTTLSec = n
+		}
+	}
+	if v := os.Getenv("ZOT_WEB_FETCH_CACHE_MAX_ENTRIES"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			c.FetchCacheMaxEntries = n
+		}
+	}
 
 	c.SearchBackend = strings.ToLower(strings.TrimSpace(c.SearchBackend))
 	if c.SearchBackend == "" {
@@ -84,6 +111,9 @@ func Load(dataDir string) Config {
 	}
 	if c.FetchTimeoutSec <= 0 {
 		c.FetchTimeoutSec = 25
+	}
+	if c.FetchCacheMaxEntries < 0 {
+		c.FetchCacheMaxEntries = 0
 	}
 	return c
 }

@@ -38,6 +38,14 @@ const fetchSchema = `{
   "required": ["url"]
 }`
 
+const imagesSchema = `{
+  "type": "object",
+  "properties": {
+    "url": {"type": "string", "description": "URL of a page already retrieved with web_fetch."}
+  },
+  "required": ["url"]
+}`
+
 func main() {
 	e := proto.New("web", "0.1.0")
 
@@ -106,6 +114,29 @@ func main() {
 				return proto.Errorf("fetch failed: %v", err)
 			}
 			return proto.Text(text)
+		})
+
+	e.Tool("web_images",
+		"List the image URLs on a page that web_fetch represented as [image:N] placeholders. Cheap when the page was recently fetched (it is served from cache).",
+		json.RawMessage(imagesSchema),
+		func(args json.RawMessage) proto.Result {
+			ensure()
+			var in struct {
+				URL string `json:"url"`
+			}
+			if err := json.Unmarshal(args, &in); err != nil {
+				return proto.Errorf("invalid args: %v", err)
+			}
+			if strings.TrimSpace(in.URL) == "" {
+				return proto.Errorf("url is required")
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+			defer cancel()
+			imgs, err := fetcher.Images(ctx, in.URL)
+			if err != nil {
+				return proto.Errorf("web_images failed: %v", err)
+			}
+			return proto.Text(fetch.FormatImages(in.URL, imgs))
 		})
 
 	if err := e.Run(); err != nil {

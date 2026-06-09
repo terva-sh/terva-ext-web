@@ -1,18 +1,22 @@
 # zot-web
 
 A [zot](https://github.com/patriceckhart/zot) extension that gives the agent
-web access through two LLM-callable tools:
+web access through three LLM-callable tools:
 
 - **`web_search(query, count?)`** — ranked results (title, URL, snippet).
-- **`web_fetch(url, max_chars?)`** — a page's main content as text.
+- **`web_fetch(url, max_chars?)`** — a page's main content as Markdown. Image
+  URLs are replaced with compact `[image:N]` placeholders to save tokens.
+- **`web_images(url)`** — resolve the `[image:N]` placeholders from a previously
+  fetched page back to their URLs. Served from cache, so it costs no network.
 
 Single static Go binary, no runtime dependencies. It implements the zot
 extension wire protocol directly (no dependency on the zot module).
 
 > **Status: v0.** Search (Tavily + SearXNG), the SSRF-guarded fetcher, and
-> article extraction (`go-readability` → `html-to-markdown`, with a heuristic
-> tag-stripper fallback) are all functional. Design rationale lives in the zot
-> repo at `docs/plans/web-tools-extension-research.md`.
+> article extraction (`go-readability` → `html-to-markdown` with GFM tables,
+> image indexing, and a heuristic tag-stripper fallback) are all functional.
+> Design rationale lives in the zot repo at
+> `docs/plans/web-tools-extension-research.md`.
 
 ## Quick start (`just`)
 
@@ -86,7 +90,20 @@ Or switch to a self-hosted SearXNG instance (no key, private):
 | `searxng_url` | `ZOT_WEB_SEARXNG_URL` | — | SearXNG base URL |
 | `fetch_max_bytes` | `ZOT_WEB_FETCH_MAX_BYTES` | `2097152` | response body cap |
 | `fetch_timeout_sec` | `ZOT_WEB_FETCH_TIMEOUT_SEC` | `25` | per-fetch timeout |
+| `fetch_inline_images` | `ZOT_WEB_FETCH_INLINE_IMAGES` | `false` | keep image URLs inline instead of `[image:N]` placeholders |
+| `fetch_cache_ttl_sec` | `ZOT_WEB_FETCH_CACHE_TTL_SEC` | `600` | how long a rendered page stays cached (`0` = no expiry) |
+| `fetch_cache_max_entries` | `ZOT_WEB_FETCH_CACHE_MAX_ENTRIES` | `32` | max cached pages, LRU-evicted (`0` = caching off) |
 | `allow_local_hosts` | `ZOT_WEB_ALLOW_LOCAL_HOSTS` (comma-sep) | — | SSRF escape hatch (see below) |
+
+### Images and the page cache
+
+By default `web_fetch` strips image URLs out of its Markdown, leaving a short
+`[image:N: alt]` handle where each image was. This keeps long CDN URLs out of
+the model's context. To get the actual links, the model calls
+`web_images(url)`, which returns the `N → URL` mapping. Because every fetched
+page is cached (in memory, per the TTL/size settings above), that follow-up
+call normally costs no network request. Set `fetch_inline_images: true` to
+restore inline image URLs and disable the indexing.
 
 ## Security: SSRF protection + the local allowlist
 
@@ -114,8 +131,11 @@ targets you list are exempted.
 
 - [x] Replace the heuristic HTML extractor with `go-shiori/go-readability` +
       `JohannesKaufmann/html-to-markdown` (heuristic kept as a fallback).
+- [x] GFM table rendering + image indexing (`[image:N]` + `web_images`) with an
+      in-memory page cache.
+- [ ] Infobox / vertical key-value tables → cleaner key/value lists (irregular
+      tables still degrade to spaced blocks today).
 - [ ] More search backends (Brave, Serper, Exa) behind the same interface.
-- [ ] Optional result caching in the data dir.
 - [ ] Optional JS rendering fallback (e.g. Jina Reader) — deferred for now.
 - [ ] Release binaries (goreleaser) so `zot ext install <git-url>` needs no
       local build.

@@ -55,11 +55,17 @@ func TestAllowListPermitted(t *testing.T) {
 	check("box", "192.168.1.50", true)          // exact IP
 }
 
-// TestExtractReadability feeds a realistic article wrapped in nav/script/footer
+// testClient builds a Client suitable for render/extract unit tests (no network
+// is exercised by render itself).
+func testClient() *Client {
+	return New(config.Config{FetchMaxBytes: 1 << 20, FetchTimeoutSec: 5}, ParseAllowList(nil))
+}
+
+// TestRenderReadability feeds a realistic article wrapped in nav/script/footer
 // chrome and asserts the readability+markdown pipeline keeps the body and drops
 // the noise. Assertions hold whether the readability path or the heuristic
 // fallback runs (both strip <script> and keep visible text).
-func TestExtractReadability(t *testing.T) {
+func TestRenderReadability(t *testing.T) {
 	page := `<html><head><title>Widget Guide</title><style>.a{color:red}</style></head>
 <body>
 <nav><a href="/">Home</a> <a href="/login">Log in</a></nav>
@@ -73,8 +79,8 @@ func TestExtractReadability(t *testing.T) {
 <footer>Copyright 2026 Widget Co.</footer>
 </body></html>`
 	u, _ := url.Parse("https://example.com/widgets")
-	title, text := extract(u, "text/html", []byte(page))
-	out := title + "\n" + text
+	p := testClient().render(u, "text/html", []byte(page))
+	out := p.Title + "\n" + p.Markdown
 	if !strings.Contains(out, "Widgets are small components") {
 		t.Errorf("missing article body in %q", out)
 	}
@@ -86,6 +92,70 @@ func TestExtractReadability(t *testing.T) {
 	}
 	if strings.Contains(out, "tracker()") || strings.Contains(out, "color:red") {
 		t.Errorf("script/style not stripped: %q", out)
+	}
+}
+
+// TestRenderTable confirms the GFM table plugin is active: a real <table>
+// becomes a pipe table rather than linearized text.
+func TestRenderTable(t *testing.T) {
+	page := `<html><body><article>
+<h1>Specs</h1>
+<p>The following table lists the specifications in a structured form for the reader.</p>
+<table>
+<tr><th>Name</th><th>Value</th></tr>
+<tr><td>Width</td><td>10cm</td></tr>
+<tr><td>Height</td><td>20cm</td></tr>
+</table>
+<p>That concludes the specifications section of this document about the product.</p>
+</article></body></html>`
+	u, _ := url.Parse("https://example.com/specs")
+	p := testClient().render(u, "text/html", []byte(page))
+	if !strings.Contains(p.Markdown, "|") || !strings.Contains(p.Markdown, "Width") {
+		t.Errorf("expected a pipe table with cell content, got:\n%s", p.Markdown)
+	}
+}
+
+// TestRenderImages checks that <img> URLs are indexed out to [image:N]
+// placeholders (with alt), resolved to absolute URLs, and that data: URIs are
+// skipped.
+func TestRenderImages(t *testing.T) {
+	page := `<html><body><article>
+<h1>Gallery</h1>
+<p>This article includes a picture to demonstrate the image extraction behavior end to end.</p>
+<p><img src="/pics/cat.png" alt="A cat"> some text after the image to keep the paragraph long enough.</p>
+<p>Here is an inline data image that must be ignored: <img src="data:image/gif;base64,R0lGOD999"> and more trailing text.</p>
+</article></body></html>`
+	u, _ := url.Parse("https://example.com/gallery")
+	p := testClient().render(u, "text/html", []byte(page))
+	if len(p.Images) != 1 {
+		t.Fatalf("expected exactly 1 indexed image (data: skipped), got %d: %+v", len(p.Images), p.Images)
+	}
+	if p.Images[0].URL != "https://example.com/pics/cat.png" {
+		t.Errorf("relative src not resolved to absolute: %q", p.Images[0].URL)
+	}
+	if !strings.Contains(p.Markdown, "[image:1: A cat]") {
+		t.Errorf("placeholder with alt missing from markdown:\n%s", p.Markdown)
+	}
+	if strings.Contains(p.Markdown, "cat.png") || strings.Contains(p.Markdown, "{{IMG") {
+		t.Errorf("raw url or sentinel leaked into markdown:\n%s", p.Markdown)
+	}
+}
+
+// TestRenderInlineImages: with inline images configured, URLs stay in the
+// markdown and nothing is indexed.
+func TestRenderInlineImages(t *testing.T) {
+	c := New(config.Config{FetchMaxBytes: 1 << 20, FetchTimeoutSec: 5, FetchInlineImages: true}, ParseAllowList(nil))
+	page := `<html><body><article><h1>G</h1>
+<p>A paragraph long enough for readability to treat this as the article content here.</p>
+<p><img src="https://cdn.example.com/x.png" alt="x"> trailing text to lengthen the paragraph body.</p>
+</article></body></html>`
+	u, _ := url.Parse("https://example.com/g")
+	p := c.render(u, "text/html", []byte(page))
+	if len(p.Images) != 0 {
+		t.Errorf("inline mode should not index images, got %+v", p.Images)
+	}
+	if !strings.Contains(p.Markdown, "x.png") {
+		t.Errorf("inline mode should keep the image URL in markdown:\n%s", p.Markdown)
 	}
 }
 
@@ -106,15 +176,15 @@ func TestExtractHeuristicFallback(t *testing.T) {
 	}
 }
 
-// TestExtractNonHTML returns non-HTML bodies verbatim (no title).
-func TestExtractNonHTML(t *testing.T) {
+// TestRenderNonHTML returns non-HTML bodies verbatim (no title, no images).
+func TestRenderNonHTML(t *testing.T) {
 	u, _ := url.Parse("https://example.com/data.txt")
-	title, text := extract(u, "text/plain", []byte("  plain body  "))
-	if title != "" {
-		t.Errorf("non-HTML should have no title, got %q", title)
+	p := testClient().render(u, "text/plain", []byte("  plain body  "))
+	if p.Title != "" {
+		t.Errorf("non-HTML should have no title, got %q", p.Title)
 	}
-	if text != "plain body" {
-		t.Errorf("non-HTML body should pass through trimmed, got %q", text)
+	if p.Markdown != "plain body" {
+		t.Errorf("non-HTML body should pass through trimmed, got %q", p.Markdown)
 	}
 }
 
