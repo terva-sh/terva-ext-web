@@ -4,10 +4,12 @@ A [zot](https://github.com/patriceckhart/zot) extension that gives the agent
 web access through three LLM-callable tools:
 
 - **`web_search(query, count?)`** — ranked results (title, URL, snippet).
-- **`web_fetch(url, max_chars?)`** — a page's main content as Markdown. Image
-  URLs are replaced with compact `[image:N]` placeholders to save tokens.
-- **`web_images(url)`** — resolve the `[image:N]` placeholders from a previously
-  fetched page back to their URLs. Served from cache, so it costs no network.
+- **`web_fetch(url, max_chars?, offset?)`** — a page's main content as Markdown,
+  led by a metadata block. Image URLs are replaced with compact `[image:N]`
+  placeholders to save tokens; `offset` pages through long documents.
+- **`web_images(url)`** — resolve the `[image:N]` placeholders from a fetched
+  page back to their URLs (plus dimensions, caption, and source page). Served
+  from cache when warm; fetches on a cold cache, so it also works standalone.
 
 Single static Go binary, no runtime dependencies. It implements the zot
 extension wire protocol directly (no dependency on the zot module).
@@ -105,15 +107,48 @@ Or switch to a self-hosted SearXNG instance (no key, private):
 | `fetch_cache_max_entries` | `ZOT_WEB_FETCH_CACHE_MAX_ENTRIES` | `32` | max cached pages, LRU-evicted (`0` = caching off) |
 | `allow_local_hosts` | `ZOT_WEB_ALLOW_LOCAL_HOSTS` (comma-sep) | — | SSRF escape hatch (see below) |
 
+### `web_fetch` output
+
+The output leads with a small metadata block so the model can tell a short page
+from a truncated dense one:
+
+```text
+# Artificial intelligence
+https://en.wikipedia.org/wiki/Artificial_intelligence
+Content-Type: text/html; charset=UTF-8
+Chars: 0-500 of 397898
+Images: 17 (shown as [image:N]; resolve with web_images)
+
+**Artificial intelligence** (AI) is the capability of …
+
+…[397398 more chars; continue with offset=500]
+```
+
+- A `Final-URL:` line appears only when redirects landed somewhere other than
+  the requested URL.
+- `Chars: start-end of total` reports the returned window against the full
+  rendered length. When `end < total`, the trailing hint gives the exact
+  `offset` to pass to the next `web_fetch` call to keep reading — the page is
+  already cached, so continuation costs no extra network request.
+
 ### Images and the page cache
 
 By default `web_fetch` strips image URLs out of its Markdown, leaving a short
 `[image:N: alt]` handle where each image was. This keeps long CDN URLs out of
-the model's context. To get the actual links, the model calls
-`web_images(url)`, which returns the `N → URL` mapping. Because every fetched
-page is cached (in memory, per the TTL/size settings above), that follow-up
-call normally costs no network request. Set `fetch_inline_images: true` to
-restore inline image URLs and disable the indexing.
+the model's context. To get the actual links, the model calls `web_images(url)`,
+which returns each handle's URL plus dimensions, the nearest `<figcaption>`
+caption, and the enclosing source-page link (e.g. a Wikimedia `File:` page).
+
+**The placeholder contract:** `[image:N]` in `web_fetch` maps to `[image:N]` in
+`web_images` for the same URL. Ids are assigned in document order and are stable
+for a cached page; identical image URLs are de-duplicated to a single id.
+
+Every fetched page is cached (in memory, per the TTL/size settings above), so
+`web_images` normally costs no network request. If called for a URL that was
+never fetched (or whose cache entry expired), it transparently fetches and
+renders the page first — it does **not** error, so it is safe to call directly.
+Set `fetch_inline_images: true` to restore inline image URLs and disable the
+indexing (and the `web_images` workflow).
 
 ## Security: SSRF protection + the local allowlist
 
