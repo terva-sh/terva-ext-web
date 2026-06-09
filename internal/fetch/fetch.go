@@ -6,6 +6,7 @@
 package fetch
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"html"
@@ -16,6 +17,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
+	readability "github.com/go-shiori/go-readability"
 
 	"git.local.sothr.com/warricksothr/zot-web/internal/config"
 )
@@ -112,7 +116,7 @@ func (c *Client) Fetch(ctx context.Context, raw string, maxChars int) (string, e
 		body = body[:c.maxBytes]
 	}
 
-	text := extract(resp.Header.Get("Content-Type"), body)
+	title, text := extract(u, resp.Header.Get("Content-Type"), body)
 	if maxChars <= 0 {
 		maxChars = 20000
 	}
@@ -123,14 +127,46 @@ func (c *Client) Fetch(ctx context.Context, raw string, maxChars int) (string, e
 	} else if byteCapped {
 		note = "\n\n…[truncated: response exceeded byte cap]"
 	}
-	return fmt.Sprintf("# %s\n\n%s%s", u.String(), text, note), nil
+	// Header is the article title (with the source URL beneath) when readability
+	// found one, else just the URL.
+	header := u.String()
+	if title != "" {
+		header = title + "\n" + u.String()
+	}
+	return fmt.Sprintf("# %s\n\n%s%s", header, text, note), nil
 }
 
-// extract turns a response body into plain text.
+// extract turns a response body into readable text, returning the article
+// title (when detectable) and the body.
 //
-// v0 placeholder: a heuristic tag-stripper. TODO: replace with
-// go-shiori/go-readability (main-content detection) + html-to-markdown for
-// real article extraction — see docs/plans/web-tools-extension-research.md.
+// For HTML it runs go-readability to isolate the main article (dropping nav,
+// sidebars, scripts, boilerplate) and then html-to-markdown to render that
+// content as Markdown. If either step fails or yields nothing it falls back to
+// the heuristic tag-stripper below. Non-HTML bodies are returned verbatim.
+func extract(u *url.URL, contentType string, body []byte) (title, text string) {
+	ct := strings.ToLower(contentType)
+	isHTML := strings.Contains(ct, "html") ||
+		(ct == "" && strings.Contains(strings.ToLower(string(body)), "<html"))
+	if !isHTML {
+		return "", strings.TrimSpace(string(body))
+	}
+	if art, err := readability.FromReader(bytes.NewReader(body), u); err == nil {
+		if md, err := htmltomarkdown.ConvertString(art.Content); err == nil {
+			if md = strings.TrimSpace(md); md != "" {
+				return strings.TrimSpace(art.Title), md
+			}
+		}
+		// Readability found content but markdown conversion produced nothing;
+		// use its plain-text rendering rather than dropping to the heuristic.
+		if t := strings.TrimSpace(art.TextContent); t != "" {
+			return strings.TrimSpace(art.Title), t
+		}
+	}
+	return "", heuristicExtract(body)
+}
+
+// heuristicExtract is the fallback tag-stripper for bodies readability can't
+// parse: it removes script/style, drops remaining tags, and unescapes entities.
 var (
 	reScriptStyle = regexp.MustCompile(`(?is)<(?:script|style|noscript|template)\b[^>]*>.*?</(?:script|style|noscript|template)\s*>`)
 	reTag         = regexp.MustCompile(`(?s)<[^>]+>`)
@@ -138,14 +174,8 @@ var (
 	reBlankLines  = regexp.MustCompile(`\n{3,}`)
 )
 
-func extract(contentType string, body []byte) string {
+func heuristicExtract(body []byte) string {
 	s := string(body)
-	ct := strings.ToLower(contentType)
-	isHTML := strings.Contains(ct, "html") ||
-		(ct == "" && strings.Contains(strings.ToLower(s), "<html"))
-	if !isHTML {
-		return strings.TrimSpace(s)
-	}
 	s = reScriptStyle.ReplaceAllString(s, "\n")
 	s = reTag.ReplaceAllString(s, " ")
 	s = html.UnescapeString(s)

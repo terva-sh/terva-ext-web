@@ -3,6 +3,7 @@ package fetch
 import (
 	"context"
 	"net"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -54,10 +55,46 @@ func TestAllowListPermitted(t *testing.T) {
 	check("box", "192.168.1.50", true)          // exact IP
 }
 
-func TestExtractStripsHTML(t *testing.T) {
-	page := `<html><head><style>.x{color:red}</style><title>T</title></head>` +
+// TestExtractReadability feeds a realistic article wrapped in nav/script/footer
+// chrome and asserts the readability+markdown pipeline keeps the body and drops
+// the noise. Assertions hold whether the readability path or the heuristic
+// fallback runs (both strip <script> and keep visible text).
+func TestExtractReadability(t *testing.T) {
+	page := `<html><head><title>Widget Guide</title><style>.a{color:red}</style></head>
+<body>
+<nav><a href="/">Home</a> <a href="/login">Log in</a></nav>
+<script>tracker();</script>
+<article>
+<h1>All About Widgets</h1>
+<p>Widgets are small components that do useful things. This paragraph explains the basics in enough detail to read like real article content.</p>
+<p>The second paragraph continues the discussion, giving the readability algorithm enough text to recognize this as the page's main content.</p>
+<p>A third paragraph ensures there is sufficient length for extraction to succeed reliably.</p>
+</article>
+<footer>Copyright 2026 Widget Co.</footer>
+</body></html>`
+	u, _ := url.Parse("https://example.com/widgets")
+	title, text := extract(u, "text/html", []byte(page))
+	out := title + "\n" + text
+	if !strings.Contains(out, "Widgets are small components") {
+		t.Errorf("missing article body in %q", out)
+	}
+	if !strings.Contains(out, "second paragraph") {
+		t.Errorf("missing later paragraph in %q", out)
+	}
+	if !strings.Contains(out, "Widget Guide") {
+		t.Errorf("missing title in %q", out)
+	}
+	if strings.Contains(out, "tracker()") || strings.Contains(out, "color:red") {
+		t.Errorf("script/style not stripped: %q", out)
+	}
+}
+
+// TestExtractHeuristicFallback covers the tag-stripper directly: it must drop
+// script/style and unescape entities for bodies readability can't handle.
+func TestExtractHeuristicFallback(t *testing.T) {
+	page := `<html><head><style>.x{color:red}</style></head>` +
 		`<body><script>evil()</script><h1>Hello</h1><p>World &amp; more</p></body></html>`
-	got := extract("text/html", []byte(page))
+	got := heuristicExtract([]byte(page))
 	if !strings.Contains(got, "Hello") {
 		t.Errorf("missing visible text in %q", got)
 	}
@@ -66,6 +103,18 @@ func TestExtractStripsHTML(t *testing.T) {
 	}
 	if strings.Contains(got, "evil()") || strings.Contains(got, "color:red") {
 		t.Errorf("script/style not stripped: %q", got)
+	}
+}
+
+// TestExtractNonHTML returns non-HTML bodies verbatim (no title).
+func TestExtractNonHTML(t *testing.T) {
+	u, _ := url.Parse("https://example.com/data.txt")
+	title, text := extract(u, "text/plain", []byte("  plain body  "))
+	if title != "" {
+		t.Errorf("non-HTML should have no title, got %q", title)
+	}
+	if text != "plain body" {
+		t.Errorf("non-HTML body should pass through trimmed, got %q", text)
 	}
 }
 

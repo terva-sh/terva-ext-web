@@ -9,10 +9,10 @@ web access through two LLM-callable tools:
 Single static Go binary, no runtime dependencies. It implements the zot
 extension wire protocol directly (no dependency on the zot module).
 
-> **Status: v0 scaffold.** Search (Tavily + SearXNG) and the SSRF-guarded
-> fetcher are functional; HTML extraction is a heuristic placeholder pending
-> `go-readability` + `html-to-markdown` (see Roadmap). Design rationale lives in
-> the zot repo at `docs/plans/web-tools-extension-research.md`.
+> **Status: v0.** Search (Tavily + SearXNG), the SSRF-guarded fetcher, and
+> article extraction (`go-readability` → `html-to-markdown`, with a heuristic
+> tag-stripper fallback) are all functional. Design rationale lives in the zot
+> repo at `docs/plans/web-tools-extension-research.md`.
 
 ## Quick start (`just`)
 
@@ -112,8 +112,8 @@ targets you list are exempted.
 
 ## Roadmap
 
-- [ ] Replace the heuristic HTML extractor with `go-shiori/go-readability` +
-      `JohannesKaufmann/html-to-markdown`.
+- [x] Replace the heuristic HTML extractor with `go-shiori/go-readability` +
+      `JohannesKaufmann/html-to-markdown` (heuristic kept as a fallback).
 - [ ] More search backends (Brave, Serper, Exa) behind the same interface.
 - [ ] Optional result caching in the data dir.
 - [ ] Optional JS rendering fallback (e.g. Jina Reader) — deferred for now.
