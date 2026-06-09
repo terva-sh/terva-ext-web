@@ -14,28 +14,50 @@ extension wire protocol directly (no dependency on the zot module).
 > `go-readability` + `html-to-markdown` (see Roadmap). Design rationale lives in
 > the zot repo at `docs/plans/web-tools-extension-research.md`.
 
-## Build
+## Quick start (`just`)
+
+With [`just`](https://github.com/casey/just) installed, the whole flow is two
+commands — repeatable on any machine:
 
 ```bash
-go build -o zot-web .
+just install                 # build, then (re)install into $ZOT_HOME/extensions/
+just configure-searxng       # point it at the default local SearXNG (127.0.0.1:11984)
+# or target a specific instance:
+just configure-searxng https://searx.example/
 ```
 
-## Install into zot
+`just configure-searxng` writes `config.json` into the installed extension's
+data dir, resolving that dir from `zot ext list` so it works regardless of OS
+(macOS, Linux) or a custom `$ZOT_HOME`. A bare `host:port` is accepted and gets
+an `http://` prefix. The default instance is the `SEARXNG_URL` variable at the
+top of the `justfile`.
+
+> **Re-running `just install` wipes the data dir** (it removes the old copy
+> first), so re-run `just configure-searxng` afterward to restore your settings.
+
+See `just --list` for the rest (`try`, `lint`, `test`, …).
+
+## Manual build & install
 
 ```bash
-zot ext install /path/to/zot-web      # copies into $ZOT_HOME/extensions/web/
+go build -o zot-web .                  # exec name must match extension.json
+zot ext install /path/to/zot-web       # copies the dir into $ZOT_HOME/extensions/<dir-basename>/
 # or, for one session straight from the working copy:
 zot --ext /path/to/zot-web
 ```
 
 The directory must contain `extension.json` (pointing at the `./zot-web`
-binary you built) — already included here.
+binary you built) — already included here. Note `zot` does **not** build Go
+extensions for you (`language` is informational); build first so the copied
+directory contains the binary. The install dir is named after the source
+folder's basename (here, `zot-web`), not the manifest `name` (`web`).
 
 ## Configure
 
 Settings come from `config.json` in the extension's data dir
-(`$ZOT_HOME/extensions/web/config.json`), with environment variables taking
-precedence. Minimum to get search working with the default Tavily backend:
+(`$ZOT_HOME/extensions/zot-web/config.json`), with environment variables taking
+precedence. `just configure-searxng` (above) writes this file for you; to do it
+by hand, start from the default Tavily backend:
 
 ```bash
 export TAVILY_API_KEY=tvly-...
@@ -44,10 +66,10 @@ export TAVILY_API_KEY=tvly-...
 Or switch to a self-hosted SearXNG instance (no key, private):
 
 ```jsonc
-// $ZOT_HOME/extensions/web/config.json
+// $ZOT_HOME/extensions/zot-web/config.json
 {
   "search_backend": "searxng",
-  "searxng_url": "http://localhost:8888",
+  "searxng_url": "http://127.0.0.1:11984",
   "allow_local_hosts": ["localhost", "intranet.example", "10.0.0.0/24"]
 }
 ```
