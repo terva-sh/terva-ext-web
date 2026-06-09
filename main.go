@@ -33,7 +33,8 @@ const fetchSchema = `{
   "type": "object",
   "properties": {
     "url": {"type": "string", "description": "Absolute http(s) URL to fetch."},
-    "max_chars": {"type": "integer", "description": "Max characters of extracted text to return (default 20000)."}
+    "max_chars": {"type": "integer", "description": "Max characters of extracted text to return (default 20000)."},
+    "offset": {"type": "integer", "description": "Skip this many characters into the page, to continue reading after a previous truncated fetch (default 0).", "minimum": 0}
   },
   "required": ["url"]
 }`
@@ -100,6 +101,7 @@ func main() {
 			var in struct {
 				URL      string `json:"url"`
 				MaxChars int    `json:"max_chars"`
+				Offset   int    `json:"offset"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
 				return proto.Errorf("invalid args: %v", err)
@@ -109,7 +111,7 @@ func main() {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
-			text, err := fetcher.Fetch(ctx, in.URL, in.MaxChars)
+			text, err := fetcher.Fetch(ctx, in.URL, in.MaxChars, in.Offset)
 			if err != nil {
 				return proto.Errorf("fetch failed: %v", err)
 			}

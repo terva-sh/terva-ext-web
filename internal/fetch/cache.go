@@ -18,11 +18,14 @@ type Image struct {
 // `[image:N]` placeholders unless inline images are configured); per-request
 // character limits are applied at response time.
 type page struct {
-	URL           string
+	URL           string // the requested URL (cache key)
+	FinalURL      string // URL after redirects
 	Title         string
+	ContentType   string
+	Status        int
 	Markdown      string
 	Images        []Image
-	BodyTruncated bool
+	BodyTruncated bool // raw body hit the byte cap before rendering
 }
 
 // cache is a small, concurrency-safe, TTL + LRU page cache. Tool handlers run

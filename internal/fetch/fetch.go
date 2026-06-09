@@ -90,10 +90,12 @@ func New(cfg config.Config, allow AllowList) *Client {
 }
 
 // Fetch retrieves raw (http/https only) and returns its main content as
-// Markdown, capped to maxChars (default 20000). The page is rendered once and
+// Markdown, prefixed with a metadata block. maxChars caps the returned window
+// (default 20000); offset skips that many characters into the rendered page so
+// callers can page through dense documents. The page is rendered once and
 // cached; image URLs are replaced with `[image:N]` placeholders (unless inline
 // images are configured) and retrievable via Images.
-func (c *Client) Fetch(ctx context.Context, raw string, maxChars int) (string, error) {
+func (c *Client) Fetch(ctx context.Context, raw string, maxChars, offset int) (string, error) {
 	u, err := parseURL(raw)
 	if err != nil {
 		return "", err
@@ -106,26 +108,38 @@ func (c *Client) Fetch(ctx context.Context, raw string, maxChars int) (string, e
 	if maxChars <= 0 {
 		maxChars = 20000
 	}
-	text := p.Markdown
-	note := ""
-	if r := []rune(text); len(r) > maxChars {
-		text = string(r[:maxChars])
-		note = "\n\n…[truncated to character limit]"
-	} else if p.BodyTruncated {
-		note = "\n\n…[truncated: response exceeded byte cap]"
-	}
+	full := []rune(p.Markdown)
+	total := len(full)
+	start := min(max(offset, 0), total)
+	end := min(start+maxChars, total)
+	window := string(full[start:end])
 
-	// Header is the article title (with the source URL beneath) when readability
-	// found one, else just the URL.
-	header := u.String()
+	var b strings.Builder
+	// Header: article title (when readability found one) above the source URL.
 	if p.Title != "" {
-		header = p.Title + "\n" + u.String()
+		fmt.Fprintf(&b, "# %s\n%s\n", p.Title, u.String())
+	} else {
+		fmt.Fprintf(&b, "# %s\n", u.String())
 	}
-	out := fmt.Sprintf("# %s\n\n%s%s", header, text, note)
+	if p.FinalURL != "" && p.FinalURL != u.String() {
+		fmt.Fprintf(&b, "Final-URL: %s\n", p.FinalURL)
+	}
+	if p.ContentType != "" {
+		fmt.Fprintf(&b, "Content-Type: %s\n", p.ContentType)
+	}
+	fmt.Fprintf(&b, "Chars: %d-%d of %d\n", start, end, total)
 	if !c.inlineImages && len(p.Images) > 0 {
-		out += fmt.Sprintf("\n\n---\n%d image(s) shown as [image:N]; call web_images with this URL to resolve them to links.", len(p.Images))
+		fmt.Fprintf(&b, "Images: %d (shown as [image:N]; resolve with web_images)\n", len(p.Images))
 	}
-	return out, nil
+	b.WriteString("\n")
+	b.WriteString(window)
+
+	if end < total {
+		fmt.Fprintf(&b, "\n\n…[%d more chars; continue with offset=%d]", total-end, end)
+	} else if p.BodyTruncated {
+		b.WriteString("\n\n…[the source response was capped at the byte limit before rendering]")
+	}
+	return b.String(), nil
 }
 
 // Images returns the images found on raw (resolved to absolute URLs). It serves
@@ -164,43 +178,62 @@ func (c *Client) load(ctx context.Context, u *url.URL) (page, error) {
 	if p, ok := c.cache.get(key); ok {
 		return p, nil
 	}
-	body, truncated, contentType, err := c.download(ctx, u)
+	f, err := c.download(ctx, u)
 	if err != nil {
 		return page{}, err
 	}
-	p := c.render(u, contentType, body)
+	p := c.render(u, f.contentType, f.body)
 	p.URL = key
-	p.BodyTruncated = truncated
+	p.FinalURL = f.finalURL
+	p.ContentType = f.contentType
+	p.Status = f.status
+	p.BodyTruncated = f.truncated
 	c.cache.put(p)
 	return p, nil
 }
 
+// fetched is the raw result of an SSRF-guarded GET.
+type fetched struct {
+	body        []byte
+	truncated   bool // body hit the byte cap
+	contentType string
+	finalURL    string // after redirects
+	status      int
+}
+
 // download performs the SSRF-guarded GET and returns the (byte-capped) body.
-func (c *Client) download(ctx context.Context, u *url.URL) (body []byte, truncated bool, contentType string, err error) {
+func (c *Client) download(ctx context.Context, u *url.URL) (fetched, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, false, "", err
+		return fetched{}, err
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8")
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, false, "", err
+		return fetched{}, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return nil, false, "", fmt.Errorf("HTTP %d fetching %s", resp.StatusCode, u)
+		return fetched{}, fmt.Errorf("HTTP %d fetching %s", resp.StatusCode, u)
 	}
 
-	body, err = io.ReadAll(io.LimitReader(resp.Body, c.maxBytes+1))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, c.maxBytes+1))
 	if err != nil {
-		return nil, false, "", err
+		return fetched{}, err
+	}
+	f := fetched{
+		body:        body,
+		contentType: resp.Header.Get("Content-Type"),
+		finalURL:    resp.Request.URL.String(),
+		status:      resp.StatusCode,
 	}
 	if int64(len(body)) > c.maxBytes {
-		return body[:c.maxBytes], true, resp.Header.Get("Content-Type"), nil
+		f.body = body[:c.maxBytes]
+		f.truncated = true
 	}
-	return body, false, resp.Header.Get("Content-Type"), nil
+	return f, nil
 }
 
 // render turns a response body into a page: readability isolates the main
