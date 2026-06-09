@@ -141,6 +141,35 @@ func TestRenderImages(t *testing.T) {
 	}
 }
 
+// TestImageMetadata checks the enriched fields: dimensions, figcaption, and the
+// enclosing source-page link.
+func TestImageMetadata(t *testing.T) {
+	page := `<html><body><article>
+<h1>Gallery</h1>
+<p>An introductory paragraph long enough for readability to treat this as the page's main content here.</p>
+<figure><a href="/wiki/File:Cat.png"><img src="/thumb/cat.png" alt="A cat" width="800" height="600"></a><figcaption>A fluffy cat sitting</figcaption></figure>
+<p>A closing paragraph adding more body text so the article is clearly long enough for reliable extraction.</p>
+</article></body></html>`
+	u, _ := url.Parse("https://example.com/gallery")
+	p := testClient().render(u, "text/html", []byte(page))
+	if len(p.Images) != 1 {
+		t.Fatalf("want 1 image, got %d: %+v", len(p.Images), p.Images)
+	}
+	im := p.Images[0]
+	if im.URL != "https://example.com/thumb/cat.png" {
+		t.Errorf("url: %q", im.URL)
+	}
+	if im.Width != "800" || im.Height != "600" {
+		t.Errorf("dimensions: %q×%q", im.Width, im.Height)
+	}
+	if im.Caption != "A fluffy cat sitting" {
+		t.Errorf("caption: %q", im.Caption)
+	}
+	if im.SourcePage != "https://example.com/wiki/File:Cat.png" {
+		t.Errorf("source page: %q", im.SourcePage)
+	}
+}
+
 // TestRenderInlineImages: with inline images configured, URLs stay in the
 // markdown and nothing is indexed.
 func TestRenderInlineImages(t *testing.T) {

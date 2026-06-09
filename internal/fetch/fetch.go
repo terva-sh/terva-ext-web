@@ -8,6 +8,7 @@ package fetch
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -212,16 +213,16 @@ func (c *Client) download(ctx context.Context, u *url.URL) (fetched, error) {
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return fetched{}, err
+		return fetched{}, classifyFetchError(err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return fetched{}, fmt.Errorf("HTTP %d fetching %s", resp.StatusCode, u)
+		return fetched{}, fmt.Errorf("http %d fetching %s", resp.StatusCode, u)
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, c.maxBytes+1))
 	if err != nil {
-		return fetched{}, err
+		return fetched{}, classifyFetchError(err)
 	}
 	f := fetched{
 		body:        body,
@@ -234,6 +235,32 @@ func (c *Client) download(ctx context.Context, u *url.URL) (fetched, error) {
 		f.truncated = true
 	}
 	return f, nil
+}
+
+// classifyFetchError maps a transport error to a stable, recognizable prefix so
+// agents can react to failure classes consistently. The SSRF block message is
+// already explicit and passes through unchanged.
+func classifyFetchError(err error) error {
+	if err == nil {
+		return nil
+	}
+	s := err.Error()
+	switch {
+	case strings.Contains(s, "blocked:"):
+		return err
+	case strings.Contains(s, "stopped after") && strings.Contains(s, "redirects"):
+		return fmt.Errorf("redirect loop: %w", err)
+	case strings.Contains(s, "no such host"), strings.Contains(s, "server misbehaving"),
+		strings.Contains(s, "name resolution"):
+		return fmt.Errorf("dns error: %w", err)
+	case errors.Is(err, context.DeadlineExceeded),
+		strings.Contains(s, "Client.Timeout"), strings.Contains(s, "deadline exceeded"),
+		strings.Contains(s, "timeout"):
+		return fmt.Errorf("timeout: %w", err)
+	case strings.Contains(s, "connection refused"):
+		return fmt.Errorf("connection refused: %w", err)
+	}
+	return err
 }
 
 // render turns a response body into a page: readability isolates the main

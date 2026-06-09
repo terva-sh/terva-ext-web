@@ -8,9 +8,13 @@ import (
 // Image is one image found on a fetched page. ID is the page-local handle the
 // model sees as `[image:ID]`; URL is resolved absolute against the page URL.
 type Image struct {
-	ID  int    `json:"id"`
-	URL string `json:"url"`
-	Alt string `json:"alt,omitempty"`
+	ID         int    `json:"id"`
+	URL        string `json:"url"`
+	Alt        string `json:"alt,omitempty"`
+	Caption    string `json:"caption,omitempty"`     // nearest <figcaption>
+	Width      string `json:"width,omitempty"`       // from the <img width> attr
+	Height     string `json:"height,omitempty"`      // from the <img height> attr
+	SourcePage string `json:"source_page,omitempty"` // enclosing <a href> (e.g. a Wikimedia File: page)
 }
 
 // page is the fully rendered result of a fetch, cached so a follow-up

@@ -33,12 +33,32 @@ func FormatImages(pageURL string, imgs []Image) string {
 	fmt.Fprintf(&b, "%d image(s) on %s:\n", len(imgs), pageURL)
 	for _, im := range imgs {
 		fmt.Fprintf(&b, "\n[image:%d] %s", im.ID, im.URL)
-		if im.Alt != "" {
-			fmt.Fprintf(&b, "\n   %s", strings.Join(strings.Fields(im.Alt), " "))
+		if d := im.dimensions(); d != "" {
+			fmt.Fprintf(&b, " (%s)", d)
+		}
+		alt := oneLine(im.Alt)
+		if alt != "" {
+			fmt.Fprintf(&b, "\n   alt: %s", alt)
+		}
+		if cap := oneLine(im.Caption); cap != "" && cap != alt {
+			fmt.Fprintf(&b, "\n   caption: %s", cap)
+		}
+		if im.SourcePage != "" {
+			fmt.Fprintf(&b, "\n   source: %s", im.SourcePage)
 		}
 	}
 	return strings.TrimSpace(b.String())
 }
+
+// dimensions renders "W×H" when both are known.
+func (im Image) dimensions() string {
+	if im.Width != "" && im.Height != "" {
+		return im.Width + "×" + im.Height
+	}
+	return ""
+}
+
+func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 
 // indexImages walks root, replacing each <img> with a sentinel text node and
 // collecting the (absolute) image URLs. Identical URLs share one id. base is
@@ -59,7 +79,16 @@ func indexImages(root *xhtml.Node, base *url.URL) []Image {
 					if !ok {
 						id = len(images) + 1
 						byURL[abs] = id
-						images = append(images, Image{ID: id, URL: abs, Alt: strings.TrimSpace(attrVal(ch, "alt"))})
+						// Read surrounding metadata before the node is detached.
+						images = append(images, Image{
+							ID:         id,
+							URL:        abs,
+							Alt:        strings.TrimSpace(attrVal(ch, "alt")),
+							Caption:    enclosingCaption(ch),
+							Width:      strings.TrimSpace(attrVal(ch, "width")),
+							Height:     strings.TrimSpace(attrVal(ch, "height")),
+							SourcePage: enclosingLink(ch, base),
+						})
 					}
 					replaceWithSentinel(ch, id)
 				}
@@ -119,6 +148,78 @@ func attrVal(n *xhtml.Node, key string) string {
 		}
 	}
 	return ""
+}
+
+// ancestorElement returns the nearest ancestor element named name, searching up
+// to maxUp levels up (so we don't latch onto a page-wide wrapper).
+func ancestorElement(n *xhtml.Node, name string, maxUp int) *xhtml.Node {
+	for p := n.Parent; p != nil && maxUp > 0; p, maxUp = p.Parent, maxUp-1 {
+		if p.Type == xhtml.ElementNode && p.Data == name {
+			return p
+		}
+	}
+	return nil
+}
+
+// enclosingLink returns the absolute href of the nearest wrapping <a>, if any
+// (commonly a Wikimedia File: page). Skips fragment and data: links.
+func enclosingLink(n *xhtml.Node, base *url.URL) string {
+	a := ancestorElement(n, "a", 3)
+	if a == nil {
+		return ""
+	}
+	href := strings.TrimSpace(attrVal(a, "href"))
+	if href == "" || strings.HasPrefix(href, "#") || strings.HasPrefix(strings.ToLower(href), "data:") {
+		return ""
+	}
+	ref, err := url.Parse(href)
+	if err != nil {
+		return ""
+	}
+	return base.ResolveReference(ref).String()
+}
+
+// enclosingCaption returns the text of the nearest enclosing <figure>'s
+// <figcaption>, collapsed to a single line.
+func enclosingCaption(n *xhtml.Node) string {
+	fig := ancestorElement(n, "figure", 4)
+	if fig == nil {
+		return ""
+	}
+	cap := firstDescendant(fig, "figcaption")
+	if cap == nil {
+		return ""
+	}
+	return strings.Join(strings.Fields(nodeText(cap)), " ")
+}
+
+// firstDescendant returns the first descendant element named name (depth-first).
+func firstDescendant(n *xhtml.Node, name string) *xhtml.Node {
+	for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
+		if ch.Type == xhtml.ElementNode && ch.Data == name {
+			return ch
+		}
+		if found := firstDescendant(ch, name); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+// nodeText concatenates all text under n.
+func nodeText(n *xhtml.Node) string {
+	var b strings.Builder
+	var walk func(*xhtml.Node)
+	walk = func(n *xhtml.Node) {
+		if n.Type == xhtml.TextNode {
+			b.WriteString(n.Data)
+		}
+		for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
+			walk(ch)
+		}
+	}
+	walk(n)
+	return b.String()
 }
 
 // replaceWithSentinel swaps node for a text node carrying its image sentinel.
