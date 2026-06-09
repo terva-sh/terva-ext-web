@@ -14,8 +14,19 @@ build:
 
 # Build, then (re)install into $ZOT_HOME so the latest binary is loaded.
 install: build
-    zot ext remove "$(basename "$PWD")" -y || true   # -y skips the confirm; matches the dir basename
+    #!/usr/bin/env bash
+    set -euo pipefail
+    name="$(basename "$PWD")"
+    zot ext remove "$name" -y || true                 # -y skips the confirm; matches the dir basename
     zot ext install "$PWD"
+    # `zot ext install` copies git-aware and skips .gitignore'd files — which
+    # includes the built ./zot-web binary (extension.json's exec target). Copy it
+    # in explicitly so the installed extension can actually run.
+    line="$(zot ext list | grep -E "/${name}\$" || true)"
+    [[ -n "$line" ]] || { echo "install: could not find installed dir in 'zot ext list'" >&2; exit 1; }
+    dir="/${line#*/}"
+    cp -f zot-web "$dir/zot-web"
+    echo "copied binary -> $dir/zot-web"
     zot ext list
 
 # Point the installed extension at a SearXNG backend (default: SEARXNG_URL).

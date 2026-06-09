@@ -46,15 +46,24 @@ See `just --list` for the rest (`try`, `lint`, `test`, …).
 ```bash
 go build -o zot-web .                  # exec name must match extension.json
 zot ext install /path/to/zot-web       # copies the dir into $ZOT_HOME/extensions/<dir-basename>/
+cp zot-web "$ZOT_HOME/extensions/zot-web/zot-web"   # see caveat below
 # or, for one session straight from the working copy:
 zot --ext /path/to/zot-web
 ```
 
 The directory must contain `extension.json` (pointing at the `./zot-web`
-binary you built) — already included here. Note `zot` does **not** build Go
-extensions for you (`language` is informational); build first so the copied
-directory contains the binary. The install dir is named after the source
-folder's basename (here, `zot-web`), not the manifest `name` (`web`).
+binary you built) — already included here. Two gotchas:
+
+- `zot` does **not** build Go extensions for you (`language` is informational),
+  so build first.
+- When the source is a git repo, `zot ext install` copies **git-aware** and
+  skips `.gitignore`d files — and `./zot-web` is gitignored (it's a build
+  artifact). So the binary is *not* copied; copy it in manually as shown, or
+  just use `just install`, which does this for you.
+
+The install dir is named after the source folder's basename (here, `zot-web`),
+not the manifest `name` (`web`). `zot --ext` runs from the working copy
+directly, so it needs no copy step.
 
 ## Configure
 
