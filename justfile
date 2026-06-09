@@ -13,20 +13,38 @@ build:
     @echo "built ./zot-web"
 
 # Build, then (re)install into $ZOT_HOME so the latest binary is loaded.
+# Preserves an existing config.json across the reinstall.
 install: build
     #!/usr/bin/env bash
     set -euo pipefail
     name="$(basename "$PWD")"
+    # Install dir is the last column of `zot ext list`; the path can contain
+    # spaces, so take everything from the first '/'.
+    resolve_dir() { local l; l="$(zot ext list | grep -E "/${name}\$" || true)"; [[ -n "$l" ]] && printf '/%s' "${l#*/}"; }
+
+    # Stash the current config.json (if any) before remove wipes the dir.
+    saved=""
+    olddir="$(resolve_dir || true)"
+    if [[ -n "$olddir" && -f "$olddir/config.json" ]]; then
+      saved="$(mktemp)"; cp "$olddir/config.json" "$saved"
+      echo "preserving existing config.json"
+    fi
+
     zot ext remove "$name" -y || true                 # -y skips the confirm; matches the dir basename
     zot ext install "$PWD"
+
+    dir="$(resolve_dir || true)"
+    [[ -n "$dir" ]] || { echo "install: could not find installed dir in 'zot ext list'" >&2; exit 1; }
     # `zot ext install` copies git-aware and skips .gitignore'd files — which
     # includes the built ./zot-web binary (extension.json's exec target). Copy it
     # in explicitly so the installed extension can actually run.
-    line="$(zot ext list | grep -E "/${name}\$" || true)"
-    [[ -n "$line" ]] || { echo "install: could not find installed dir in 'zot ext list'" >&2; exit 1; }
-    dir="/${line#*/}"
     cp -f zot-web "$dir/zot-web"
     echo "copied binary -> $dir/zot-web"
+
+    if [[ -n "$saved" ]]; then
+      cp "$saved" "$dir/config.json"; rm -f "$saved"
+      echo "restored config.json"
+    fi
     zot ext list
 
 # Point the installed extension at a SearXNG backend (default: SEARXNG_URL).

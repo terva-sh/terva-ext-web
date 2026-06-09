@@ -36,8 +36,9 @@ data dir, resolving that dir from `zot ext list` so it works regardless of OS
 an `http://` prefix. The default instance is the `SEARXNG_URL` variable at the
 top of the `justfile`.
 
-> **Re-running `just install` wipes the data dir** (it removes the old copy
-> first), so re-run `just configure-searxng` afterward to restore your settings.
+`just install` removes and recopies the install dir, but **preserves an
+existing `config.json`** across the reinstall — so you only need
+`configure-searxng` once (or to change instances).
 
 See `just --list` for the rest (`try`, `lint`, `test`, …).
 
