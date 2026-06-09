@@ -338,6 +338,11 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 			}
 			if md, err := convertNode(node); err == nil {
 				if md = applyPlaceholders(strings.TrimSpace(md), images); md != "" {
+					// readability strips <table> elements; recover the data
+					// tables it dropped, unless the render already has one.
+					if !hasMarkdownTable(md) {
+						md += extractDataTables(body)
+					}
 					return page{Title: strings.TrimSpace(art.Title), Markdown: md, Images: images}
 				}
 			}

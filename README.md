@@ -138,6 +138,13 @@ Binary responses (images, PDFs, octet-streams) are not dumped as raw bytes —
 `[image/png content, 40075 bytes — not rendered as text]` instead. Textual
 types (`text/*`, JSON, XML, SVG) pass through normally.
 
+`go-readability` drops `<table>` elements from article content, so data tables
+(e.g. large sortable Wikipedia tables) are recovered separately and appended
+under a `## Tables` heading, rendered leniently (cell text flattened, images
+dropped, ragged rows padded). Each table is capped at 50 rows with a
+truncation note; the dropped rows are not stored, so they are not reachable via
+`offset`.
+
 ### Images and the page cache
 
 By default `web_fetch` strips image URLs out of its Markdown, leaving a short
@@ -185,6 +192,8 @@ targets you list are exempted.
       `JohannesKaufmann/html-to-markdown` (heuristic kept as a fallback).
 - [x] GFM table rendering + image indexing (`[image:N]` + `web_images`) with an
       in-memory page cache.
+- [x] Recover data tables that go-readability strips, rendered leniently under a
+      `## Tables` section (row-capped). Tables land at the end, not inline.
 - [ ] Infobox / vertical key-value tables → cleaner key/value lists (irregular
       tables still degrade to spaced blocks today).
 - [ ] More search backends (Brave, Serper, Exa) behind the same interface.
