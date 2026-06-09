@@ -183,7 +183,13 @@ func (c *Client) load(ctx context.Context, u *url.URL) (page, error) {
 	if err != nil {
 		return page{}, err
 	}
-	p := c.render(u, f.contentType, f.body)
+	// Resolve relative links/images against the post-redirect URL so an
+	// http→https (or path) redirect doesn't leave stale links in the body.
+	base := u
+	if fu, perr := url.Parse(f.finalURL); perr == nil && fu.Host != "" {
+		base = fu
+	}
+	p := c.render(base, f.contentType, f.body)
 	p.URL = key
 	p.FinalURL = f.finalURL
 	p.ContentType = f.contentType
@@ -263,6 +269,47 @@ func classifyFetchError(err error) error {
 	return err
 }
 
+// isTextual reports whether a body should be treated as readable text rather
+// than binary (which web_fetch summarizes instead of dumping). It trusts a
+// textual content-type, and otherwise sniffs for NUL bytes.
+func isTextual(contentType string, body []byte) bool {
+	ct := strings.ToLower(strings.TrimSpace(contentType))
+	if i := strings.IndexByte(ct, ';'); i >= 0 {
+		ct = strings.TrimSpace(ct[:i])
+	}
+	switch {
+	case ct == "":
+		return !looksBinary(body)
+	case strings.HasPrefix(ct, "text/"):
+		return true
+	case ct == "application/json", ct == "application/xml", ct == "application/xhtml+xml",
+		ct == "application/javascript", ct == "application/ecmascript", ct == "image/svg+xml",
+		strings.HasSuffix(ct, "+json"), strings.HasSuffix(ct, "+xml"):
+		return true
+	}
+	return false
+}
+
+// looksBinary reports whether the first kilobyte contains a NUL byte.
+func looksBinary(body []byte) bool {
+	if len(body) > 1024 {
+		body = body[:1024]
+	}
+	return bytes.IndexByte(body, 0) >= 0
+}
+
+// displayType is the content-type without parameters, for a human-readable note.
+func displayType(contentType string) string {
+	ct := strings.TrimSpace(contentType)
+	if i := strings.IndexByte(ct, ';'); i >= 0 {
+		ct = strings.TrimSpace(ct[:i])
+	}
+	if ct == "" {
+		return "binary"
+	}
+	return ct
+}
+
 // render turns a response body into a page: readability isolates the main
 // article, image URLs are indexed out to `[image:N]` placeholders, and
 // html-to-markdown (with GFM tables) renders the result. On any failure it
@@ -272,6 +319,9 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 	isHTML := strings.Contains(ct, "html") ||
 		(ct == "" && strings.Contains(strings.ToLower(string(body)), "<html"))
 	if !isHTML {
+		if !isTextual(contentType, body) {
+			return page{Markdown: fmt.Sprintf("[%s content, %d bytes — not rendered as text]", displayType(contentType), len(body))}
+		}
 		return page{Markdown: strings.TrimSpace(string(body))}
 	}
 

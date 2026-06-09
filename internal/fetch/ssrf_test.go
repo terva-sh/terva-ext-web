@@ -217,6 +217,44 @@ func TestRenderNonHTML(t *testing.T) {
 	}
 }
 
+// TestRenderBinarySuppressed: binary content is summarized, not dumped.
+func TestRenderBinarySuppressed(t *testing.T) {
+	u, _ := url.Parse("https://example.com/cat.png")
+	body := append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 200)...) // NUL-laden binary
+	p := testClient().render(u, "image/png", body)
+	if !strings.Contains(p.Markdown, "image/png") || !strings.Contains(p.Markdown, "not rendered as text") {
+		t.Errorf("expected a binary summary, got: %q", p.Markdown)
+	}
+	if strings.Contains(p.Markdown, "PNG") {
+		t.Errorf("raw bytes leaked into output: %q", p.Markdown)
+	}
+}
+
+// TestRenderSVGIsText: SVG is XML text and should pass through, not be summarized.
+func TestRenderSVGIsText(t *testing.T) {
+	u, _ := url.Parse("https://example.com/logo.svg")
+	svg := `<svg xmlns="http://www.w3.org/2000/svg"><title>Logo</title></svg>`
+	p := testClient().render(u, "image/svg+xml", []byte(svg))
+	if !strings.Contains(p.Markdown, "svg") {
+		t.Errorf("svg should pass through as text, got: %q", p.Markdown)
+	}
+}
+
+// TestRenderResolvesLinksAgainstBase: relative links resolve against the base
+// URL render is given (load passes the post-redirect URL).
+func TestRenderResolvesLinksAgainstBase(t *testing.T) {
+	page := `<html><body><article>
+<h1>Title</h1>
+<p>See <a href="/wiki/Foo">Foo</a> in this paragraph that is long enough to read as the page's main article content here.</p>
+<p>A second paragraph giving readability enough text to lock onto this region as the body.</p>
+</article></body></html>`
+	u, _ := url.Parse("https://example.com/page")
+	p := testClient().render(u, "text/html", []byte(page))
+	if !strings.Contains(p.Markdown, "https://example.com/wiki/Foo") {
+		t.Errorf("relative link not resolved against base:\n%s", p.Markdown)
+	}
+}
+
 // TestFetchOffsetWindowing drives the metadata block + offset paging using a
 // pre-seeded cache entry (so no network is touched).
 func TestFetchOffsetWindowing(t *testing.T) {

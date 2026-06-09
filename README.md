@@ -130,6 +130,13 @@ Images: 17 (shown as [image:N]; resolve with web_images)
   rendered length. When `end < total`, the trailing hint gives the exact
   `offset` to pass to the next `web_fetch` call to keep reading — the page is
   already cached, so continuation costs no extra network request.
+- Relative links and image sources are resolved against the **final** URL after
+  redirects, so an `http→https` redirect doesn't leave stale links in the body.
+
+Binary responses (images, PDFs, octet-streams) are not dumped as raw bytes —
+`web_fetch` returns a one-line summary like
+`[image/png content, 40075 bytes — not rendered as text]` instead. Textual
+types (`text/*`, JSON, XML, SVG) pass through normally.
 
 ### Images and the page cache
 
