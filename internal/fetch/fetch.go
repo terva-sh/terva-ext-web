@@ -7,6 +7,7 @@ package fetch
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -132,7 +133,13 @@ func (c *Client) Fetch(ctx context.Context, raw string, maxChars, offset int) (s
 	}
 	fmt.Fprintf(&b, "Chars: %d-%d of %d\n", start, end, total)
 	if !c.inlineImages && len(p.Images) > 0 {
-		fmt.Fprintf(&b, "Images: %d (shown as [image:N]; resolve with web_images)\n", len(p.Images))
+		if p.ImagesInline {
+			fmt.Fprintf(&b, "Images: %d (shown as [image:N]; resolve with web_images)\n", len(p.Images))
+		} else {
+			// Heuristic/fallback render: no inline placeholders, but the URLs
+			// were still harvested from the page.
+			fmt.Fprintf(&b, "Images: %d (not inlined; list URLs with web_images)\n", len(p.Images))
+		}
 	}
 	b.WriteString("\n")
 	b.WriteString(window)
@@ -157,6 +164,47 @@ func (c *Client) Images(ctx context.Context, raw string) ([]Image, error) {
 		return nil, err
 	}
 	return p.Images, nil
+}
+
+// Links returns every link found on raw (resolved to absolute URLs), served
+// from cache when the page was recently fetched and otherwise by fetching it.
+func (c *Client) Links(ctx context.Context, raw string) ([]Link, error) {
+	u, err := parseURL(raw)
+	if err != nil {
+		return nil, err
+	}
+	p, err := c.load(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return p.Links, nil
+}
+
+// RawDoc is the unrendered response body for a fetched page.
+type RawDoc struct {
+	Body        []byte
+	ContentType string
+	FinalURL    string
+	Truncated   bool // body hit the byte cap before it was saved
+}
+
+// Raw returns the unrendered response body for raw, decompressed from the same
+// cache that backs web_fetch (fetching only on a cold cache). It's the basis
+// for web_fetch_raw: the exact bytes the server sent, for the model to grep.
+func (c *Client) Raw(ctx context.Context, raw string) (RawDoc, error) {
+	u, err := parseURL(raw)
+	if err != nil {
+		return RawDoc{}, err
+	}
+	p, err := c.load(ctx, u)
+	if err != nil {
+		return RawDoc{}, err
+	}
+	body, err := gunzipBytes(p.RawGzip)
+	if err != nil {
+		return RawDoc{}, fmt.Errorf("decompressing cached page: %w", err)
+	}
+	return RawDoc{Body: body, ContentType: p.ContentType, FinalURL: p.FinalURL, Truncated: p.BodyTruncated}, nil
 }
 
 // parseURL validates and normalizes a model-supplied URL.
@@ -197,8 +245,41 @@ func (c *Client) load(ctx context.Context, u *url.URL) (page, error) {
 	p.ContentType = f.contentType
 	p.Status = f.status
 	p.BodyTruncated = f.truncated
+	// Retain the unrendered body for web_fetch_raw, gzipped so a warm cache of
+	// HTML pages stays cheap (HTML compresses ~5-10x).
+	p.RawGzip = gzipBytes(f.body)
 	c.cache.put(p)
 	return p, nil
+}
+
+// gzipBytes returns b gzip-compressed. A nil/empty input yields nil.
+func gzipBytes(b []byte) []byte {
+	if len(b) == 0 {
+		return nil
+	}
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	if _, err := w.Write(b); err != nil {
+		w.Close()
+		return nil
+	}
+	if err := w.Close(); err != nil {
+		return nil
+	}
+	return buf.Bytes()
+}
+
+// gunzipBytes inflates bytes produced by gzipBytes.
+func gunzipBytes(b []byte) ([]byte, error) {
+	if len(b) == 0 {
+		return nil, nil
+	}
+	r, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return io.ReadAll(r)
 }
 
 // fetched is the raw result of an SSRF-guarded GET.
@@ -328,12 +409,28 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		return page{Markdown: strings.TrimSpace(string(body))}
 	}
 
+	// Parse the full document once for whole-page harvesting: links and many
+	// images (nav thumbnails, og:image, lazy-loaded galleries) live outside the
+	// readability article subtree, so we collect them from the full tree.
+	var fullDoc *xhtml.Node
+	if doc, perr := xhtml.Parse(bytes.NewReader(body)); perr == nil {
+		fullDoc = doc
+	}
+	links := collectLinksOpt(fullDoc, u)
+
 	art, err := readability.FromReader(bytes.NewReader(body), u)
 	if err == nil && art.Node != nil {
 		node := art.Node
 		var images []Image
+		inline := false
 		if !c.inlineImages {
 			images = indexImages(node, u)
+			inline = len(images) > 0
+			// Article had no images of its own (common on boards/forums/SPAs):
+			// fall back to a whole-document harvest so web_images isn't empty.
+			if len(images) == 0 && fullDoc != nil {
+				images = collectImages(fullDoc, u)
+			}
 		}
 		if md, err := convertNode(node); err == nil {
 			if md = applyPlaceholders(strings.TrimSpace(md), images); md != "" {
@@ -342,7 +439,7 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 				if !hasMarkdownTable(md) {
 					md += extractDataTables(body)
 				}
-				return page{Title: strings.TrimSpace(art.Title()), Markdown: md, Images: images}
+				return page{Title: strings.TrimSpace(art.Title()), Markdown: md, Images: images, ImagesInline: inline, Links: links}
 			}
 		}
 		// Readability found content but markdown conversion produced nothing;
@@ -350,11 +447,26 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		var buf bytes.Buffer
 		if art.RenderText(&buf) == nil {
 			if t := strings.TrimSpace(buf.String()); t != "" {
-				return page{Title: strings.TrimSpace(art.Title()), Markdown: t}
+				return page{Title: strings.TrimSpace(art.Title()), Markdown: t, Images: images, Links: links}
 			}
 		}
 	}
-	return page{Markdown: heuristicExtract(body)}
+	// Heuristic path: the tag-stripper drops all markup, so images can't be
+	// placeholdered inline — but we still index them from the full DOM so
+	// web_images works on pages readability can't parse.
+	var images []Image
+	if !c.inlineImages && fullDoc != nil {
+		images = collectImages(fullDoc, u)
+	}
+	return page{Markdown: heuristicExtract(body), Images: images, Links: links}
+}
+
+// collectLinksOpt is collectLinks guarded against a nil (unparseable) document.
+func collectLinksOpt(root *xhtml.Node, base *url.URL) []Link {
+	if root == nil {
+		return nil
+	}
+	return collectLinks(root, base)
 }
 
 // convertNode renders an HTML node to Markdown with CommonMark + GFM tables.

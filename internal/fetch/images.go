@@ -112,12 +112,34 @@ func applyPlaceholders(md string, images []Image) string {
 }
 
 // imgURL resolves an <img>'s best source to an absolute URL, skipping inline
-// data: URIs. Falls back to the first srcset candidate when src is absent.
+// data: URIs. A real `src` wins; otherwise it falls back to the common
+// lazy-load attributes (data-src and friends) and finally the first srcset /
+// data-srcset candidate — covering the many sites that defer image loading to
+// JavaScript but still leave the real URL in the markup.
 func imgURL(n *xhtml.Node, base *url.URL) string {
 	src := strings.TrimSpace(attrVal(n, "src"))
+	if src == "" || strings.HasPrefix(strings.ToLower(src), "data:") {
+		// Lazy-load fallbacks, in rough order of prevalence.
+		for _, key := range []string{"data-src", "data-original", "data-lazy-src", "data-url"} {
+			if v := strings.TrimSpace(attrVal(n, key)); v != "" && !strings.HasPrefix(strings.ToLower(v), "data:") {
+				src = v
+				break
+			}
+		}
+	}
 	if src == "" {
 		src = firstSrcset(attrVal(n, "srcset"))
 	}
+	if src == "" {
+		src = firstSrcset(attrVal(n, "data-srcset"))
+	}
+	return resolveImageRef(src, base)
+}
+
+// resolveImageRef resolves a raw image reference against base, skipping empty
+// and data: URIs. Returns "" when there's nothing usable.
+func resolveImageRef(src string, base *url.URL) string {
+	src = strings.TrimSpace(src)
 	if src == "" || strings.HasPrefix(strings.ToLower(src), "data:") {
 		return ""
 	}
@@ -126,6 +148,120 @@ func imgURL(n *xhtml.Node, base *url.URL) string {
 		return ""
 	}
 	return base.ResolveReference(ref).String()
+}
+
+// imageExts are the file extensions we treat as a direct image link when an
+// <a href> points straight at one (e.g. a thumbnail linking to the full image,
+// as on imageboards).
+var imageExts = []string{".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".avif"}
+
+// collectImages gathers every image referenced anywhere under root, without
+// mutating the tree (unlike indexImages). It is the whole-page fallback used
+// when readability's article subtree yields no images, or when extraction fell
+// back to the heuristic stripper — so board/forum/SPA pages aren't a dead end.
+// It pulls from <img> (including lazy-load attrs), <picture>'s <source srcset>,
+// <a href> pointing directly at an image file, and social/meta image tags.
+func collectImages(root *xhtml.Node, base *url.URL) []Image {
+	var images []Image
+	byURL := map[string]bool{}
+	add := func(abs string, im Image) {
+		if abs == "" || byURL[abs] {
+			return
+		}
+		byURL[abs] = true
+		im.ID = len(images) + 1
+		im.URL = abs
+		images = append(images, im)
+	}
+
+	// Social/meta images first: they're the server-rendered URL many JS-driven
+	// pages expose even when the gallery itself is built client-side.
+	for _, u := range metaImageURLs(root, base) {
+		add(u, Image{})
+	}
+
+	var walk func(n *xhtml.Node)
+	walk = func(n *xhtml.Node) {
+		if n.Type == xhtml.ElementNode {
+			switch n.Data {
+			case "img":
+				add(imgURL(n, base), Image{
+					Alt:        strings.TrimSpace(attrVal(n, "alt")),
+					Caption:    enclosingCaption(n),
+					Width:      strings.TrimSpace(attrVal(n, "width")),
+					Height:     strings.TrimSpace(attrVal(n, "height")),
+					SourcePage: enclosingLink(n, base),
+				})
+			case "source": // <picture><source srcset>
+				src := firstSrcset(attrVal(n, "srcset"))
+				if src == "" {
+					src = firstSrcset(attrVal(n, "data-srcset"))
+				}
+				add(resolveImageRef(src, base), Image{})
+			case "a":
+				add(imageHref(n, base), Image{Alt: oneLine(nodeText(n))})
+			}
+		}
+		for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
+			walk(ch)
+		}
+	}
+	walk(root)
+	return images
+}
+
+// imageHref returns the absolute href of an <a> that points straight at an
+// image file, else "". (Imageboard thumbnails link to the full-res image this
+// way, so the full image is recoverable even when only a thumbnail <img> shows.)
+func imageHref(a *xhtml.Node, base *url.URL) string {
+	abs := resolveHref(attrVal(a, "href"), base)
+	if abs == "" {
+		return ""
+	}
+	p, err := url.Parse(abs)
+	if err != nil {
+		return ""
+	}
+	path := strings.ToLower(p.Path)
+	for _, ext := range imageExts {
+		if strings.HasSuffix(path, ext) {
+			return abs
+		}
+	}
+	return ""
+}
+
+// metaImageURLs collects the page's social/preview image URLs from
+// og:image, twitter:image, and <link rel="image_src">.
+func metaImageURLs(root *xhtml.Node, base *url.URL) []string {
+	var out []string
+	var walk func(n *xhtml.Node)
+	walk = func(n *xhtml.Node) {
+		if n.Type == xhtml.ElementNode {
+			switch n.Data {
+			case "meta":
+				prop := strings.ToLower(strings.TrimSpace(attrVal(n, "property")))
+				name := strings.ToLower(strings.TrimSpace(attrVal(n, "name")))
+				if prop == "og:image" || prop == "og:image:url" || prop == "og:image:secure_url" ||
+					name == "twitter:image" || name == "twitter:image:src" {
+					if u := resolveImageRef(attrVal(n, "content"), base); u != "" {
+						out = append(out, u)
+					}
+				}
+			case "link":
+				if strings.Contains(strings.ToLower(attrVal(n, "rel")), "image_src") {
+					if u := resolveImageRef(attrVal(n, "href"), base); u != "" {
+						out = append(out, u)
+					}
+				}
+			}
+		}
+		for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
+			walk(ch)
+		}
+	}
+	walk(root)
+	return out
 }
 
 // firstSrcset returns the first URL from a srcset attribute (ignoring its

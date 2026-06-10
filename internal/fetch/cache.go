@@ -18,9 +18,9 @@ type Image struct {
 }
 
 // page is the fully rendered result of a fetch, cached so a follow-up
-// web_images call needs no network. Markdown is untruncated (carrying
-// `[image:N]` placeholders unless inline images are configured); per-request
-// character limits are applied at response time.
+// web_images / web_links / web_fetch_raw call needs no network. Markdown is
+// untruncated (carrying `[image:N]` placeholders unless inline images are
+// configured); per-request character limits are applied at response time.
 type page struct {
 	URL           string // the requested URL (cache key)
 	FinalURL      string // URL after redirects
@@ -29,7 +29,10 @@ type page struct {
 	Status        int
 	Markdown      string
 	Images        []Image
-	BodyTruncated bool // raw body hit the byte cap before rendering
+	ImagesInline  bool   // Images appear in Markdown as [image:N] placeholders
+	Links         []Link // every <a href> on the page (whole document)
+	RawGzip       []byte // gzip-compressed unrendered response body (for web_fetch_raw)
+	BodyTruncated bool   // raw body hit the byte cap before rendering
 }
 
 // cache is a small, concurrency-safe, TTL + LRU page cache. Tool handlers run
