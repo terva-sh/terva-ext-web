@@ -131,7 +131,7 @@ func main() {
 		})
 
 	e.Tool("web_fetch",
-		"Fetch a web page (http/https) and return its main text content. Private/internal addresses are blocked unless explicitly allowlisted.",
+		"Fetch a web page (http/https) and return its main text content. Results are cached briefly: paging with offset (or repeating the call) within that window reads the same snapshot, so it won't drift mid-read; after the cache expires a re-fetch may differ, with new content typically appended at the end. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(fetchSchema),
 		func(args json.RawMessage) proto.Result {
 			ensure()

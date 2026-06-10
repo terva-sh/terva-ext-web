@@ -1,18 +1,30 @@
 # zot-web
 
 A [zot](https://github.com/patriceckhart/zot) extension that gives the agent
-web access through four LLM-callable tools:
+web access through six LLM-callable tools:
 
 - **`web_search(query, count?)`** — ranked results (title, URL, snippet).
 - **`web_fetch(url, max_chars?, offset?)`** — a page's main content as Markdown,
   led by a metadata block. Image URLs are replaced with compact `[image:N]`
-  placeholders to save tokens; `offset` pages through long documents.
+  placeholders to save tokens; `offset` pages through long documents. The
+  rendered page is cached, so paging with `offset` (or re-fetching) within the
+  cache window reads the same snapshot and won't drift mid-read.
 - **`web_images(url)`** — resolve the `[image:N]` placeholders from a fetched
   page back to their URLs (plus dimensions, caption, and source page). Served
   from cache when warm; fetches on a cold cache, so it also works standalone.
+  Discovery covers lazy-load attributes (`data-src`, `srcset`), `<picture>`
+  sources, `<a>` links straight to an image, and `og:image`/`twitter:image`,
+  and falls back to a whole-page scan on pages readability can't article-ify.
+- **`web_links(url)`** — every hyperlink on a page (absolute URL + anchor text),
+  de-duplicated. Lets the model enumerate a page's links without scraping the
+  fetched text. Cache-backed like `web_images`.
 - **`web_fetch_image(url, max_dimension?, save_path?, overwrite?, inject?)`** —
   fetch an image and return it for native multimodal viewing and/or save it into
   the workspace. `max_dimension` downscales oversized images.
+- **`web_fetch_raw(url, save_path, overwrite?)`** — save a page's *unrendered*
+  source (HTML/JSON/text, exactly as served) to a workspace file for the model
+  to grep/parse itself — an escape hatch when the structured tools miss
+  something. Reuses the same SSRF guard and page cache as `web_fetch`.
 
 Single static Go binary, no external runtime services. It implements the zot
 extension wire protocol directly (no dependency on the zot module).
@@ -176,11 +188,19 @@ caption, and the enclosing source-page link (e.g. a Wikimedia `File:` page).
 for a cached page; identical image URLs are de-duplicated to a single id.
 
 Every fetched page is cached (in memory, per the TTL/size settings above), so
-`web_images` normally costs no network request. If called for a URL that was
-never fetched (or whose cache entry expired), it transparently fetches and
-renders the page first — it does **not** error, so it is safe to call directly.
-Set `fetch_inline_images: true` to restore inline image URLs and disable the
-indexing (and the `web_images` workflow).
+`web_images`, `web_links`, and `web_fetch_raw` normally cost no network request.
+If called for a URL that was never fetched (or whose cache entry expired), they
+transparently fetch and render the page first — they do **not** error, so they
+are safe to call directly. Set `fetch_inline_images: true` to restore inline
+image URLs and disable the indexing (and the `web_images` workflow).
+
+On pages readability can't reduce to an article (boards, forums, JS-heavy
+SPAs), `web_fetch` falls back to a tag-stripper for the text, but `web_images`
+still harvests image URLs from the whole document — so it returns results even
+when no `[image:N]` placeholders appear inline (the `web_fetch` header notes
+this with `not inlined; list URLs with web_images`). The cache also retains each
+page's unrendered body (gzip-compressed) so `web_fetch_raw` can hand it back for
+manual grepping without a second fetch.
 
 ## Fetching images for viewing (`web_fetch_image`)
 
@@ -241,6 +261,10 @@ targets you list are exempted.
       `go-shiori/go-readability` is now deprecated.)_
 - [x] GFM table rendering + image indexing (`[image:N]` + `web_images`) with an
       in-memory page cache.
+- [x] Broaden image discovery (lazy-load attrs, `<picture>`, `<a>`→image,
+      `og:image`) + whole-page fallback for non-article pages; `web_links` for
+      link enumeration; `web_fetch_raw` to dump unrendered source for manual
+      grepping (raw body cached gzip-compressed).
 - [x] Recover data tables that readability strips, rendered leniently under a
       `## Tables` section (row-capped). Tables land at the end, not inline.
 - [ ] Infobox / vertical key-value tables → cleaner key/value lists (irregular
