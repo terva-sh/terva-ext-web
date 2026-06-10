@@ -25,7 +25,7 @@ type Config struct {
 	// FetchMaxBytes caps a fetched response body. Default 2 MiB.
 	FetchMaxBytes int64 `json:"fetch_max_bytes"`
 	// FetchImageMaxBytes caps the encoded size of an image returned by
-	// fetch_image for multimodal injection. Default 5 MiB (≈ provider limits).
+	// web_fetch_image for multimodal injection. Default 5 MiB (≈ provider limits).
 	// Images larger than this (after any requested resize) are rejected with a
 	// hint to resubmit with a smaller max_dimension. The raw download is allowed
 	// to exceed this so an oversized original can be decoded and resized down.

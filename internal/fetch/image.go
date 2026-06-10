@@ -31,7 +31,7 @@ type ImageResult struct {
 
 // ImageTooLargeError reports that an image exceeds the injection byte cap even
 // after any requested resize. It carries a suggested max_dimension so the model
-// can resubmit fetch_image and converge under the cap.
+// can resubmit web_fetch_image and converge under the cap.
 type ImageTooLargeError struct {
 	Bytes      int
 	MaxBytes   int64
@@ -42,7 +42,7 @@ type ImageTooLargeError struct {
 
 func (e *ImageTooLargeError) Error() string {
 	return fmt.Sprintf("image is %s (%dx%d), over the %s cap for model injection; "+
-		"resubmit fetch_image with max_dimension=%d to downsample it",
+		"resubmit web_fetch_image with max_dimension=%d to downsample it",
 		humanBytes(int64(e.Bytes)), e.Width, e.Height, humanBytes(e.MaxBytes), e.SuggestDim)
 }
 
@@ -67,7 +67,7 @@ func (c *Client) FetchImage(ctx context.Context, raw string, maxDimension int) (
 
 	mime := canonicalImageMIME(f.contentType, f.body)
 	if mime == "" {
-		return ImageResult{}, fmt.Errorf("unsupported or non-image content (%s); fetch_image handles PNG, JPEG, GIF, and WebP", displayType(f.contentType))
+		return ImageResult{}, fmt.Errorf("unsupported or non-image content (%s); web_fetch_image handles PNG, JPEG, GIF, and WebP", displayType(f.contentType))
 	}
 
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(f.body))
@@ -115,7 +115,7 @@ func (c *Client) imageDownloadCeiling() int64 {
 
 // canonicalImageMIME returns the normalized media type for a supported image,
 // trusting a declared image content-type and otherwise sniffing the bytes.
-// Returns "" for anything fetch_image does not handle.
+// Returns "" for anything web_fetch_image does not handle.
 func canonicalImageMIME(contentType string, body []byte) string {
 	ct := strings.ToLower(strings.TrimSpace(contentType))
 	if i := strings.IndexByte(ct, ';'); i >= 0 {

@@ -1,9 +1,9 @@
 // Command zot-web is a zot extension that gives the agent web tools:
 //
-//	web_search(query, count?)         -> ranked results (title, url, snippet)
-//	web_fetch(url, max_chars?, ...)   -> the page's main content as Markdown
-//	web_images(url)                   -> resolve a page's [image:N] placeholders
-//	fetch_image(url, ...)             -> an image for multimodal viewing / save to disk
+//	web_search(query, count?)        -> ranked results (title, url, snippet)
+//	web_fetch(url, max_chars?, ...)  -> the page's main content as Markdown
+//	web_images(url)                  -> resolve a page's [image:N] placeholders
+//	web_fetch_image(url, ...)        -> an image for multimodal viewing / save to disk
 //
 // Search is pluggable (Tavily default, SearXNG alternate). Fetching is
 // SSRF-guarded with a configurable local-address allowlist. See README.md.
@@ -52,7 +52,7 @@ const imagesSchema = `{
   "required": ["url"]
 }`
 
-const fetchImageSchema = `{
+const webFetchImageSchema = `{
   "type": "object",
   "properties": {
     "url": {"type": "string", "description": "Absolute http(s) URL of an image (PNG, JPEG, GIF, or WebP)."},
@@ -158,9 +158,9 @@ func main() {
 			return proto.Text(fetch.FormatImages(in.URL, imgs))
 		})
 
-	e.Tool("fetch_image",
+	e.Tool("web_fetch_image",
 		"Fetch an image (PNG/JPEG/GIF/WebP) by URL and return it for you to view, and/or save it into the workspace. Use max_dimension to downscale a large image. Private/internal addresses are blocked unless explicitly allowlisted.",
-		json.RawMessage(fetchImageSchema),
+		json.RawMessage(webFetchImageSchema),
 		func(args json.RawMessage) proto.Result {
 			ensure()
 			var in struct {
@@ -182,7 +182,7 @@ func main() {
 			if err != nil {
 				// ImageTooLargeError's message already tells the model how to
 				// resubmit (with a suggested max_dimension), so pass it through.
-				return proto.Errorf("fetch_image failed: %v", err)
+				return proto.Errorf("web_fetch_image failed: %v", err)
 			}
 
 			var meta strings.Builder

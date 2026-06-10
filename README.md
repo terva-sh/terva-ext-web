@@ -10,9 +10,9 @@ web access through four LLM-callable tools:
 - **`web_images(url)`** — resolve the `[image:N]` placeholders from a fetched
   page back to their URLs (plus dimensions, caption, and source page). Served
   from cache when warm; fetches on a cold cache, so it also works standalone.
-- **`fetch_image(url, max_dimension?, save_path?, overwrite?, inject?)`** — fetch
-  an image and return it for native multimodal viewing and/or save it into the
-  workspace. `max_dimension` downscales oversized images.
+- **`web_fetch_image(url, max_dimension?, save_path?, overwrite?, inject?)`** —
+  fetch an image and return it for native multimodal viewing and/or save it into
+  the workspace. `max_dimension` downscales oversized images.
 
 Single static Go binary, no external runtime services. It implements the zot
 extension wire protocol directly (no dependency on the zot module).
@@ -118,7 +118,7 @@ Or switch to a self-hosted SearXNG instance (no key, private):
 | `tavily_api_key` | `TAVILY_API_KEY` | — | Tavily bearer token |
 | `searxng_url` | `ZOT_WEB_SEARXNG_URL` | — | SearXNG base URL |
 | `fetch_max_bytes` | `ZOT_WEB_FETCH_MAX_BYTES` | `2097152` | response body cap |
-| `fetch_image_max_bytes` | `ZOT_WEB_FETCH_IMAGE_MAX_BYTES` | `5242880` | max encoded size of a `fetch_image` result (after resize) |
+| `fetch_image_max_bytes` | `ZOT_WEB_FETCH_IMAGE_MAX_BYTES` | `5242880` | max encoded size of a `web_fetch_image` result (after resize) |
 | `fetch_timeout_sec` | `ZOT_WEB_FETCH_TIMEOUT_SEC` | `25` | per-fetch timeout |
 | `fetch_inline_images` | `ZOT_WEB_FETCH_INLINE_IMAGES` | `false` | keep image URLs inline instead of `[image:N]` placeholders |
 | `fetch_cache_ttl_sec` | `ZOT_WEB_FETCH_CACHE_TTL_SEC` | `600` | how long a rendered page stays cached (`0` = no expiry) |
@@ -182,16 +182,16 @@ renders the page first — it does **not** error, so it is safe to call directly
 Set `fetch_inline_images: true` to restore inline image URLs and disable the
 indexing (and the `web_images` workflow).
 
-## Fetching images for viewing (`fetch_image`)
+## Fetching images for viewing (`web_fetch_image`)
 
-`web_fetch`/`web_images` deal in image *URLs*; `fetch_image` retrieves the image
-*bytes* and hands them to the model as a **native image content block** — the
+`web_fetch`/`web_images` deal in image *URLs*; `web_fetch_image` retrieves the
+image *bytes* and hands them to the model as a **native image content block** — the
 model sees the picture, not a base64 blob. It accepts PNG, JPEG, GIF, and WebP
 (detected by content-type, falling back to byte sniffing) and runs through the
 same SSRF guard as `web_fetch`.
 
 ```text
-fetch_image(url, max_dimension?, save_path?, overwrite?, inject?)
+web_fetch_image(url, max_dimension?, save_path?, overwrite?, inject?)
 ```
 
 - **`max_dimension`** — downscale so the longest edge is at most this many
