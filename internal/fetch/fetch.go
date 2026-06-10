@@ -19,11 +19,11 @@ import (
 	"strings"
 	"time"
 
+	readability "codeberg.org/readeck/go-readability/v2"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
-	readability "github.com/go-shiori/go-readability"
 	xhtml "golang.org/x/net/html"
 
 	"git.local.sothr.com/warricksothr/zot-web/internal/config"
@@ -326,31 +326,29 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 	}
 
 	art, err := readability.FromReader(bytes.NewReader(body), u)
-	if err == nil {
+	if err == nil && art.Node != nil {
 		node := art.Node
-		if node == nil {
-			node, _ = xhtml.Parse(strings.NewReader(art.Content))
+		var images []Image
+		if !c.inlineImages {
+			images = indexImages(node, u)
 		}
-		if node != nil {
-			var images []Image
-			if !c.inlineImages {
-				images = indexImages(node, u)
-			}
-			if md, err := convertNode(node); err == nil {
-				if md = applyPlaceholders(strings.TrimSpace(md), images); md != "" {
-					// readability strips <table> elements; recover the data
-					// tables it dropped, unless the render already has one.
-					if !hasMarkdownTable(md) {
-						md += extractDataTables(body)
-					}
-					return page{Title: strings.TrimSpace(art.Title), Markdown: md, Images: images}
+		if md, err := convertNode(node); err == nil {
+			if md = applyPlaceholders(strings.TrimSpace(md), images); md != "" {
+				// readability strips <table> elements; recover the data
+				// tables it dropped, unless the render already has one.
+				if !hasMarkdownTable(md) {
+					md += extractDataTables(body)
 				}
+				return page{Title: strings.TrimSpace(art.Title()), Markdown: md, Images: images}
 			}
 		}
 		// Readability found content but markdown conversion produced nothing;
 		// use its plain-text rendering rather than dropping to the heuristic.
-		if t := strings.TrimSpace(art.TextContent); t != "" {
-			return page{Title: strings.TrimSpace(art.Title), Markdown: t}
+		var buf bytes.Buffer
+		if art.RenderText(&buf) == nil {
+			if t := strings.TrimSpace(buf.String()); t != "" {
+				return page{Title: strings.TrimSpace(art.Title()), Markdown: t}
+			}
 		}
 	}
 	return page{Markdown: heuristicExtract(body)}
