@@ -34,21 +34,23 @@ const userAgent = "zot-web/0.1 (+https://git.local.sothr.com/warricksothr/zot-we
 // Client is a reusable SSRF-guarded fetcher. Rendered pages are cached so a
 // web_images call following a web_fetch needs no network.
 type Client struct {
-	http         *http.Client
-	maxBytes     int64
-	allow        AllowList
-	inlineImages bool
-	cache        *cache
+	http          *http.Client
+	maxBytes      int64
+	imageMaxBytes int64
+	allow         AllowList
+	inlineImages  bool
+	cache         *cache
 }
 
 // New builds a Client whose dialer refuses private/reserved destinations unless
 // the allowlist permits them.
 func New(cfg config.Config, allow AllowList) *Client {
 	c := &Client{
-		maxBytes:     cfg.FetchMaxBytes,
-		allow:        allow,
-		inlineImages: cfg.FetchInlineImages,
-		cache:        newCache(time.Duration(cfg.FetchCacheTTLSec)*time.Second, cfg.FetchCacheMaxEntries),
+		maxBytes:      cfg.FetchMaxBytes,
+		imageMaxBytes: cfg.FetchImageMaxBytes,
+		allow:         allow,
+		inlineImages:  cfg.FetchInlineImages,
+		cache:         newCache(time.Duration(cfg.FetchCacheTTLSec)*time.Second, cfg.FetchCacheMaxEntries),
 	}
 	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
 
@@ -179,7 +181,7 @@ func (c *Client) load(ctx context.Context, u *url.URL) (page, error) {
 	if p, ok := c.cache.get(key); ok {
 		return p, nil
 	}
-	f, err := c.download(ctx, u)
+	f, err := c.download(ctx, u, c.maxBytes)
 	if err != nil {
 		return page{}, err
 	}
@@ -208,8 +210,9 @@ type fetched struct {
 	status      int
 }
 
-// download performs the SSRF-guarded GET and returns the (byte-capped) body.
-func (c *Client) download(ctx context.Context, u *url.URL) (fetched, error) {
+// download performs the SSRF-guarded GET and returns the body, capped at
+// maxBytes (truncated set when the body hit the cap).
+func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64) (fetched, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return fetched{}, err
@@ -226,7 +229,7 @@ func (c *Client) download(ctx context.Context, u *url.URL) (fetched, error) {
 		return fetched{}, fmt.Errorf("http %d fetching %s", resp.StatusCode, u)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, c.maxBytes+1))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBytes+1))
 	if err != nil {
 		return fetched{}, classifyFetchError(err)
 	}
@@ -236,8 +239,8 @@ func (c *Client) download(ctx context.Context, u *url.URL) (fetched, error) {
 		finalURL:    resp.Request.URL.String(),
 		status:      resp.StatusCode,
 	}
-	if int64(len(body)) > c.maxBytes {
-		f.body = body[:c.maxBytes]
+	if int64(len(body)) > maxBytes {
+		f.body = body[:maxBytes]
 		f.truncated = true
 	}
 	return f, nil
