@@ -7,10 +7,24 @@ SEARXNG_URL := "http://127.0.0.1:11984"
 default:
     @just --list
 
-# Build the extension binary (name matches extension.json "exec").
+# Build the extension binary (loaded by run.sh / copied in by `just install`).
+# Offline build against vendor/ — mirrors what run.sh does on first launch.
 build:
-    go build -o zot-web .
+    go build -mod=vendor -o zot-web .
     @echo "built ./zot-web"
+
+# Refresh the committed vendor/ tree after changing dependencies.
+#
+# We vendor so run.sh's build-on-first-launch is a fast OFFLINE compile: zot
+# blocks its whole startup until the extension sends `hello`, and a network
+# module download there would stall (or, if it hangs, freeze zot). Re-evaluate
+# this approach if vendor/ grows large (currently ~6 MB / a handful of deps) —
+# at some point committing prebuilt per-platform binaries (goreleaser) becomes
+# the better trade-off than carrying a big vendor tree in the repo.
+vendor:
+    go mod tidy
+    go mod vendor
+    @echo "vendor/ refreshed — commit it alongside go.mod/go.sum"
 
 # Build, then (re)install into $ZOT_HOME so the latest binary is loaded.
 # Preserves an existing config.json across the reinstall.
