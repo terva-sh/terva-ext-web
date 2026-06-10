@@ -24,6 +24,12 @@ type Config struct {
 
 	// FetchMaxBytes caps a fetched response body. Default 2 MiB.
 	FetchMaxBytes int64 `json:"fetch_max_bytes"`
+	// FetchImageMaxBytes caps the encoded size of an image returned by
+	// fetch_image for multimodal injection. Default 5 MiB (≈ provider limits).
+	// Images larger than this (after any requested resize) are rejected with a
+	// hint to resubmit with a smaller max_dimension. The raw download is allowed
+	// to exceed this so an oversized original can be decoded and resized down.
+	FetchImageMaxBytes int64 `json:"fetch_image_max_bytes"`
 	// FetchTimeoutSec is the overall per-fetch timeout. Default 25s (well
 	// under zot's 60s tool budget).
 	FetchTimeoutSec int `json:"fetch_timeout_sec"`
@@ -50,6 +56,7 @@ func Load(dataDir string) Config {
 	c := Config{
 		SearchBackend:        "tavily",
 		FetchMaxBytes:        2 << 20, // 2 MiB
+		FetchImageMaxBytes:   5 << 20, // 5 MiB
 		FetchTimeoutSec:      25,
 		FetchCacheTTLSec:     600,
 		FetchCacheMaxEntries: 32,
@@ -81,6 +88,11 @@ func Load(dataDir string) Config {
 			c.FetchMaxBytes = n
 		}
 	}
+	if v := os.Getenv("ZOT_WEB_FETCH_IMAGE_MAX_BYTES"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			c.FetchImageMaxBytes = n
+		}
+	}
 	if v := os.Getenv("ZOT_WEB_FETCH_TIMEOUT_SEC"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			c.FetchTimeoutSec = n
@@ -108,6 +120,9 @@ func Load(dataDir string) Config {
 	}
 	if c.FetchMaxBytes <= 0 {
 		c.FetchMaxBytes = 2 << 20
+	}
+	if c.FetchImageMaxBytes <= 0 {
+		c.FetchImageMaxBytes = 5 << 20
 	}
 	if c.FetchTimeoutSec <= 0 {
 		c.FetchTimeoutSec = 25
