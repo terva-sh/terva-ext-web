@@ -11,13 +11,14 @@ web access through three LLM-callable tools:
   page back to their URLs (plus dimensions, caption, and source page). Served
   from cache when warm; fetches on a cold cache, so it also works standalone.
 
-Single static Go binary, no runtime dependencies. It implements the zot
+Single static Go binary, no external runtime services. It implements the zot
 extension wire protocol directly (no dependency on the zot module).
 
 > **Status: v0.** Search (Tavily + SearXNG), the SSRF-guarded fetcher, and
-> article extraction (`go-readability` → `html-to-markdown` with GFM tables,
-> image indexing, and a heuristic tag-stripper fallback) are all functional.
-> Design rationale lives in the zot repo at
+> article extraction (readability via the maintained
+> `codeberg.org/readeck/go-readability` fork → `html-to-markdown` with GFM
+> tables, image indexing, and a heuristic tag-stripper fallback) are all
+> functional. Design rationale lives in the zot repo at
 > `docs/plans/web-tools-extension-research.md`.
 
 ## Quick start (`just`)
@@ -44,29 +45,42 @@ existing `config.json`** across the reinstall — so you only need
 
 See `just --list` for the rest (`try`, `lint`, `test`, …).
 
-## Manual build & install
+## Manual install & the `run.sh` launcher
 
 ```bash
-go build -o zot-web .                  # exec name must match extension.json
-zot ext install /path/to/zot-web       # copies the dir into $ZOT_HOME/extensions/<dir-basename>/
-cp zot-web "$ZOT_HOME/extensions/zot-web/zot-web"   # see caveat below
-# or, for one session straight from the working copy:
+# From a git URL — zot shallow-clones the repo (it does NOT build Go sources):
+zot ext install https://git.local.sothr.com/warricksothr/zot-web.git
+# From a local checkout:
+zot ext install /path/to/zot-web
+# Or, for one session straight from the working copy:
 zot --ext /path/to/zot-web
 ```
 
-The directory must contain `extension.json` (pointing at the `./zot-web`
-binary you built) — already included here. Two gotchas:
+`extension.json` points `exec` at **`./run.sh`**, a launcher that compiles the
+binary on first launch (and after any source change) and then execs it. zot
+never builds Go sources itself (`language` is informational), so this is what
+makes a git-URL install work without committing a platform-specific binary — at
+the cost of needing a **Go 1.25+ toolchain on `PATH`** on the host and a
+one-time build before the extension responds. The build is **offline**
+(`go build -mod=vendor` against the committed `vendor/` tree), so the first
+launch needs no network and can't hang on a module fetch — which matters because
+zot blocks its startup until the extension sends its `hello`. Build chatter goes
+to stderr (zot captures it to `$ZOT_HOME/logs/ext-web.log`); the compiled
+`./zot-web` is gitignored.
 
-- `zot` does **not** build Go extensions for you (`language` is informational),
-  so build first.
-- When the source is a git repo, `zot ext install` copies **git-aware** and
-  skips `.gitignore`d files — and `./zot-web` is gitignored (it's a build
-  artifact). So the binary is *not* copied; copy it in manually as shown, or
-  just use `just install`, which does this for you.
+`just install` still builds locally and copies the binary into the install dir,
+pre-seeding it so the first launch skips the build. The install dir is named
+after the source folder's basename (here, `zot-web`), not the manifest `name`
+(`web`); `zot --ext` runs from the working copy directly.
 
-The install dir is named after the source folder's basename (here, `zot-web`),
-not the manifest `name` (`web`). `zot --ext` runs from the working copy
-directly, so it needs no copy step.
+### Dependencies are vendored
+
+`vendor/` is committed so the first-launch build is fast and offline (see
+above). After changing dependencies, refresh it with `just vendor` (runs
+`go mod tidy` + `go mod vendor`) and commit the result alongside
+`go.mod`/`go.sum`. **Re-evaluate this approach if `vendor/` grows large**
+(currently ~6 MB across a handful of modules): past some point, shipping
+prebuilt per-platform binaries (goreleaser) beats carrying a big vendor tree.
 
 ## Configure
 
@@ -138,7 +152,7 @@ Binary responses (images, PDFs, octet-streams) are not dumped as raw bytes —
 `[image/png content, 40075 bytes — not rendered as text]` instead. Textual
 types (`text/*`, JSON, XML, SVG) pass through normally.
 
-`go-readability` drops `<table>` elements from article content, so data tables
+readability drops `<table>` elements from article content, so data tables
 (e.g. large sortable Wikipedia tables) are recovered separately and appended
 under a `## Tables` heading, rendered leniently (cell text flattened, images
 dropped, ragged rows padded). Each table is capped at 50 rows with a
@@ -188,15 +202,17 @@ targets you list are exempted.
 
 ## Roadmap
 
-- [x] Replace the heuristic HTML extractor with `go-shiori/go-readability` +
+- [x] Replace the heuristic HTML extractor with readability +
       `JohannesKaufmann/html-to-markdown` (heuristic kept as a fallback).
+      _(Uses the maintained `codeberg.org/readeck/go-readability/v2` fork —
+      `go-shiori/go-readability` is now deprecated.)_
 - [x] GFM table rendering + image indexing (`[image:N]` + `web_images`) with an
       in-memory page cache.
-- [x] Recover data tables that go-readability strips, rendered leniently under a
+- [x] Recover data tables that readability strips, rendered leniently under a
       `## Tables` section (row-capped). Tables land at the end, not inline.
 - [ ] Infobox / vertical key-value tables → cleaner key/value lists (irregular
       tables still degrade to spaced blocks today).
 - [ ] More search backends (Brave, Serper, Exa) behind the same interface.
 - [ ] Optional JS rendering fallback (e.g. Jina Reader) — deferred for now.
-- [ ] Release binaries (goreleaser) so `zot ext install <git-url>` needs no
-      local build.
+- [ ] Optional prebuilt per-platform binaries (goreleaser) so the `run.sh`
+      launcher can skip the on-host build and drop the Go-toolchain requirement.
