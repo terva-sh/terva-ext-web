@@ -3,7 +3,9 @@
 //	web_search(query, count?)        -> ranked results (title, url, snippet)
 //	web_fetch(url, max_chars?, ...)  -> the page's main content as Markdown
 //	web_images(url)                  -> resolve a page's [image:N] placeholders
+//	web_links(url)                   -> every link on a page (absolute URL + text)
 //	web_fetch_image(url, ...)        -> an image for multimodal viewing / save to disk
+//	web_fetch_raw(url, save_path)    -> the page's unrendered source, saved to a file
 //
 // Search is pluggable (Tavily default, SearXNG alternate). Fetching is
 // SSRF-guarded with a configurable local-address allowlist. See README.md.
@@ -50,6 +52,24 @@ const imagesSchema = `{
     "url": {"type": "string", "description": "URL of a page already retrieved with web_fetch."}
   },
   "required": ["url"]
+}`
+
+const linksSchema = `{
+  "type": "object",
+  "properties": {
+    "url": {"type": "string", "description": "URL of a page (ideally one already retrieved with web_fetch)."}
+  },
+  "required": ["url"]
+}`
+
+const webFetchRawSchema = `{
+  "type": "object",
+  "properties": {
+    "url": {"type": "string", "description": "Absolute http(s) URL to fetch."},
+    "save_path": {"type": "string", "description": "Workspace-relative path to write the unrendered page source to (e.g. \"tmp/thread.html\"). Must stay within the workspace; parent directories are created as needed."},
+    "overwrite": {"type": "boolean", "description": "Allow overwriting save_path if it already exists (default false)."}
+  },
+  "required": ["url", "save_path"]
 }`
 
 const webFetchImageSchema = `{
@@ -156,6 +176,73 @@ func main() {
 				return proto.Errorf("web_images failed: %v", err)
 			}
 			return proto.Text(fetch.FormatImages(in.URL, imgs))
+		})
+
+	e.Tool("web_links",
+		"List every hyperlink on a page (absolute URL plus anchor text). Use to enumerate a page's outbound links without scraping the fetched text yourself. Cheap when the page was recently fetched (served from cache).",
+		json.RawMessage(linksSchema),
+		func(args json.RawMessage) proto.Result {
+			ensure()
+			var in struct {
+				URL string `json:"url"`
+			}
+			if err := json.Unmarshal(args, &in); err != nil {
+				return proto.Errorf("invalid args: %v", err)
+			}
+			if strings.TrimSpace(in.URL) == "" {
+				return proto.Errorf("url is required")
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+			defer cancel()
+			links, err := fetcher.Links(ctx, in.URL)
+			if err != nil {
+				return proto.Errorf("web_links failed: %v", err)
+			}
+			return proto.Text(fetch.FormatLinks(in.URL, links))
+		})
+
+	e.Tool("web_fetch_raw",
+		"Fetch a page and save its UNRENDERED source (HTML/JSON/text, exactly as the server sent it) to a workspace file for you to grep or parse yourself. A fallback for when web_fetch/web_images/web_links don't surface what you need. Served from the same cache as web_fetch. Private/internal addresses are blocked unless explicitly allowlisted.",
+		json.RawMessage(webFetchRawSchema),
+		func(args json.RawMessage) proto.Result {
+			ensure()
+			var in struct {
+				URL       string `json:"url"`
+				SavePath  string `json:"save_path"`
+				Overwrite bool   `json:"overwrite"`
+			}
+			if err := json.Unmarshal(args, &in); err != nil {
+				return proto.Errorf("invalid args: %v", err)
+			}
+			if strings.TrimSpace(in.URL) == "" {
+				return proto.Errorf("url is required")
+			}
+			if strings.TrimSpace(in.SavePath) == "" {
+				return proto.Errorf("save_path is required")
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+			defer cancel()
+			raw, err := fetcher.Raw(ctx, in.URL)
+			if err != nil {
+				return proto.Errorf("web_fetch_raw failed: %v", err)
+			}
+			rel, werr := saveToWorkspace(e.Host().CWD, in.SavePath, raw.Body, in.Overwrite)
+			if werr != nil {
+				return proto.Errorf("fetched the page but could not save it: %v", werr)
+			}
+			ctype := strings.TrimSpace(raw.ContentType)
+			if ctype == "" {
+				ctype = "unknown type"
+			}
+			var meta strings.Builder
+			fmt.Fprintf(&meta, "Saved unrendered source to %s\n%s, %d bytes", rel, ctype, len(raw.Body))
+			if raw.FinalURL != "" && raw.FinalURL != in.URL {
+				fmt.Fprintf(&meta, " (final: %s)", raw.FinalURL)
+			}
+			if raw.Truncated {
+				meta.WriteString("\n…source was capped at the fetch byte limit before saving")
+			}
+			return proto.Text(meta.String())
 		})
 
 	e.Tool("web_fetch_image",
