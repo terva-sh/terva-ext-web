@@ -18,6 +18,11 @@ import (
 	"sync"
 )
 
+// ProtocolVersion is the zot extension protocol version this package speaks. It
+// is sent by the host in hello_ack; a mismatch is logged (not fatal) so the
+// extension keeps working against minor host changes while surfacing a drift.
+const ProtocolVersion = 1
+
 // Result is a tool handler's reply. Text is sent back to the model as a single
 // text content block; IsError marks the call as failed.
 type Result struct {
@@ -46,11 +51,13 @@ type toolDef struct {
 
 // Host carries the hello_ack fields this extension cares about.
 type Host struct {
-	DataDir      string
-	ExtensionDir string
-	Provider     string
-	Model        string
-	CWD          string
+	ProtocolVersion int
+	ZotVersion      string
+	DataDir         string
+	ExtensionDir    string
+	Provider        string
+	Model           string
+	CWD             string
 }
 
 // Extension is one tool-providing extension. Construct with New, register
@@ -127,15 +134,17 @@ func (e *Extension) Run() error {
 	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
 	for sc.Scan() {
 		var f struct {
-			Type         string          `json:"type"`
-			ID           string          `json:"id"`
-			Name         string          `json:"name"`
-			Args         json.RawMessage `json:"args"`
-			DataDir      string          `json:"data_dir"`
-			ExtensionDir string          `json:"extension_dir"`
-			Provider     string          `json:"provider"`
-			Model        string          `json:"model"`
-			CWD          string          `json:"cwd"`
+			Type            string          `json:"type"`
+			ID              string          `json:"id"`
+			Name            string          `json:"name"`
+			Args            json.RawMessage `json:"args"`
+			ProtocolVersion int             `json:"protocol_version"`
+			ZotVersion      string          `json:"zot_version"`
+			DataDir         string          `json:"data_dir"`
+			ExtensionDir    string          `json:"extension_dir"`
+			Provider        string          `json:"provider"`
+			Model           string          `json:"model"`
+			CWD             string          `json:"cwd"`
 		}
 		if err := json.Unmarshal(sc.Bytes(), &f); err != nil {
 			e.Logf("bad frame from host: %v", err)
@@ -144,8 +153,20 @@ func (e *Extension) Run() error {
 		switch f.Type {
 		case "hello_ack":
 			e.mu.Lock()
-			e.host = Host{DataDir: f.DataDir, ExtensionDir: f.ExtensionDir, Provider: f.Provider, Model: f.Model, CWD: f.CWD}
+			e.host = Host{
+				ProtocolVersion: f.ProtocolVersion,
+				ZotVersion:      f.ZotVersion,
+				DataDir:         f.DataDir,
+				ExtensionDir:    f.ExtensionDir,
+				Provider:        f.Provider,
+				Model:           f.Model,
+				CWD:             f.CWD,
+			}
 			e.mu.Unlock()
+			if f.ProtocolVersion != 0 && f.ProtocolVersion != ProtocolVersion {
+				e.Logf("warning: host speaks protocol_version %d but this extension implements %d (zot %s); proceeding, but behavior may drift",
+					f.ProtocolVersion, ProtocolVersion, f.ZotVersion)
+			}
 		case "tool_call":
 			h := e.handlerFor(f.Name)
 			if h == nil {
