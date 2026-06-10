@@ -11,6 +11,7 @@ package proto
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,15 +24,32 @@ import (
 // extension keeps working against minor host changes while surfacing a drift.
 const ProtocolVersion = 1
 
-// Result is a tool handler's reply. Text is sent back to the model as a single
-// text content block; IsError marks the call as failed.
+// Result is a tool handler's reply. Text is sent back to the model as a text
+// content block; Image, when set, is sent as an image content block (before the
+// text) so the host injects it into the model context as a real image rather
+// than base64 text. IsError marks the call as failed.
 type Result struct {
 	Text    string
 	IsError bool
+	Image   *ImageContent
+}
+
+// ImageContent is a binary image returned to the model for native multimodal
+// injection. Data is the raw encoded image (PNG/JPEG/GIF/WebP/…); the wire
+// layer base64-encodes it. MimeType is its media type (e.g. "image/png").
+type ImageContent struct {
+	MimeType string
+	Data     []byte
 }
 
 // Text builds a successful Result.
 func Text(s string) Result { return Result{Text: s} }
+
+// Image builds a successful Result carrying a native image block plus an
+// optional caption (sent as a trailing text block when non-empty).
+func Image(mimeType string, data []byte, caption string) Result {
+	return Result{Text: caption, Image: &ImageContent{MimeType: mimeType, Data: data}}
+}
 
 // Errorf builds a failed Result with a formatted message.
 func Errorf(format string, a ...any) Result {
@@ -202,10 +220,23 @@ func (e *Extension) handlerFor(name string) ToolHandler {
 }
 
 func (e *Extension) sendToolResult(id string, r Result) {
+	content := make([]map[string]any, 0, 2)
+	if r.Image != nil {
+		content = append(content, map[string]any{
+			"type":      "image",
+			"mime_type": r.Image.MimeType,
+			"data":      base64.StdEncoding.EncodeToString(r.Image.Data),
+		})
+	}
+	// Always carry a text block when there's no image (preserving prior
+	// behavior); with an image, add one only for a non-empty caption.
+	if r.Text != "" || len(content) == 0 {
+		content = append(content, map[string]any{"type": "text", "text": r.Text})
+	}
 	e.send(map[string]any{
 		"type":     "tool_result",
 		"id":       id,
-		"content":  []map[string]any{{"type": "text", "text": r.Text}},
+		"content":  content,
 		"is_error": r.IsError,
 	})
 }
