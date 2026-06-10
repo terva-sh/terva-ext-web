@@ -84,14 +84,15 @@ configure-searxng url=SEARXNG_URL:
     echo "configured searxng -> $url"
     echo "wrote $dir/config.json"
 
-# Vet + gofmt check.
+# Vet + gofmt check. gofmt walks the filesystem, so exclude the vendored
+# third-party tree (go vet ./... already skips vendor/ in module mode).
 lint:
     go vet ./...
-    @test -z "$(gofmt -l . | tee /dev/stderr)" || { echo "gofmt issues (run \`just fmt\`)"; exit 1; }
+    @test -z "$(gofmt -l $(find . -name '*.go' -not -path './vendor/*') | tee /dev/stderr)" || { echo "gofmt issues (run \`just fmt\`)"; exit 1; }
 
-# Format sources.
+# Format sources (excluding the vendored tree).
 fmt:
-    gofmt -w .
+    gofmt -w $(find . -name '*.go' -not -path './vendor/*')
 
 # Run tests.
 test *ARGS:
