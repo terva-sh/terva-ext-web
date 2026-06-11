@@ -381,7 +381,10 @@ func TestCacheKeyStripsOnlyKnownTrackingParams(t *testing.T) {
 func TestCapMarkdownDoesNotSplitRunes(t *testing.T) {
 	prefix := strings.Repeat("a", maxRenderedRunes-1) + "☃"
 	input := prefix + "tail"
-	got := capMarkdown(input)
+	got, capped := capMarkdown(input)
+	if !capped {
+		t.Fatal("capMarkdown should report that the cap fired")
+	}
 	if !strings.HasPrefix(got, prefix) {
 		t.Fatal("capMarkdown did not preserve the complete rune at the boundary")
 	}

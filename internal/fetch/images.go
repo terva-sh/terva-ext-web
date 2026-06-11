@@ -31,6 +31,9 @@ func FormatImages(pageURL string, imgs []Image) string {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d image(s) on %s:\n", len(imgs), pageURL)
+	if len(imgs) >= maxImages {
+		fmt.Fprintf(&b, "(list capped at %d — the page may contain more; use web_fetch_raw to inspect the full source)\n", maxImages)
+	}
 	for _, im := range imgs {
 		fmt.Fprintf(&b, "\n[image:%d] %s", im.ID, im.URL)
 		if d := im.dimensions(); d != "" {

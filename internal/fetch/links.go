@@ -72,6 +72,9 @@ func FormatLinks(pageURL string, links []Link) string {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d link(s) on %s:\n", len(links), pageURL)
+	if len(links) >= maxLinks {
+		fmt.Fprintf(&b, "(list capped at %d — the page may contain more; use web_fetch_raw to inspect the full source)\n", maxLinks)
+	}
 	for _, l := range links {
 		fmt.Fprintf(&b, "\n%s", l.URL)
 		if l.Text != "" {

@@ -164,7 +164,7 @@ func renderTableMarkdown(t *xhtml.Node, maxRows int) string {
 	}
 	out := strings.TrimRight(b.String(), "\n")
 	if total > maxRows {
-		out += fmt.Sprintf("\n\n*(table truncated to the first %d of %d rows)*", maxRows, total)
+		out += fmt.Sprintf("\n\n*(table truncated to the first %d of %d rows; the rest are not reachable via offset — use web_fetch_raw for the full table)*", maxRows, total)
 	}
 	return out
 }

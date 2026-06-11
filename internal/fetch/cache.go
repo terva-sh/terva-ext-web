@@ -22,17 +22,18 @@ type Image struct {
 // untruncated (carrying `[image:N]` placeholders unless inline images are
 // configured); per-request character limits are applied at response time.
 type page struct {
-	URL           string // the requested URL (cache key)
-	FinalURL      string // URL after redirects
-	Title         string
-	ContentType   string
-	Status        int
-	Markdown      string
-	Images        []Image
-	ImagesInline  bool   // Images appear in Markdown as [image:N] placeholders
-	Links         []Link // every <a href> on the page (whole document)
-	RawGzip       []byte // gzip-compressed unrendered response body (for web_fetch_raw)
-	BodyTruncated bool   // raw body hit the byte cap before rendering
+	URL            string // the requested URL (cache key)
+	FinalURL       string // URL after redirects
+	Title          string
+	ContentType    string
+	Status         int
+	Markdown       string
+	Images         []Image
+	ImagesInline   bool   // Images appear in Markdown as [image:N] placeholders
+	Links          []Link // every <a href> on the page (whole document)
+	RawGzip        []byte // gzip-compressed unrendered response body (for web_fetch_raw)
+	BodyTruncated  bool   // raw body hit the byte cap before rendering
+	MarkdownCapped bool   // rendered Markdown hit maxRenderedRunes (tail dropped)
 }
 
 // cache is a small, concurrency-safe, TTL + LRU page cache bounded by both entry

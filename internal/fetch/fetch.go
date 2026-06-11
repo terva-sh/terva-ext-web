@@ -157,6 +157,9 @@ func (c *Client) Fetch(ctx context.Context, raw string, maxChars, offset int, us
 		fmt.Fprintf(&b, "Content-Type: %s\n", p.ContentType)
 	}
 	fmt.Fprintf(&b, "Chars: %d-%d of %d\n", start, end, total)
+	if p.MarkdownCapped {
+		fmt.Fprintf(&b, "Note: the render hit the %d-rune output cap, so the page's tail is missing and not reachable via offset; use web_fetch_raw for the complete source\n", maxRenderedRunes)
+	}
 	if !c.inlineImages && len(p.Images) > 0 {
 		if p.ImagesInline {
 			fmt.Fprintf(&b, "Images: %d (shown as [image:N]; resolve with web_images)\n", len(p.Images))
@@ -479,7 +482,7 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		if !isTextual(contentType, body) {
 			return page{Markdown: fmt.Sprintf("[%s content, %d bytes — not rendered as text]", displayType(contentType), len(body))}
 		}
-		return page{Markdown: capMarkdown(strings.TrimSpace(string(decodeToUTF8(body, contentType))))}
+		return cappedPage(page{}, strings.TrimSpace(string(decodeToUTF8(body, contentType))))
 	}
 	// Decode legacy charsets (windows-1252, Shift_JIS, GBK, …) to UTF-8 before
 	// any parsing: x/net/html and readability both assume UTF-8 input, so
@@ -517,7 +520,7 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 				if !hasMarkdownTable(md) {
 					md += extractDataTables(body)
 				}
-				return page{Title: strings.TrimSpace(art.Title()), Markdown: capMarkdown(md), Images: images, ImagesInline: inline, Links: links}
+				return cappedPage(page{Title: strings.TrimSpace(art.Title()), Images: images, ImagesInline: inline, Links: links}, md)
 			}
 		}
 		// Readability found content but markdown conversion produced nothing;
@@ -525,7 +528,7 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		var buf bytes.Buffer
 		if art.RenderText(&buf) == nil {
 			if t := strings.TrimSpace(buf.String()); t != "" {
-				return page{Title: strings.TrimSpace(art.Title()), Markdown: capMarkdown(t), Images: images, Links: links}
+				return cappedPage(page{Title: strings.TrimSpace(art.Title()), Images: images, Links: links}, t)
 			}
 		}
 	}
@@ -536,7 +539,7 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 	if !c.inlineImages && fullDoc != nil {
 		images = collectImages(fullDoc, u)
 	}
-	return page{Markdown: capMarkdown(heuristicExtract(body)), Images: images, Links: links}
+	return cappedPage(page{Images: images, Links: links}, heuristicExtract(body))
 }
 
 // decodeToUTF8 converts body to UTF-8, determining the source encoding from
@@ -611,16 +614,24 @@ func heuristicExtract(body []byte) string {
 // lists) that would blow up the cache and model context.
 const maxRenderedRunes = 500_000
 
-// capMarkdown truncates s at maxRenderedRunes runes and appends a note.
-func capMarkdown(s string) string {
+// capMarkdown truncates s at maxRenderedRunes runes, appending a note and
+// reporting whether the cap fired (so the fetch header can surface it).
+func capMarkdown(s string) (string, bool) {
 	count := 0
 	for i := range s {
 		if count == maxRenderedRunes {
-			return s[:i] + "\n\n…[Markdown output capped at " + fmt.Sprint(maxRenderedRunes) + " runes]"
+			return s[:i] + "\n\n…[Markdown output capped at " + fmt.Sprint(maxRenderedRunes) + " runes]", true
 		}
 		count++
 	}
-	return s
+	return s, false
+}
+
+// cappedPage fills p.Markdown from md via capMarkdown, recording when the
+// render cap fired.
+func cappedPage(p page, md string) page {
+	p.Markdown, p.MarkdownCapped = capMarkdown(md)
+	return p
 }
 
 // cacheKey returns a normalized key for the page cache: the URL with common
