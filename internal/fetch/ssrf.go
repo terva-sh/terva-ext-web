@@ -59,7 +59,8 @@ func (a AllowList) IPAllowed(ip net.IP) bool {
 
 // permitted decides whether a connection to ip (for request host) is allowed:
 // any public IP is fine; a private/reserved IP only if the host or the IP is
-// on the allowlist.
+// on the allowlist. Hostname allowlist entries deliberately trust that name's
+// DNS: any blocked-range address it resolves to is permitted.
 func (a AllowList) permitted(host string, ip net.IP) bool {
 	if !isBlockedIP(ip) {
 		return true
@@ -68,8 +69,9 @@ func (a AllowList) permitted(host string, ip net.IP) bool {
 }
 
 // isBlockedIP reports whether ip is in a range SSRF protection refuses by
-// default: loopback, RFC1918/ULA private, link-local (incl. the cloud metadata
-// address 169.254.169.254), multicast, unspecified, and CGNAT 100.64.0.0/10.
+// default: loopback, private, link-local (incl. the cloud metadata address
+// 169.254.169.254), multicast, unspecified, CGNAT, benchmarking,
+// documentation, and other special-use/reserved ranges.
 func isBlockedIP(ip net.IP) bool {
 	if ip == nil {
 		return true
@@ -78,10 +80,38 @@ func isBlockedIP(ip net.IP) bool {
 		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
 		return true
 	}
-	if v4 := ip.To4(); v4 != nil && v4[0] == 100 && v4[1] >= 64 && v4[1] <= 127 {
-		return true // 100.64.0.0/10 carrier-grade NAT
+	for _, n := range blockedSpecialNets {
+		if n.Contains(ip) {
+			return true
+		}
 	}
 	return false
+}
+
+var blockedSpecialNets = []*net.IPNet{
+	mustCIDR("0.0.0.0/8"),          // current network / software
+	mustCIDR("100.64.0.0/10"),      // carrier-grade NAT
+	mustCIDR("192.0.0.0/24"),       // IETF protocol assignments
+	mustCIDR("192.0.2.0/24"),       // TEST-NET-1 documentation
+	mustCIDR("198.18.0.0/15"),      // benchmarking
+	mustCIDR("198.51.100.0/24"),    // TEST-NET-2 documentation
+	mustCIDR("203.0.113.0/24"),     // TEST-NET-3 documentation
+	mustCIDR("240.0.0.0/4"),        // reserved for future use
+	mustCIDR("255.255.255.255/32"), // limited broadcast
+	mustCIDR("64:ff9b::/96"),       // IPv4/IPv6 translation
+	mustCIDR("64:ff9b:1::/48"),     // local-use IPv4/IPv6 translation
+	mustCIDR("100::/64"),           // discard-only prefix
+	mustCIDR("2001::/23"),          // IETF protocol assignments
+	mustCIDR("2001:db8::/32"),      // documentation
+	mustCIDR("2002::/16"),          // 6to4
+}
+
+func mustCIDR(s string) *net.IPNet {
+	_, n, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(err)
+	}
+	return n
 }
 
 // SSRFBlockedError is returned when a connection attempt is refused by SSRF

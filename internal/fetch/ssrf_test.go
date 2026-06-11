@@ -18,12 +18,20 @@ func TestIsBlockedIP(t *testing.T) {
 		"172.16.5.5":      true,  // private
 		"169.254.169.254": true,  // link-local / cloud metadata
 		"100.64.1.1":      true,  // CGNAT
+		"192.0.2.10":      true,  // TEST-NET-1 documentation
+		"198.18.0.1":      true,  // benchmarking
+		"198.51.100.10":   true,  // TEST-NET-2 documentation
+		"203.0.113.10":    true,  // TEST-NET-3 documentation
+		"240.0.0.1":       true,  // reserved
 		"::1":             true,  // loopback v6
 		"fc00::1":         true,  // ULA
 		"0.0.0.0":         true,  // unspecified
+		"2001:db8::1":     true,  // documentation v6
+		"2002::1":         true,  // 6to4 special-use v6
 		"8.8.8.8":         false, // public
 		"1.1.1.1":         false, // public
 		"93.184.216.34":   false, // public
+		"2001:4860::8888": false, // public v6
 	}
 	for s, want := range cases {
 		ip := net.ParseIP(s)
