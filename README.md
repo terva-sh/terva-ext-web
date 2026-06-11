@@ -3,7 +3,12 @@
 A [zot](https://github.com/patriceckhart/zot) extension that gives the agent
 web access through six LLM-callable tools:
 
-- **`web_search(query, count?)`** — ranked results (title, URL, snippet).
+- **`web_search(query, count?, freshness?, include_domains?, exclude_domains?, depth?)`**
+  — ranked results (title, URL, snippet, publication date when the backend
+  reports one). `freshness` (`day`/`week`/`month`/`year`) windows results by
+  publication date; `include_domains`/`exclude_domains` filter by site
+  (Tavily natively; SearXNG via a `site:` hint plus post-filtering);
+  `depth: "advanced"` requests Tavily's deeper search tier.
 - **`web_fetch(url, max_chars?, offset?)`** — a page's main content as Markdown,
   led by a metadata block. Image URLs are replaced with compact `[image:N]`
   placeholders to save tokens; `offset` pages through long documents. The

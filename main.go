@@ -34,7 +34,11 @@ const searchSchema = `{
   "type": "object",
   "properties": {
     "query": {"type": "string", "description": "The search query."},
-    "count": {"type": "integer", "description": "Number of results (default 5, max 10).", "minimum": 1, "maximum": 10}
+    "count": {"type": "integer", "description": "Number of results (default 5, max 10).", "minimum": 1, "maximum": 10},
+    "freshness": {"type": "string", "enum": ["day", "week", "month", "year"], "description": "Only results published within this window. Use for current events and anything time-sensitive."},
+    "include_domains": {"type": "array", "items": {"type": "string"}, "description": "Restrict results to these domains (e.g. [\"docs.python.org\"]). Subdomains match."},
+    "exclude_domains": {"type": "array", "items": {"type": "string"}, "description": "Drop results from these domains."},
+    "depth": {"type": "string", "enum": ["basic", "advanced"], "description": "\"advanced\" requests a deeper, higher-quality (slower) search where the backend supports it."}
   },
   "required": ["query"]
 }`
@@ -124,18 +128,30 @@ func main() {
 				return proto.Errorf("web_search: rate limit reached; wait a few seconds")
 			}
 			var in struct {
-				Query string `json:"query"`
-				Count int    `json:"count"`
+				Query          string   `json:"query"`
+				Count          int      `json:"count"`
+				Freshness      string   `json:"freshness"`
+				IncludeDomains []string `json:"include_domains"`
+				ExcludeDomains []string `json:"exclude_domains"`
+				Depth          string   `json:"depth"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
 				return proto.Errorf("invalid args: %v", err)
 			}
-			if strings.TrimSpace(in.Query) == "" {
-				return proto.Errorf("query is required")
+			q := search.Query{
+				Text:           in.Query,
+				Count:          in.Count,
+				Freshness:      in.Freshness,
+				IncludeDomains: in.IncludeDomains,
+				ExcludeDomains: in.ExcludeDomains,
+				Depth:          in.Depth,
+			}
+			if err := q.Normalize(); err != nil {
+				return proto.Errorf("%v", err)
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 			defer cancel()
-			results, err := provider.Search(ctx, in.Query, in.Count)
+			results, err := provider.Search(ctx, q)
 			if err != nil {
 				return proto.Errorf("search failed: %v", logSSRF(e, err))
 			}

@@ -204,7 +204,7 @@ func TestSearxNG_Success(t *testing.T) {
 	defer srv.Close()
 
 	se := &searxng{base: srv.URL, client: http.DefaultClient}
-	results, err := se.Search(context.Background(), "golang", 5)
+	results, err := se.Search(context.Background(), Query{Text: "golang", Count: 5})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestSearxNG_HTTPErrors(t *testing.T) {
 			defer srv.Close()
 
 			se := &searxng{base: srv.URL, client: http.DefaultClient}
-			_, err := se.Search(context.Background(), "test", 5)
+			_, err := se.Search(context.Background(), Query{Text: "test", Count: 5})
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -262,7 +262,7 @@ func TestSearxNG_BadJSON(t *testing.T) {
 	defer srv.Close()
 
 	se := &searxng{base: srv.URL, client: http.DefaultClient}
-	_, err := se.Search(context.Background(), "test", 5)
+	_, err := se.Search(context.Background(), Query{Text: "test", Count: 5})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -293,7 +293,7 @@ func TestSearxNG_ClampMoreResults(t *testing.T) {
 
 	se := &searxng{base: srv.URL, client: http.DefaultClient}
 	// count=15 → clampCount returns 10.
-	results, err := se.Search(context.Background(), "test", 15)
+	results, err := se.Search(context.Background(), Query{Text: "test", Count: 15})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -310,7 +310,7 @@ func TestSearxNG_FewerResults(t *testing.T) {
 	defer srv.Close()
 
 	se := &searxng{base: srv.URL, client: http.DefaultClient}
-	results, err := se.Search(context.Background(), "test", 10)
+	results, err := se.Search(context.Background(), Query{Text: "test", Count: 10})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -357,7 +357,7 @@ func TestTavily_Success(t *testing.T) {
 
 	client := &http.Client{Transport: &tavilyTransport{srv: srv}}
 	tv := &tavily{key: "test-api-key", client: client}
-	results, err := tv.Search(context.Background(), "test query", 5)
+	results, err := tv.Search(context.Background(), Query{Text: "test query", Count: 5})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -410,7 +410,7 @@ func TestTavily_HTTPErrors(t *testing.T) {
 
 			client := &http.Client{Transport: &tavilyTransport{srv: srv}}
 			tv := &tavily{key: "any-key", client: client}
-			_, err := tv.Search(context.Background(), "test", 5)
+			_, err := tv.Search(context.Background(), Query{Text: "test", Count: 5})
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -435,7 +435,7 @@ func TestTavily_BadJSON(t *testing.T) {
 
 	client := &http.Client{Transport: &tavilyTransport{srv: srv}}
 	tv := &tavily{key: "any-key", client: client}
-	_, err := tv.Search(context.Background(), "test", 5)
+	_, err := tv.Search(context.Background(), Query{Text: "test", Count: 5})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
