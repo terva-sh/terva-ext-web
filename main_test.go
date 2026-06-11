@@ -77,3 +77,38 @@ func TestSaveToWorkspaceRejectsGitDir(t *testing.T) {
 		t.Errorf(".gitignore should be allowed, got: %v", err)
 	}
 }
+
+func TestSaveToWorkspaceRejectsSymlinkParentEscape(t *testing.T) {
+	cwd := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(cwd, "out")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := saveToWorkspace(cwd, filepath.Join("out", "file.txt"), []byte("x"), false); err == nil {
+		t.Fatal("symlinked parent should be rejected")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "file.txt")); err == nil {
+		t.Fatal("file was written through symlink outside workspace")
+	}
+}
+
+func TestSaveToWorkspaceRejectsFinalSymlink(t *testing.T) {
+	cwd := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "target.txt")
+	if err := os.WriteFile(outside, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(cwd, "link.txt")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := saveToWorkspace(cwd, "link.txt", []byte("replace"), true); err == nil {
+		t.Fatal("final symlink should be rejected even with overwrite=true")
+	}
+	got, err := os.ReadFile(outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "original" {
+		t.Fatalf("symlink target was modified: %q", got)
+	}
+}

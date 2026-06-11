@@ -315,9 +315,10 @@ func main() {
 }
 
 // saveToWorkspace writes data to savePath resolved under the workspace cwd. It
-// refuses absolute paths and any path that escapes the workspace, creates
-// parent directories within it, and (unless overwrite) refuses to clobber an
-// existing file. Returns the cleaned workspace-relative path written.
+// refuses absolute paths, lexical/symlink escapes, writes through symlinks, and
+// .git/ targets; creates parent directories within the workspace; and (unless
+// overwrite) refuses to clobber an existing file. Returns the cleaned
+// workspace-relative path written.
 func saveToWorkspace(cwd, savePath string, data []byte, overwrite bool) (string, error) {
 	if strings.TrimSpace(cwd) == "" {
 		return "", fmt.Errorf("no workspace directory available to save into")
@@ -329,6 +330,10 @@ func saveToWorkspace(cwd, savePath string, data []byte, overwrite bool) (string,
 	if err != nil {
 		return "", err
 	}
+	rootReal, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", fmt.Errorf("workspace directory is not accessible: %w", err)
+	}
 	target := filepath.Join(root, filepath.Clean(savePath))
 	rel, err := filepath.Rel(root, target)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
@@ -339,18 +344,82 @@ func saveToWorkspace(cwd, savePath string, data []byte, overwrite bool) (string,
 	if strings.HasPrefix(rel, ".git"+string(filepath.Separator)) || rel == ".git" {
 		return "", fmt.Errorf("writing to .git/ is not permitted")
 	}
-	if !overwrite {
-		if _, err := os.Stat(target); err == nil {
-			return "", fmt.Errorf("%s already exists (set overwrite=true to replace it)", rel)
-		}
-	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+	if err := mkdirAllNoSymlink(root, rootReal, filepath.Dir(rel)); err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(target, data, 0o644); err != nil {
+	if st, err := os.Lstat(target); err == nil {
+		if st.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("save_path points to a symlink, which is not permitted")
+		}
+		if !overwrite {
+			return "", fmt.Errorf("%s already exists (set overwrite=true to replace it)", rel)
+		}
+	} else if !os.IsNotExist(err) {
+		return "", err
+	}
+	flag := os.O_WRONLY | os.O_CREATE
+	if overwrite {
+		flag |= os.O_TRUNC
+	} else {
+		flag |= os.O_EXCL
+	}
+	f, err := os.OpenFile(target, flag, 0o644)
+	if err != nil {
+		return "", err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return "", err
+	}
+	if err := f.Close(); err != nil {
 		return "", err
 	}
 	return rel, nil
+}
+
+// mkdirAllNoSymlink creates relDir below root and rejects symlinked parent
+// components. This keeps model-triggered saves from escaping the workspace via
+// pre-existing symlinks such as "workspace/out -> /tmp/out".
+func mkdirAllNoSymlink(root, rootReal, relDir string) error {
+	if relDir == "." || relDir == "" {
+		return nil
+	}
+	cur := root
+	for _, elem := range strings.Split(filepath.Clean(relDir), string(filepath.Separator)) {
+		if elem == "." || elem == "" {
+			continue
+		}
+		cur = filepath.Join(cur, elem)
+		st, err := os.Lstat(cur)
+		if os.IsNotExist(err) {
+			if err := os.Mkdir(cur, 0o755); err != nil && !os.IsExist(err) {
+				return err
+			}
+			st, err = os.Lstat(cur)
+		}
+		if err != nil {
+			return err
+		}
+		if st.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("save_path parent %q is a symlink, which is not permitted", elem)
+		}
+		if !st.IsDir() {
+			return fmt.Errorf("save_path parent %q is not a directory", elem)
+		}
+		real, err := filepath.EvalSymlinks(cur)
+		if err != nil {
+			return err
+		}
+		if !pathWithin(rootReal, real) {
+			return fmt.Errorf("save_path escapes the workspace")
+		}
+	}
+	return nil
+}
+
+func pathWithin(root, p string) bool {
+	rel, err := filepath.Rel(root, p)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // logSSRF logs the full SSRF block details to the extension log when an error
