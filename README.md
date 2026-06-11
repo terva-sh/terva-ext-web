@@ -356,7 +356,10 @@ targets you list are exempted.
       tables still degrade to spaced blocks today).
 - [ ] More search backends (Brave, Serper, Exa) behind the same interface.
 - [ ] Optional JS rendering fallback (e.g. Jina Reader) — deferred for now.
-- [ ] Optional prebuilt per-platform binaries (goreleaser) so the `run.sh`
-      launcher can skip the on-host build and drop the Go-toolchain requirement.
-      Worth prioritizing: the vendored-build launcher is the main install
-      friction (Go toolchain on PATH, first-launch build stall).
+- [x] Prebuilt per-platform release archives (goreleaser, Forgejo CI): pushing
+      a `v*` tag publishes linux/darwin/windows builds whose archives unpack
+      into a ready-to-run extension dir (binary + `extension.json` + `run.sh`,
+      no Go toolchain needed). CI runs gofmt/vet/race-tests plus a vendor-sync
+      gate on every push, and a goreleaser snapshot on `main`.
+- [ ] Teach `run.sh` / the install flow to consume those prebuilt archives, so
+      a plain `zot ext install <git-url>` also skips the on-host build.

@@ -1,0 +1,86 @@
+# Forgejo CI — the repo's authoritative gate.
+#
+# Mirrors `just ci`: gofmt check (excluding the vendored tree), go vet,
+# full test suite with the race detector, and a vendor-sync check —
+# this repo commits vendor/ so run.sh's first-launch build is offline,
+# which makes vendor drift (go.mod changed, vendor not refreshed) the
+# repo-specific failure mode worth its own step.
+#
+# Conventions follow sothr-infrastructure/forgejo-package-manager (the
+# instance's reference pipeline, as adopted in ../zot): `docker`-labeled
+# runner, images from the local registry mirror, actions from the
+# Sothr-Mirrors org. The race detector needs cgo, hence gcc + musl-dev
+# on alpine.
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - release
+      - "release/**"
+      - "fix/**"
+      - "feat/**"
+      - "docs/**"
+      - "ci/**"
+  pull_request:
+
+# Least-privilege default: nothing here writes to the repo.
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Lint and Test
+    runs-on: docker
+    container:
+      image: container.local.sothr.com/library/golang:1.25-alpine
+    steps:
+      - name: Install dependencies
+        run: apk add --no-cache git gcc musl-dev
+
+      - name: Checkout Code
+        uses: https://git.local.sothr.com/Sothr-Mirrors/forgejo-actions-checkout@v6
+
+      - name: gofmt check
+        run: |
+          test -z "$(gofmt -l $(find . -name '*.go' -not -path './vendor/*') | tee /dev/stderr)" || { echo "gofmt issues (run 'just fmt')"; exit 1; }
+
+      - name: go vet
+        # vendor/ is present, so module commands default to -mod=vendor:
+        # vet and test below are offline builds against the committed tree.
+        run: go vet ./...
+
+      - name: go test (race)
+        run: go test -race ./...
+
+      - name: vendor in sync
+        # Rebuild vendor/ from go.mod and fail on any diff, so a dependency
+        # change that forgot `just vendor` can't land and break the offline
+        # first-launch build. (This is the one networked step.)
+        run: |
+          go mod vendor
+          git diff --exit-code -- go.mod go.sum vendor/ || { echo "vendor/ is out of sync (run 'just vendor' and commit)"; exit 1; }
+
+  # Packaging validation: a full goreleaser snapshot (all targets,
+  # archives, checksums — publish implied off by --snapshot) so config
+  # drift or a cross-compile break surfaces on main, not at tag time.
+  snapshot:
+    name: GoReleaser Snapshot
+    if: github.event_name == 'push' && github.ref_name == 'main'
+    runs-on: docker
+    container:
+      image: container.local.sothr.com/library/golang:1.25-alpine
+    steps:
+      - name: Install dependencies
+        run: apk add --no-cache git
+
+      - name: Checkout Code
+        uses: https://git.local.sothr.com/Sothr-Mirrors/forgejo-actions-checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run GoReleaser (snapshot)
+        uses: https://git.local.sothr.com/Sothr-Mirrors/goreleaser-action@v6
+        with:
+          args: release --snapshot --clean

@@ -1,0 +1,105 @@
+# GoReleaser config — cross-platform release archives for zot-web.
+#
+# Releases publish to the local Forgejo instance (the `gitea` release
+# block — GoReleaser's Gitea support works against Forgejo). Publishing
+# needs GITEA_TOKEN set to a Forgejo token with repo write access.
+#
+# Each archive contains the binary plus extension.json and run.sh, so
+# unpacking one into $ZOT_HOME/extensions/zot-web yields a ready-to-run
+# extension with no Go toolchain needed: run.sh sees the prebuilt binary
+# and no newer sources (archives carry none), so it execs it directly.
+# `zot ext install <git-url>` still builds from source via run.sh.
+#
+# Builds run against the committed vendor/ tree (Go auto-detects it),
+# so there is deliberately no `go mod tidy` before-hook: the release
+# build is offline and exactly matches what run.sh compiles.
+
+version: 2
+
+project_name: zot-web
+
+gitea_urls:
+  api: https://git.local.sothr.com/api/v1
+  download: https://git.local.sothr.com
+
+builds:
+  - id: zot-web
+    main: .
+    binary: zot-web
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    # Windows/arm64 is shipped by Go but rarely used — skip to keep the
+    # release artifact list tidy.
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
+archives:
+  - id: zot-web
+    # Human-friendly name: zot-web_0.2.0_darwin_arm64.tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - extension.json
+      - run.sh
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  # Used by `goreleaser release --snapshot` (and the CI snapshot job);
+  # lets contributors build a local release without pushing a tag.
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  # `git` reads the local log; the github/gitea modes query the host's
+  # API, which the Forgejo release flow doesn't need.
+  use: git
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^ci:"
+      - "^test:"
+  groups:
+    - title: features
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: fixes
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: other
+      order: 999
+
+release:
+  gitea:
+    owner: warricksothr
+    name: zot-web
+  draft: false
+  prerelease: auto
+  header: |
+    ## zot-web {{ .Tag }}
+
+    Prebuilt extension archives — no Go toolchain needed:
+
+    ```bash
+    mkdir -p "$ZOT_HOME/extensions/zot-web"
+    tar -xzf zot-web_*_linux_amd64.tar.gz -C "$ZOT_HOME/extensions/zot-web"
+    ```
+
+    Or install from source (builds on first launch, needs Go 1.25+):
+
+    ```bash
+    zot ext install https://git.local.sothr.com/warricksothr/zot-web.git
+    ```

@@ -111,6 +111,12 @@ fmt:
 test *ARGS:
     go test ./... {{ARGS}}
 
+# Everything the Forgejo CI gate runs (.forgejo/workflows/ci.yml mirrors this).
+ci: lint
+    go test -race ./...
+    go mod vendor
+    git diff --exit-code -- go.mod go.sum vendor/
+
 # Build and load into a one-off zot session for manual testing.
 try DIR=".": build
     zot --ext "$PWD" --cwd "{{DIR}}"

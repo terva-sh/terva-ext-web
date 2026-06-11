@@ -1,0 +1,44 @@
+# Release pipeline: pushing a v* tag runs goreleaser, which
+# cross-compiles every target in .goreleaser.yaml, packs archives +
+# checksums.txt, and publishes a release on this Forgejo instance.
+#
+# This is deliberate-release-only: tags are cut by hand (see the
+# release-cut flow). Day-to-day branch pushes never tag.
+#
+# Requires a BOT_TOKEN repo secret (Forgejo token with contents:write)
+# — same convention as forgejo-package-manager's release workflow.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# goreleaser creates the release and uploads archives.
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    name: Build and Publish Release
+    runs-on: docker
+    container:
+      image: container.local.sothr.com/library/golang:1.25-alpine
+    steps:
+      - name: Install dependencies
+        run: apk add --no-cache git
+
+      - name: Checkout Code
+        uses: https://git.local.sothr.com/Sothr-Mirrors/forgejo-actions-checkout@v6
+        with:
+          # Full history so goreleaser can derive the changelog from
+          # git log between tags (changelog.use: git).
+          fetch-depth: 0
+
+      - name: Run GoReleaser
+        uses: https://git.local.sothr.com/Sothr-Mirrors/goreleaser-action@v6
+        with:
+          args: release --clean
+        env:
+          GORELEASER_FORCE_TOKEN: gitea
+          GITEA_TOKEN: ${{ secrets.BOT_TOKEN }}
