@@ -219,7 +219,35 @@ func parseURL(raw string) (*url.URL, error) {
 	if u.Host == "" {
 		return nil, fmt.Errorf("url has no host")
 	}
+	if p := u.Port(); p != "" && blockedPorts[p] {
+		return nil, fmt.Errorf("port %s is not permitted (it is a well-known non-web service port)", p)
+	}
 	return u, nil
+}
+
+// blockedPorts are well-known non-HTTP service ports. Internal addresses are
+// already refused by the SSRF guard, so this only adds defense-in-depth against
+// using the fetcher to poke these services on *public* hosts; web content never
+// lives here, so blocking them costs no legitimate fetch.
+var blockedPorts = map[string]bool{
+	"22":    true, // SSH
+	"23":    true, // Telnet
+	"25":    true, // SMTP
+	"110":   true, // POP3
+	"143":   true, // IMAP
+	"445":   true, // SMB
+	"465":   true, // SMTPS
+	"587":   true, // SMTP submission
+	"993":   true, // IMAPS
+	"995":   true, // POP3S
+	"1433":  true, // MSSQL
+	"3306":  true, // MySQL
+	"3389":  true, // RDP
+	"5432":  true, // PostgreSQL
+	"5900":  true, // VNC
+	"6379":  true, // Redis
+	"11211": true, // memcached
+	"27017": true, // MongoDB
 }
 
 // load returns the rendered page for u, from cache when fresh, otherwise by

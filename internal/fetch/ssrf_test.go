@@ -330,6 +330,41 @@ func TestFetchRejectsNonHTTPScheme(t *testing.T) {
 	}
 }
 
+func TestParseURLBlocksServicePorts(t *testing.T) {
+	for _, raw := range []string{
+		"http://example.com:22/",
+		"https://example.com:3306/db",
+		"http://example.com:6379/",
+		"https://example.com:25/",
+	} {
+		if _, err := parseURL(raw); err == nil || !strings.Contains(err.Error(), "not permitted") {
+			t.Errorf("parseURL(%q) = %v, want a port-not-permitted rejection", raw, err)
+		}
+	}
+	// Web ports and the default (no port) are fine.
+	for _, raw := range []string{
+		"http://example.com/",
+		"https://example.com:443/",
+		"http://example.com:8080/",
+		"https://example.com:8443/",
+		"http://example.com:3000/",
+	} {
+		if _, err := parseURL(raw); err != nil {
+			t.Errorf("parseURL(%q) = %v, want allowed", raw, err)
+		}
+	}
+}
+
+func TestFetchBlocksServicePort(t *testing.T) {
+	// Even an allowlisted host can't be used to reach a blocked service port:
+	// the rejection happens at URL parse, before any dial.
+	c := New(config.Config{FetchMaxBytes: 1 << 20, FetchTimeoutSec: 5}, ParseAllowList([]string{"127.0.0.1"}))
+	if _, err := c.Fetch(context.Background(), "http://127.0.0.1:22/", 0, 0); err == nil ||
+		!strings.Contains(err.Error(), "not permitted") {
+		t.Fatalf("expected port-22 rejection, got: %v", err)
+	}
+}
+
 func TestCacheKeyStripsOnlyKnownTrackingParams(t *testing.T) {
 	got := cacheKey("https://example.com/page?b=2&utm_source=x&a=1&fbclid=y")
 	want := "https://example.com/page?a=1&b=2"
