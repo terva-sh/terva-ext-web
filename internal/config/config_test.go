@@ -193,6 +193,41 @@ func TestFetchTimeoutSecZeroOrNegativeDefaults(t *testing.T) {
 	}
 }
 
+func TestOversizedConfigValuesAreClamped(t *testing.T) {
+	dir := t.TempDir()
+	writeJSON(t, dir, `{
+		"fetch_max_bytes": 999999999,
+		"fetch_image_max_bytes": 999999999,
+		"fetch_timeout_sec": 999,
+		"fetch_cache_max_entries": 999
+	}`)
+	c := Load(dir)
+	if c.FetchMaxBytes != MaxFetchMaxBytes {
+		t.Errorf("FetchMaxBytes = %d, want max %d", c.FetchMaxBytes, MaxFetchMaxBytes)
+	}
+	if c.FetchImageMaxBytes != MaxFetchImageMaxBytes {
+		t.Errorf("FetchImageMaxBytes = %d, want max %d", c.FetchImageMaxBytes, MaxFetchImageMaxBytes)
+	}
+	if c.FetchTimeoutSec != MaxFetchTimeoutSec {
+		t.Errorf("FetchTimeoutSec = %d, want max %d", c.FetchTimeoutSec, MaxFetchTimeoutSec)
+	}
+	if c.FetchCacheMaxEntries != MaxFetchCacheMaxEntries {
+		t.Errorf("FetchCacheMaxEntries = %d, want max %d", c.FetchCacheMaxEntries, MaxFetchCacheMaxEntries)
+	}
+}
+
+func TestOversizedEnvValuesAreClamped(t *testing.T) {
+	t.Setenv("ZOT_WEB_FETCH_MAX_BYTES", "999999999")
+	t.Setenv("ZOT_WEB_FETCH_IMAGE_MAX_BYTES", "999999999")
+	t.Setenv("ZOT_WEB_FETCH_TIMEOUT_SEC", "999")
+	t.Setenv("ZOT_WEB_FETCH_CACHE_MAX_ENTRIES", "999")
+	c := Load("")
+	if c.FetchMaxBytes != MaxFetchMaxBytes || c.FetchImageMaxBytes != MaxFetchImageMaxBytes ||
+		c.FetchTimeoutSec != MaxFetchTimeoutSec || c.FetchCacheMaxEntries != MaxFetchCacheMaxEntries {
+		t.Fatalf("oversized env values not clamped: %+v", c)
+	}
+}
+
 func TestEmptySearchBackendDefaultsToTavily(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, dir, `{"search_backend": ""}`)

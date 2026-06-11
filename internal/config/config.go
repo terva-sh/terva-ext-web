@@ -11,6 +11,19 @@ import (
 	"strings"
 )
 
+const (
+	DefaultFetchMaxBytes        int64 = 2 << 20 // 2 MiB
+	DefaultFetchImageMaxBytes   int64 = 5 << 20 // 5 MiB
+	DefaultFetchTimeoutSec            = 25
+	DefaultFetchCacheTTLSec           = 600
+	DefaultFetchCacheMaxEntries       = 32
+
+	MaxFetchMaxBytes        int64 = 32 << 20 // 32 MiB
+	MaxFetchImageMaxBytes   int64 = 20 << 20 // 20 MiB
+	MaxFetchTimeoutSec            = 60
+	MaxFetchCacheMaxEntries       = 128
+)
+
 // Config is the effective settings for the web extension.
 type Config struct {
 	// SearchBackend selects the web_search provider: "tavily" (default) or
@@ -22,16 +35,15 @@ type Config struct {
 	// format must be enabled in its settings.yml).
 	SearxngURL string `json:"searxng_url"`
 
-	// FetchMaxBytes caps a fetched response body. Default 2 MiB.
+	// FetchMaxBytes caps a fetched response body. Default 2 MiB; max 32 MiB.
 	FetchMaxBytes int64 `json:"fetch_max_bytes"`
 	// FetchImageMaxBytes caps the encoded size of an image returned by
-	// web_fetch_image for multimodal injection. Default 5 MiB (≈ provider limits).
+	// web_fetch_image for multimodal injection. Default 5 MiB; max 20 MiB (≈ provider limits).
 	// Images larger than this (after any requested resize) are rejected with a
 	// hint to resubmit with a smaller max_dimension. The raw download is allowed
 	// to exceed this so an oversized original can be decoded and resized down.
 	FetchImageMaxBytes int64 `json:"fetch_image_max_bytes"`
-	// FetchTimeoutSec is the overall per-fetch timeout. Default 25s (well
-	// under zot's 60s tool budget).
+	// FetchTimeoutSec is the overall per-fetch timeout. Default 25s; max 60s.
 	FetchTimeoutSec int `json:"fetch_timeout_sec"`
 
 	// FetchInlineImages keeps image URLs inline in web_fetch output. Default
@@ -41,7 +53,7 @@ type Config struct {
 	// FetchCacheTTLSec is how long a fetched+rendered page stays cached so a
 	// follow-up web_images call needs no network. Default 600s. 0 disables.
 	FetchCacheTTLSec int `json:"fetch_cache_ttl_sec"`
-	// FetchCacheMaxEntries bounds the in-memory page cache (LRU). Default 32.
+	// FetchCacheMaxEntries bounds the in-memory page cache (LRU). Default 32; max 128.
 	FetchCacheMaxEntries int `json:"fetch_cache_max_entries"`
 
 	// AllowLocalHosts is the SSRF escape hatch: targets that resolve to
@@ -55,11 +67,11 @@ type Config struct {
 func Load(dataDir string) Config {
 	c := Config{
 		SearchBackend:        "tavily",
-		FetchMaxBytes:        2 << 20, // 2 MiB
-		FetchImageMaxBytes:   5 << 20, // 5 MiB
-		FetchTimeoutSec:      25,
-		FetchCacheTTLSec:     600,
-		FetchCacheMaxEntries: 32,
+		FetchMaxBytes:        DefaultFetchMaxBytes,
+		FetchImageMaxBytes:   DefaultFetchImageMaxBytes,
+		FetchTimeoutSec:      DefaultFetchTimeoutSec,
+		FetchCacheTTLSec:     DefaultFetchCacheTTLSec,
+		FetchCacheMaxEntries: DefaultFetchCacheMaxEntries,
 	}
 	if dataDir != "" {
 		if b, err := os.ReadFile(filepath.Join(dataDir, "config.json")); err == nil {
@@ -119,16 +131,28 @@ func Load(dataDir string) Config {
 		c.SearchBackend = "tavily"
 	}
 	if c.FetchMaxBytes <= 0 {
-		c.FetchMaxBytes = 2 << 20
+		c.FetchMaxBytes = DefaultFetchMaxBytes
+	}
+	if c.FetchMaxBytes > MaxFetchMaxBytes {
+		c.FetchMaxBytes = MaxFetchMaxBytes
 	}
 	if c.FetchImageMaxBytes <= 0 {
-		c.FetchImageMaxBytes = 5 << 20
+		c.FetchImageMaxBytes = DefaultFetchImageMaxBytes
+	}
+	if c.FetchImageMaxBytes > MaxFetchImageMaxBytes {
+		c.FetchImageMaxBytes = MaxFetchImageMaxBytes
 	}
 	if c.FetchTimeoutSec <= 0 {
-		c.FetchTimeoutSec = 25
+		c.FetchTimeoutSec = DefaultFetchTimeoutSec
+	}
+	if c.FetchTimeoutSec > MaxFetchTimeoutSec {
+		c.FetchTimeoutSec = MaxFetchTimeoutSec
 	}
 	if c.FetchCacheMaxEntries < 0 {
 		c.FetchCacheMaxEntries = 0
+	}
+	if c.FetchCacheMaxEntries > MaxFetchCacheMaxEntries {
+		c.FetchCacheMaxEntries = MaxFetchCacheMaxEntries
 	}
 	return c
 }
