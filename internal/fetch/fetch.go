@@ -383,7 +383,20 @@ func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64, userA
 	return f, err
 }
 
+// fetchSem bounds concurrent downloads. Every tool call runs in its own
+// goroutine (see proto.Run) and each in-flight download can buffer up to its
+// byte cap (2 MiB pages, 25+ MiB image ceilings), so without a gate a burst of
+// parallel calls could hold tens of MiB of bodies at once. Four is plenty for
+// an agent's realistic call pattern; excess callers queue here briefly.
+var fetchSem = make(chan struct{}, 4)
+
 func (c *Client) downloadOnce(ctx context.Context, u *url.URL, maxBytes int64, userAgent string) (fetched, error) {
+	select {
+	case fetchSem <- struct{}{}:
+		defer func() { <-fetchSem }()
+	case <-ctx.Done():
+		return fetched{}, classifyFetchError(ctx.Err())
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return fetched{}, err
