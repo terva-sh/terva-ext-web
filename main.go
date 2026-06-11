@@ -27,6 +27,7 @@ import (
 	"git.local.sothr.com/warricksothr/zot-web/internal/fetch"
 	"git.local.sothr.com/warricksothr/zot-web/internal/proto"
 	"git.local.sothr.com/warricksothr/zot-web/internal/search"
+	"git.local.sothr.com/warricksothr/zot-web/internal/version"
 )
 
 const searchSchema = `{
@@ -38,12 +39,15 @@ const searchSchema = `{
   "required": ["query"]
 }`
 
+const userAgentParam = `"user_agent": {"type": "string", "description": "Optional User-Agent override for this request: \"browser\" for a common desktop-browser UA (useful when a site blocks or degrades content for automated clients), or a literal UA string. Forces a fresh fetch (bypasses the cached snapshot)."}`
+
 const fetchSchema = `{
   "type": "object",
   "properties": {
     "url": {"type": "string", "description": "Absolute http(s) URL to fetch."},
     "max_chars": {"type": "integer", "description": "Max characters of extracted text to return (default 20000)."},
-    "offset": {"type": "integer", "description": "Skip this many characters into the page, to continue reading after a previous truncated fetch (default 0).", "minimum": 0}
+    "offset": {"type": "integer", "description": "Skip this many characters into the page, to continue reading after a previous truncated fetch (default 0).", "minimum": 0},
+    ` + userAgentParam + `
   },
   "required": ["url"]
 }`
@@ -69,7 +73,8 @@ const webFetchRawSchema = `{
   "properties": {
     "url": {"type": "string", "description": "Absolute http(s) URL to fetch."},
     "save_path": {"type": "string", "description": "Workspace-relative path to write the unrendered page source to (e.g. \"tmp/thread.html\"). Must stay within the workspace; parent directories are created as needed."},
-    "overwrite": {"type": "boolean", "description": "Allow overwriting save_path if it already exists (default false)."}
+    "overwrite": {"type": "boolean", "description": "Allow overwriting save_path if it already exists (default false)."},
+    ` + userAgentParam + `
   },
   "required": ["url", "save_path"]
 }`
@@ -81,13 +86,14 @@ const webFetchImageSchema = `{
     "max_dimension": {"type": "integer", "description": "If set, downscale so the image's longest edge is at most this many pixels (preserves aspect ratio, never upscales). Use this to bring an oversized image under the size limit.", "minimum": 1},
     "save_path": {"type": "string", "description": "Optional workspace-relative path to write the image to (e.g. \"assets/logo.png\"). Must stay within the workspace; parent directories are created as needed."},
     "overwrite": {"type": "boolean", "description": "Allow overwriting save_path if it already exists (default false)."},
-    "inject": {"type": "boolean", "description": "Whether to return the image to you for viewing (default true). Set false to only download/save it without spending context on the pixels."}
+    "inject": {"type": "boolean", "description": "Whether to return the image to you for viewing (default true). Set false to only download/save it without spending context on the pixels."},
+    ` + userAgentParam + `
   },
   "required": ["url"]
 }`
 
 func main() {
-	e := proto.New("web", "0.1.0")
+	e := proto.New("web", version.Version)
 
 	// Providers are built lazily on first tool call, by which point the
 	// hello_ack (and thus data_dir for config.json) has arrived.
@@ -145,9 +151,10 @@ func main() {
 				return proto.Errorf("web_fetch: rate limit reached; wait a few seconds")
 			}
 			var in struct {
-				URL      string `json:"url"`
-				MaxChars int    `json:"max_chars"`
-				Offset   int    `json:"offset"`
+				URL       string `json:"url"`
+				MaxChars  int    `json:"max_chars"`
+				Offset    int    `json:"offset"`
+				UserAgent string `json:"user_agent"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
 				return proto.Errorf("invalid args: %v", err)
@@ -157,7 +164,7 @@ func main() {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
-			text, err := fetcher.Fetch(ctx, in.URL, in.MaxChars, in.Offset)
+			text, err := fetcher.Fetch(ctx, in.URL, in.MaxChars, in.Offset, in.UserAgent)
 			if err != nil {
 				return proto.Errorf("fetch failed: %v", logSSRF(e, err))
 			}
@@ -219,6 +226,7 @@ func main() {
 				URL       string `json:"url"`
 				SavePath  string `json:"save_path"`
 				Overwrite bool   `json:"overwrite"`
+				UserAgent string `json:"user_agent"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
 				return proto.Errorf("invalid args: %v", err)
@@ -231,7 +239,7 @@ func main() {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
-			raw, err := fetcher.Raw(ctx, in.URL)
+			raw, err := fetcher.Raw(ctx, in.URL, in.UserAgent)
 			if err != nil {
 				return proto.Errorf("web_fetch_raw failed: %v", logSSRF(e, err))
 			}
@@ -265,6 +273,7 @@ func main() {
 				SavePath     string `json:"save_path"`
 				Overwrite    bool   `json:"overwrite"`
 				Inject       *bool  `json:"inject"`
+				UserAgent    string `json:"user_agent"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
 				return proto.Errorf("invalid args: %v", err)
@@ -274,7 +283,7 @@ func main() {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
-			img, err := fetcher.FetchImage(ctx, in.URL, in.MaxDimension)
+			img, err := fetcher.FetchImage(ctx, in.URL, in.MaxDimension, in.UserAgent)
 			if err != nil {
 				// ImageTooLargeError's message already tells the model how to
 				// resubmit (with a suggested max_dimension), so pass it through.

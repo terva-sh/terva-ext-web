@@ -80,7 +80,7 @@ func TestFetchImagePassthrough(t *testing.T) {
 	png := encodePNG(t, 120, 60)
 	c, url := imageServer(t, "image/png", png, 5<<20)
 
-	got, err := c.FetchImage(context.Background(), url, 0)
+	got, err := c.FetchImage(context.Background(), url, 0, "")
 	if err != nil {
 		t.Fatalf("FetchImage: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestFetchImagePassthrough(t *testing.T) {
 func TestFetchImageResizes(t *testing.T) {
 	c, url := imageServer(t, "image/png", encodePNG(t, 300, 100), 5<<20)
 
-	got, err := c.FetchImage(context.Background(), url, 150)
+	got, err := c.FetchImage(context.Background(), url, 150, "")
 	if err != nil {
 		t.Fatalf("FetchImage: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestFetchImageResizes(t *testing.T) {
 func TestFetchImageDoesNotUpscale(t *testing.T) {
 	c, url := imageServer(t, "image/png", encodePNG(t, 40, 20), 5<<20)
 
-	got, err := c.FetchImage(context.Background(), url, 1000)
+	got, err := c.FetchImage(context.Background(), url, 1000, "")
 	if err != nil {
 		t.Fatalf("FetchImage: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestFetchImageDoesNotUpscale(t *testing.T) {
 func TestFetchImageTooLarge(t *testing.T) {
 	c, url := imageServer(t, "image/png", encodePNG(t, 400, 400), 1000) // 1000-byte cap
 
-	_, err := c.FetchImage(context.Background(), url, 0)
+	_, err := c.FetchImage(context.Background(), url, 0, "")
 	var tooBig *ImageTooLargeError
 	if !errors.As(err, &tooBig) {
 		t.Fatalf("expected *ImageTooLargeError, got %v", err)
@@ -152,7 +152,7 @@ func TestFetchImageTooLarge(t *testing.T) {
 func TestFetchImageRejectsNonImage(t *testing.T) {
 	c, url := imageServer(t, "text/plain", []byte("just some text, not an image at all"), 5<<20)
 
-	_, err := c.FetchImage(context.Background(), url, 0)
+	_, err := c.FetchImage(context.Background(), url, 0, "")
 	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("non-image")) {
 		t.Fatalf("expected non-image rejection, got %v", err)
 	}
@@ -162,7 +162,7 @@ func TestFetchImageSniffsWhenContentTypeMissing(t *testing.T) {
 	// No Content-Type header: canonicalImageMIME must sniff the PNG magic.
 	c, url := imageServer(t, "", encodePNG(t, 32, 32), 5<<20)
 
-	got, err := c.FetchImage(context.Background(), url, 0)
+	got, err := c.FetchImage(context.Background(), url, 0, "")
 	if err != nil {
 		t.Fatalf("FetchImage: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestFetchImageRejectsHugePixelDimensions(t *testing.T) {
 	// buffers if fully decoded. FetchImage must reject it after DecodeConfig.
 	c, url := imageServer(t, "image/png", pngConfigOnly(100_000, 100_000), 5<<20)
 
-	_, err := c.FetchImage(context.Background(), url, 1024)
+	_, err := c.FetchImage(context.Background(), url, 1024, "")
 	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("safe decode limit")) {
 		t.Fatalf("expected safe decode limit rejection, got %v", err)
 	}

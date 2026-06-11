@@ -64,15 +64,16 @@ var resizeSem = make(chan struct{}, 3)
 // FetchImage retrieves an image (http/https only, SSRF-guarded) and returns it
 // ready for multimodal injection. maxDimension (longest edge, px) downsamples
 // the image when set; 0 leaves it at native size. An image still over the
-// configured byte cap after resizing yields *ImageTooLargeError.
-func (c *Client) FetchImage(ctx context.Context, raw string, maxDimension int) (ImageResult, error) {
+// configured byte cap after resizing yields *ImageTooLargeError. A non-empty
+// userAgent overrides the configured UA ("browser" expands to a browser UA).
+func (c *Client) FetchImage(ctx context.Context, raw string, maxDimension int, userAgent string) (ImageResult, error) {
 	u, err := parseURL(raw)
 	if err != nil {
 		return ImageResult{}, err
 	}
 
 	ceiling := c.imageDownloadCeiling()
-	f, err := c.download(ctx, u, ceiling)
+	f, err := c.download(ctx, u, ceiling, userAgent)
 	if err != nil {
 		return ImageResult{}, err
 	}

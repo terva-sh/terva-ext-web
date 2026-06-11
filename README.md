@@ -143,7 +143,24 @@ Or switch to a self-hosted SearXNG instance (no key, private):
 | `fetch_cache_ttl_sec` | `ZOT_WEB_FETCH_CACHE_TTL_SEC` | `600` | how long a rendered page stays cached (`0` = no expiry; clamped to max `3600`) |
 | `fetch_cache_max_entries` | `ZOT_WEB_FETCH_CACHE_MAX_ENTRIES` | `32` | max cached pages, LRU-evicted (`0` = caching off; clamped to max `128`) |
 | `fetch_cache_max_bytes` | `ZOT_WEB_FETCH_CACHE_MAX_BYTES` | `67108864` | total bytes the page cache may retain, LRU-evicted (`0` = no byte bound; clamped to max `268435456`) |
+| `user_agent` | `ZOT_WEB_USER_AGENT` | `zot-web/<version>` | User-Agent for every fetch; `browser` expands to a common desktop-browser UA |
 | `allow_local_hosts` | `ZOT_WEB_ALLOW_LOCAL_HOSTS` (comma-sep) | — | SSRF escape hatch (see below) |
+
+### User-Agent
+
+Fetches identify themselves honestly as `zot-web/<version>` by default. Some
+sites block or degrade content for non-browser clients; for those, the UA can
+be overridden at three levels (most specific wins):
+
+1. a per-call `user_agent` parameter on `web_fetch`, `web_fetch_raw`, and
+   `web_fetch_image` — the model can retry a blocked page with
+   `user_agent: "browser"`. An explicit per-call UA always forces a fresh
+   fetch (bypassing the cached snapshot) so the retry actually hits the site;
+2. the `user_agent` config setting / `ZOT_WEB_USER_AGENT` env var;
+3. the built-in default.
+
+The value `browser` (any case) expands to a current desktop-Chrome UA string;
+anything else is sent literally.
 
 ### `web_fetch` output
 

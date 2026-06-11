@@ -194,7 +194,7 @@ func TestRawServedFromCache(t *testing.T) {
 	body := []byte("<html><body>raw &amp; unrendered</body></html>")
 	c.cache.put(page{URL: u.String(), RawGzip: gzipBytes(body), ContentType: "text/html; charset=utf-8", FinalURL: u.String()})
 
-	raw, err := c.Raw(context.Background(), u.String())
+	raw, err := c.Raw(context.Background(), u.String(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestFetchHintNotInlined(t *testing.T) {
 		Images:       []Image{{ID: 1, URL: "https://example.com/a.png"}},
 		ImagesInline: false,
 	})
-	out, err := c.Fetch(context.Background(), u.String(), 1000, 0)
+	out, err := c.Fetch(context.Background(), u.String(), 1000, 0, "")
 	if err != nil {
 		t.Fatal(err)
 	}

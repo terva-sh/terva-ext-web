@@ -65,6 +65,12 @@ type Config struct {
 	// max 256 MiB. 0 disables the byte bound (entry count still applies).
 	FetchCacheMaxBytes int64 `json:"fetch_cache_max_bytes"`
 
+	// UserAgent overrides the User-Agent sent on every fetch. Empty means the
+	// default "zot-web/<version>". The special value "browser" expands to a
+	// common desktop-browser UA, for sites that block non-browser clients.
+	// A per-call user_agent tool parameter takes precedence over this.
+	UserAgent string `json:"user_agent"`
+
 	// AllowLocalHosts is the SSRF escape hatch: targets that resolve to
 	// private/reserved addresses are refused UNLESS they match an entry here.
 	// Each entry is a hostname (matched against the request host), an IP, or
@@ -97,6 +103,9 @@ func Load(dataDir string) Config {
 	}
 	if v := os.Getenv("ZOT_WEB_SEARXNG_URL"); v != "" {
 		c.SearxngURL = v
+	}
+	if v := os.Getenv("ZOT_WEB_USER_AGENT"); v != "" {
+		c.UserAgent = v
 	}
 	if v := os.Getenv("ZOT_WEB_ALLOW_LOCAL_HOSTS"); v != "" {
 		for _, h := range strings.Split(v, ",") {

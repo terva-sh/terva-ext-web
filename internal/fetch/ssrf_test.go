@@ -271,7 +271,7 @@ func TestFetchOffsetWindowing(t *testing.T) {
 	body := strings.Repeat("0123456789", 50) // 500 runes
 	c.cache.put(page{URL: u.String(), Title: "Big", Markdown: body, ContentType: "text/html; charset=utf-8"})
 
-	out, err := c.Fetch(context.Background(), u.String(), 100, 0)
+	out, err := c.Fetch(context.Background(), u.String(), 100, 0, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestFetchOffsetWindowing(t *testing.T) {
 	}
 
 	// Final window: no continuation hint when we reach the end.
-	out2, err := c.Fetch(context.Background(), u.String(), 100, 450)
+	out2, err := c.Fetch(context.Background(), u.String(), 100, 450, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestFetchOffsetWindowing(t *testing.T) {
 // with no allowlist must be refused before any connection is made.
 func TestFetchBlocksPrivate(t *testing.T) {
 	c := New(config.Config{FetchMaxBytes: 1 << 20, FetchTimeoutSec: 5}, ParseAllowList(nil))
-	_, err := c.Fetch(context.Background(), "http://127.0.0.1:1/", 0, 0)
+	_, err := c.Fetch(context.Background(), "http://127.0.0.1:1/", 0, 0, "")
 	if err == nil {
 		t.Fatal("expected loopback fetch to be blocked")
 	}
@@ -316,7 +316,7 @@ func TestFetchBlocksPrivate(t *testing.T) {
 // point is the error is a connection error, not a block).
 func TestFetchAllowlistAllowsPrivate(t *testing.T) {
 	c := New(config.Config{FetchMaxBytes: 1 << 20, FetchTimeoutSec: 5}, ParseAllowList([]string{"127.0.0.1"}))
-	_, err := c.Fetch(context.Background(), "http://127.0.0.1:1/", 0, 0)
+	_, err := c.Fetch(context.Background(), "http://127.0.0.1:1/", 0, 0, "")
 	if err != nil && strings.Contains(err.Error(), "blocked") {
 		t.Fatalf("allowlisted loopback should not be SSRF-blocked: %v", err)
 	}
@@ -324,7 +324,7 @@ func TestFetchAllowlistAllowsPrivate(t *testing.T) {
 
 func TestFetchRejectsNonHTTPScheme(t *testing.T) {
 	c := New(config.Config{FetchMaxBytes: 1 << 20, FetchTimeoutSec: 5}, ParseAllowList(nil))
-	_, err := c.Fetch(context.Background(), "ftp://example.com/x", 0, 0)
+	_, err := c.Fetch(context.Background(), "ftp://example.com/x", 0, 0, "")
 	if err == nil || !strings.Contains(err.Error(), "scheme") {
 		t.Fatalf("expected scheme rejection, got: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestFetchBlocksServicePort(t *testing.T) {
 	// Even an allowlisted host can't be used to reach a blocked service port:
 	// the rejection happens at URL parse, before any dial.
 	c := New(config.Config{FetchMaxBytes: 1 << 20, FetchTimeoutSec: 5}, ParseAllowList([]string{"127.0.0.1"}))
-	if _, err := c.Fetch(context.Background(), "http://127.0.0.1:22/", 0, 0); err == nil ||
+	if _, err := c.Fetch(context.Background(), "http://127.0.0.1:22/", 0, 0, ""); err == nil ||
 		!strings.Contains(err.Error(), "not permitted") {
 		t.Fatalf("expected port-22 rejection, got: %v", err)
 	}

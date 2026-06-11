@@ -28,9 +28,29 @@ import (
 	xhtml "golang.org/x/net/html"
 
 	"git.local.sothr.com/warricksothr/zot-web/internal/config"
+	"git.local.sothr.com/warricksothr/zot-web/internal/version"
 )
 
-const userAgent = "zot-web/0.1"
+// defaultUserAgent identifies the extension honestly (the robots/etiquette
+// default). The user_agent config setting or a per-call user_agent parameter
+// overrides it; "browser" expands to browserUserAgent.
+var defaultUserAgent = "zot-web/" + version.Version
+
+// browserUserAgent is what the "browser" alias expands to: a common desktop
+// Chrome UA, for sites that refuse or degrade content for non-browser clients.
+const browserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
+
+// resolveUserAgent expands the "browser" alias and maps empty to fallback.
+func resolveUserAgent(ua, fallback string) string {
+	ua = strings.TrimSpace(ua)
+	switch {
+	case ua == "":
+		return fallback
+	case strings.EqualFold(ua, "browser"):
+		return browserUserAgent
+	}
+	return ua
+}
 
 // Client is a reusable SSRF-guarded fetcher. Rendered pages are cached so a
 // web_images call following a web_fetch needs no network.
@@ -41,6 +61,7 @@ type Client struct {
 	allow         AllowList
 	inlineImages  bool
 	cache         *cache
+	userAgent     string // configured default UA (already alias-resolved)
 }
 
 // New builds a Client whose dialer refuses private/reserved destinations unless
@@ -52,6 +73,7 @@ func New(cfg config.Config, allow AllowList) *Client {
 		allow:         allow,
 		inlineImages:  cfg.FetchInlineImages,
 		cache:         newCache(time.Duration(cfg.FetchCacheTTLSec)*time.Second, cfg.FetchCacheMaxEntries, cfg.FetchCacheMaxBytes),
+		userAgent:     resolveUserAgent(cfg.UserAgent, defaultUserAgent),
 	}
 	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
 
@@ -98,13 +120,15 @@ func New(cfg config.Config, allow AllowList) *Client {
 // (default 20000); offset skips that many characters into the rendered page so
 // callers can page through dense documents. The page is rendered once and
 // cached; image URLs are replaced with `[image:N]` placeholders (unless inline
-// images are configured) and retrievable via Images.
-func (c *Client) Fetch(ctx context.Context, raw string, maxChars, offset int) (string, error) {
+// images are configured) and retrievable via Images. A non-empty userAgent
+// overrides the configured UA for this request ("browser" expands to a common
+// browser UA) and bypasses the cache read so the page is actually re-fetched.
+func (c *Client) Fetch(ctx context.Context, raw string, maxChars, offset int, userAgent string) (string, error) {
 	u, err := parseURL(raw)
 	if err != nil {
 		return "", err
 	}
-	p, err := c.load(ctx, u)
+	p, err := c.load(ctx, u, userAgent)
 	if err != nil {
 		return "", err
 	}
@@ -159,7 +183,7 @@ func (c *Client) Images(ctx context.Context, raw string) ([]Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	p, err := c.load(ctx, u)
+	p, err := c.load(ctx, u, "")
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +197,7 @@ func (c *Client) Links(ctx context.Context, raw string) ([]Link, error) {
 	if err != nil {
 		return nil, err
 	}
-	p, err := c.load(ctx, u)
+	p, err := c.load(ctx, u, "")
 	if err != nil {
 		return nil, err
 	}
@@ -191,12 +215,13 @@ type RawDoc struct {
 // Raw returns the unrendered response body for raw, decompressed from the same
 // cache that backs web_fetch (fetching only on a cold cache). It's the basis
 // for web_fetch_raw: the exact bytes the server sent, for the model to grep.
-func (c *Client) Raw(ctx context.Context, raw string) (RawDoc, error) {
+// A non-empty userAgent overrides the configured UA and bypasses the cache read.
+func (c *Client) Raw(ctx context.Context, raw, userAgent string) (RawDoc, error) {
 	u, err := parseURL(raw)
 	if err != nil {
 		return RawDoc{}, err
 	}
-	p, err := c.load(ctx, u)
+	p, err := c.load(ctx, u, userAgent)
 	if err != nil {
 		return RawDoc{}, err
 	}
@@ -251,15 +276,20 @@ var blockedPorts = map[string]bool{
 }
 
 // load returns the rendered page for u, from cache when fresh, otherwise by
-// fetching and rendering (and caching the result).
-func (c *Client) load(ctx context.Context, u *url.URL) (page, error) {
+// fetching and rendering (and caching the result). A non-empty userAgent skips
+// the cache read (the caller asked for a fresh fetch as that UA); the result
+// still replaces the cached entry so follow-up web_images/web_links calls see
+// the same snapshot.
+func (c *Client) load(ctx context.Context, u *url.URL, userAgent string) (page, error) {
 	// Normalize the cache key: strip common tracking/utm params so cache-buster
 	// variants of the same page don't evict each other.
 	key := cacheKey(u.String())
-	if p, ok := c.cache.get(key); ok {
-		return p, nil
+	if userAgent == "" {
+		if p, ok := c.cache.get(key); ok {
+			return p, nil
+		}
 	}
-	f, err := c.download(ctx, u, c.maxBytes)
+	f, err := c.download(ctx, u, c.maxBytes, userAgent)
 	if err != nil {
 		return page{}, err
 	}
@@ -333,12 +363,12 @@ type fetched struct {
 // can reuse the same transport.
 func (c *Client) HTTPClient() *http.Client { return c.http }
 
-func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64) (fetched, error) {
+func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64, userAgent string) (fetched, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return fetched{}, err
 	}
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", resolveUserAgent(userAgent, c.userAgent))
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8")
 
 	resp, err := c.http.Do(req)
