@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"git.local.sothr.com/warricksothr/zot-web/internal/config"
@@ -357,7 +358,11 @@ func saveToWorkspace(cwd, savePath string, data []byte, overwrite bool) (string,
 	} else if !os.IsNotExist(err) {
 		return "", err
 	}
-	flag := os.O_WRONLY | os.O_CREATE
+	// O_NOFOLLOW closes the TOCTOU between the Lstat symlink check above and this
+	// open: even if a symlink is swapped into place in that window, the kernel
+	// refuses to follow it for the final path component (overwrite uses O_TRUNC,
+	// which would otherwise write through a symlink).
+	flag := os.O_WRONLY | os.O_CREATE | syscall.O_NOFOLLOW
 	if overwrite {
 		flag |= os.O_TRUNC
 	} else {
