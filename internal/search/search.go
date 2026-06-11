@@ -6,6 +6,8 @@ package search
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 
 	"git.local.sothr.com/warricksothr/zot-web/internal/config"
@@ -23,19 +25,28 @@ type Provider interface {
 	Search(ctx context.Context, query string, count int) ([]Result, error)
 }
 
-// New builds the provider selected by cfg.SearchBackend.
-func New(cfg config.Config) (Provider, error) {
+// New builds the provider selected by cfg.SearchBackend, using the provided
+// HTTP client (which should be SSRF-guarded when the SearXNG URL is
+// user-configurable).
+func New(cfg config.Config, httpClient *http.Client) (Provider, error) {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
 	switch cfg.SearchBackend {
 	case "tavily":
 		if cfg.TavilyAPIKey == "" {
 			return nil, fmt.Errorf("tavily backend selected but no API key (set TAVILY_API_KEY or tavily_api_key in config.json)")
 		}
-		return &tavily{key: cfg.TavilyAPIKey}, nil
+		return &tavily{key: cfg.TavilyAPIKey, client: httpClient}, nil
 	case "searxng":
 		if cfg.SearxngURL == "" {
 			return nil, fmt.Errorf("searxng backend selected but no instance URL (set ZOT_WEB_SEARXNG_URL or searxng_url in config.json)")
 		}
-		return &searxng{base: strings.TrimRight(cfg.SearxngURL, "/")}, nil
+		u, err := url.Parse(cfg.SearxngURL)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return nil, fmt.Errorf("searxng: invalid URL %q (must be http(s)://host…)", cfg.SearxngURL)
+		}
+		return &searxng{base: u.String(), client: httpClient}, nil
 	default:
 		return nil, fmt.Errorf("unknown search backend %q (use \"tavily\" or \"searxng\")", cfg.SearchBackend)
 	}

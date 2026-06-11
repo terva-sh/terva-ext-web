@@ -14,6 +14,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -94,12 +95,13 @@ func main() {
 		provider search.Provider
 		provErr  error
 		fetcher  *fetch.Client
+		rl       = newRateLimiter(10) // 10 burst, refilled per-tool at different rates
 	)
 	ensure := func() {
 		once.Do(func() {
 			cfg := config.Load(e.Host().DataDir)
-			provider, provErr = search.New(cfg)
 			fetcher = fetch.New(cfg, fetch.ParseAllowList(cfg.AllowLocalHosts))
+			provider, provErr = search.New(cfg, fetcher.HTTPClient())
 		})
 	}
 
@@ -110,6 +112,9 @@ func main() {
 			ensure()
 			if provErr != nil {
 				return proto.Errorf("web_search is not configured: %v", provErr)
+			}
+			if !rl.allow("web_search", 5*time.Second) {
+				return proto.Errorf("web_search: rate limit reached; wait a few seconds")
 			}
 			var in struct {
 				Query string `json:"query"`
@@ -135,6 +140,9 @@ func main() {
 		json.RawMessage(fetchSchema),
 		func(args json.RawMessage) proto.Result {
 			ensure()
+			if !rl.allow("web_fetch", 2*time.Second) {
+				return proto.Errorf("web_fetch: rate limit reached; wait a few seconds")
+			}
 			var in struct {
 				URL      string `json:"url"`
 				MaxChars int    `json:"max_chars"`
@@ -150,7 +158,7 @@ func main() {
 			defer cancel()
 			text, err := fetcher.Fetch(ctx, in.URL, in.MaxChars, in.Offset)
 			if err != nil {
-				return proto.Errorf("fetch failed: %v", err)
+				return proto.Errorf("fetch failed: %v", logSSRF(e, err))
 			}
 			return proto.Text(text)
 		})
@@ -173,7 +181,7 @@ func main() {
 			defer cancel()
 			imgs, err := fetcher.Images(ctx, in.URL)
 			if err != nil {
-				return proto.Errorf("web_images failed: %v", err)
+				return proto.Errorf("web_images failed: %v", logSSRF(e, err))
 			}
 			return proto.Text(fetch.FormatImages(in.URL, imgs))
 		})
@@ -196,7 +204,7 @@ func main() {
 			defer cancel()
 			links, err := fetcher.Links(ctx, in.URL)
 			if err != nil {
-				return proto.Errorf("web_links failed: %v", err)
+				return proto.Errorf("web_links failed: %v", logSSRF(e, err))
 			}
 			return proto.Text(fetch.FormatLinks(in.URL, links))
 		})
@@ -224,7 +232,7 @@ func main() {
 			defer cancel()
 			raw, err := fetcher.Raw(ctx, in.URL)
 			if err != nil {
-				return proto.Errorf("web_fetch_raw failed: %v", err)
+				return proto.Errorf("web_fetch_raw failed: %v", logSSRF(e, err))
 			}
 			rel, werr := saveToWorkspace(e.Host().CWD, in.SavePath, raw.Body, in.Overwrite)
 			if werr != nil {
@@ -269,7 +277,11 @@ func main() {
 			if err != nil {
 				// ImageTooLargeError's message already tells the model how to
 				// resubmit (with a suggested max_dimension), so pass it through.
-				return proto.Errorf("web_fetch_image failed: %v", err)
+				var tooBig *fetch.ImageTooLargeError
+				if errors.As(err, &tooBig) {
+					return proto.Errorf("web_fetch_image failed: %v", err)
+				}
+				return proto.Errorf("web_fetch_image failed: %v", logSSRF(e, err))
 			}
 
 			var meta strings.Builder
@@ -322,6 +334,11 @@ func saveToWorkspace(cwd, savePath string, data []byte, overwrite bool) (string,
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("save_path escapes the workspace")
 	}
+	// Refuse writes into .git/ — a prompt-injected model could overwrite
+	// .git/config or other control files.
+	if strings.HasPrefix(rel, ".git"+string(filepath.Separator)) || rel == ".git" {
+		return "", fmt.Errorf("writing to .git/ is not permitted")
+	}
 	if !overwrite {
 		if _, err := os.Stat(target); err == nil {
 			return "", fmt.Errorf("%s already exists (set overwrite=true to replace it)", rel)
@@ -334,4 +351,56 @@ func saveToWorkspace(cwd, savePath string, data []byte, overwrite bool) (string,
 		return "", err
 	}
 	return rel, nil
+}
+
+// logSSRF logs the full SSRF block details to the extension log when an error
+// chain contains an SSRFBlockedError, and returns the model-safe message.
+func logSSRF(e *proto.Extension, err error) string {
+	var ssrf *fetch.SSRFBlockedError
+	if errors.As(err, &ssrf) {
+		e.Logf("%s", ssrf.Full())
+		return ssrf.Error()
+	}
+	return err.Error()
+}
+
+// rateLimiter is a simple per-tool token-bucket rate limiter: it allows
+// burst tools per toolKey with a refill rate of refillSec seconds.
+type rateLimiter struct {
+	mu      sync.Mutex
+	buckets map[string]int
+	burst   int
+}
+
+func newRateLimiter(burst int) *rateLimiter {
+	return &rateLimiter{
+		buckets: map[string]int{},
+		burst:   burst,
+	}
+}
+
+// allow reports whether a call for key is within limits, consuming one token.
+// The bucket refills by one token every refillSec seconds (lazily on each
+// call).
+func (rl *rateLimiter) allow(key string, refillSec time.Duration) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	tokens, ok := rl.buckets[key]
+	if !ok {
+		tokens = rl.burst
+	}
+	if tokens <= 0 {
+		return false
+	}
+	rl.buckets[key] = tokens - 1
+	// Start a goroutine to refill one token after refillSec.
+	go func(k string) {
+		time.Sleep(refillSec)
+		rl.mu.Lock()
+		if n := rl.buckets[k]; n < rl.burst {
+			rl.buckets[k] = n + 1
+		}
+		rl.mu.Unlock()
+	}(key)
+	return true
 }

@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 // tavily calls the Tavily Search API (https://docs.tavily.com). Auth is a
 // bearer token; results already carry summarized, agent-ready content.
-type tavily struct{ key string }
+type tavily struct {
+	key    string
+	client *http.Client
+}
 
 func (t *tavily) Search(ctx context.Context, query string, count int) ([]Result, error) {
 	body, _ := json.Marshal(map[string]any{
@@ -20,9 +22,6 @@ func (t *tavily) Search(ctx context.Context, query string, count int) ([]Result,
 		"max_results":  clampCount(count),
 		"search_depth": "basic",
 	})
-	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
-	defer cancel()
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.tavily.com/search", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -30,7 +29,7 @@ func (t *tavily) Search(ctx context.Context, query string, count int) ([]Result,
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+t.key)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := t.client.Do(req)
 	if err != nil {
 		return nil, err
 	}

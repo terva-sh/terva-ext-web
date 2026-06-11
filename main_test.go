@@ -57,3 +57,23 @@ func TestSaveToWorkspaceNoCWD(t *testing.T) {
 		t.Error("empty cwd should be rejected")
 	}
 }
+
+func TestSaveToWorkspaceRejectsGitDir(t *testing.T) {
+	cwd := t.TempDir()
+	// .git/ itself
+	if _, err := saveToWorkspace(cwd, ".git", []byte("x"), false); err == nil {
+		t.Error("should reject bare .git path")
+	}
+	// .git/config
+	if _, err := saveToWorkspace(cwd, ".git/config", []byte("x"), false); err == nil {
+		t.Error("should reject .git/config")
+	}
+	// .git/hooks/some-hook
+	if _, err := saveToWorkspace(cwd, ".git/hooks/pre-commit", []byte("x"), false); err == nil {
+		t.Error("should reject files under .git/")
+	}
+	// But .gitignore or .gitattributes should still work
+	if _, err := saveToWorkspace(cwd, ".gitignore", []byte("x"), false); err != nil {
+		t.Errorf(".gitignore should be allowed, got: %v", err)
+	}
+}

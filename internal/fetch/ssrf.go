@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"fmt"
 	"net"
 	"strings"
 )
@@ -81,4 +82,22 @@ func isBlockedIP(ip net.IP) bool {
 		return true // 100.64.0.0/10 carrier-grade NAT
 	}
 	return false
+}
+
+// SSRFBlockedError is returned when a connection attempt is refused by SSRF
+// protection. Its Error() message is safe to show to the model (no hostname
+// or internal detail); the full message with the blocked host is available via
+// Full() for operator-visible logging.
+type SSRFBlockedError struct {
+	Host string
+}
+
+func (e *SSRFBlockedError) Error() string {
+	return "web_fetch: host is blocked by SSRF protection; add it to allow_local_hosts in config.json or ZOT_WEB_ALLOW_LOCAL_HOSTS to permit"
+}
+
+// Full returns the detailed message with the blocked hostname, for operator
+// logging.
+func (e *SSRFBlockedError) Full() string {
+	return fmt.Sprintf("ssrf block: %q resolves only to private/reserved addresses and is not on the allowlist", e.Host)
 }

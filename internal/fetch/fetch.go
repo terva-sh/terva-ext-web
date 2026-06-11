@@ -30,7 +30,7 @@ import (
 	"git.local.sothr.com/warricksothr/zot-web/internal/config"
 )
 
-const userAgent = "zot-web/0.1 (+https://git.local.sothr.com/warricksothr/zot-web)"
+const userAgent = "zot-web/0.1"
 
 // Client is a reusable SSRF-guarded fetcher. Rendered pages are cached so a
 // web_images call following a web_fetch needs no network.
@@ -73,7 +73,7 @@ func New(cfg config.Config, allow AllowList) *Client {
 					return dialer.DialContext(ctx, network, net.JoinHostPort(ipa.IP.String(), port))
 				}
 			}
-			return nil, fmt.Errorf("blocked: %q resolves only to private/reserved addresses; add it to allow_local_hosts to permit", host)
+			return nil, &SSRFBlockedError{Host: host}
 		},
 		ForceAttemptHTTP2:     true,
 		TLSHandshakeTimeout:   10 * time.Second,
@@ -225,7 +225,9 @@ func parseURL(raw string) (*url.URL, error) {
 // load returns the rendered page for u, from cache when fresh, otherwise by
 // fetching and rendering (and caching the result).
 func (c *Client) load(ctx context.Context, u *url.URL) (page, error) {
-	key := u.String()
+	// Normalize the cache key: strip common tracking/utm params so cache-buster
+	// variants of the same page don't evict each other.
+	key := cacheKey(u.String())
 	if p, ok := c.cache.get(key); ok {
 		return p, nil
 	}
@@ -293,6 +295,10 @@ type fetched struct {
 
 // download performs the SSRF-guarded GET and returns the body, capped at
 // maxBytes (truncated set when the body hit the cap).
+// HTTPClient exposes the SSRF-guarded client so callers (e.g. search backends)
+// can reuse the same transport.
+func (c *Client) HTTPClient() *http.Client { return c.http }
+
 func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64) (fetched, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
@@ -328,16 +334,18 @@ func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64) (fetc
 }
 
 // classifyFetchError maps a transport error to a stable, recognizable prefix so
-// agents can react to failure classes consistently. The SSRF block message is
-// already explicit and passes through unchanged.
+// agents can react to failure classes consistently. SSRFBlockedError passes
+// through — its Error() message is model-safe.
 func classifyFetchError(err error) error {
 	if err == nil {
 		return nil
 	}
+	var ssrf *SSRFBlockedError
+	if errors.As(err, &ssrf) {
+		return err
+	}
 	s := err.Error()
 	switch {
-	case strings.Contains(s, "blocked:"):
-		return err
 	case strings.Contains(s, "stopped after") && strings.Contains(s, "redirects"):
 		return fmt.Errorf("redirect loop: %w", err)
 	case strings.Contains(s, "no such host"), strings.Contains(s, "server misbehaving"),
@@ -406,7 +414,7 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		if !isTextual(contentType, body) {
 			return page{Markdown: fmt.Sprintf("[%s content, %d bytes — not rendered as text]", displayType(contentType), len(body))}
 		}
-		return page{Markdown: strings.TrimSpace(string(body))}
+		return page{Markdown: capMarkdown(strings.TrimSpace(string(body)))}
 	}
 
 	// Parse the full document once for whole-page harvesting: links and many
@@ -439,7 +447,7 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 				if !hasMarkdownTable(md) {
 					md += extractDataTables(body)
 				}
-				return page{Title: strings.TrimSpace(art.Title()), Markdown: md, Images: images, ImagesInline: inline, Links: links}
+				return page{Title: strings.TrimSpace(art.Title()), Markdown: capMarkdown(md), Images: images, ImagesInline: inline, Links: links}
 			}
 		}
 		// Readability found content but markdown conversion produced nothing;
@@ -447,7 +455,7 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		var buf bytes.Buffer
 		if art.RenderText(&buf) == nil {
 			if t := strings.TrimSpace(buf.String()); t != "" {
-				return page{Title: strings.TrimSpace(art.Title()), Markdown: t, Images: images, Links: links}
+				return page{Title: strings.TrimSpace(art.Title()), Markdown: capMarkdown(t), Images: images, Links: links}
 			}
 		}
 	}
@@ -458,7 +466,7 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 	if !c.inlineImages && fullDoc != nil {
 		images = collectImages(fullDoc, u)
 	}
-	return page{Markdown: heuristicExtract(body), Images: images, Links: links}
+	return page{Markdown: capMarkdown(heuristicExtract(body)), Images: images, Links: links}
 }
 
 // collectLinksOpt is collectLinks guarded against a nil (unparseable) document.
@@ -510,4 +518,46 @@ func heuristicExtract(body []byte) string {
 	s = strings.Join(lines, "\n")
 	s = reBlankLines.ReplaceAllString(s, "\n\n")
 	return strings.TrimSpace(s)
+}
+
+// maxRenderedRunes caps the Markdown a rendered page can produce, preventing
+// a small HTML payload from expanding to enormous Markdown (e.g. deeply nested
+// lists) that would blow up the cache and model context.
+const maxRenderedRunes = 500_000
+
+// capMarkdown truncates s at maxRenderedRunes runes and appends a note.
+func capMarkdown(s string) string {
+	r := []rune(s)
+	if len(r) <= maxRenderedRunes {
+		return s
+	}
+	return string(r[:maxRenderedRunes]) + "\n\n…[Markdown output capped at " + fmt.Sprint(maxRenderedRunes) + " runes]"
+}
+
+// cacheKey returns a normalized key for the page cache: the URL with common
+// tracking/utm and cache-buster query parameters stripped. These parameters
+// never affect page content, so normalizing prevents an attacker from filling
+// the LRU cache with duplicates of the same page.
+func cacheKey(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	q := u.Query()
+	dropped := false
+	for _, p := range []string{
+		"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+		"fbclid", "gclid", "mc_cid", "mc_eid",
+		"_", "cb", "cache", "t", "rand", "ref", "r",
+	} {
+		if q.Has(p) {
+			q.Del(p)
+			dropped = true
+		}
+	}
+	if !dropped {
+		return rawURL
+	}
+	u.RawQuery = q.Encode()
+	return u.String()
 }
