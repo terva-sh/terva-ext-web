@@ -123,6 +123,11 @@ Or switch to a self-hosted SearXNG instance (no key, private):
 
 > SearXNG must have `json` listed under `search.formats` in its `settings.yml`,
 > otherwise its API returns `403`.
+>
+> SearXNG queries run through the **same SSRF guard** as `web_fetch`, so a
+> self-hosted instance on a private/loopback address (the common case) must have
+> its host or IP in `allow_local_hosts` — as in the example above — or every
+> search is blocked. `just configure-searxng` writes that entry for you.
 
 ### All settings
 
@@ -135,8 +140,9 @@ Or switch to a self-hosted SearXNG instance (no key, private):
 | `fetch_image_max_bytes` | `ZOT_WEB_FETCH_IMAGE_MAX_BYTES` | `5242880` | max encoded size of a `web_fetch_image` result after resize (clamped to max `20971520`) |
 | `fetch_timeout_sec` | `ZOT_WEB_FETCH_TIMEOUT_SEC` | `25` | per-fetch timeout (clamped to max `60`) |
 | `fetch_inline_images` | `ZOT_WEB_FETCH_INLINE_IMAGES` | `false` | keep image URLs inline instead of `[image:N]` placeholders |
-| `fetch_cache_ttl_sec` | `ZOT_WEB_FETCH_CACHE_TTL_SEC` | `600` | how long a rendered page stays cached (`0` = no expiry) |
+| `fetch_cache_ttl_sec` | `ZOT_WEB_FETCH_CACHE_TTL_SEC` | `600` | how long a rendered page stays cached (`0` = no expiry; clamped to max `3600`) |
 | `fetch_cache_max_entries` | `ZOT_WEB_FETCH_CACHE_MAX_ENTRIES` | `32` | max cached pages, LRU-evicted (`0` = caching off; clamped to max `128`) |
+| `fetch_cache_max_bytes` | `ZOT_WEB_FETCH_CACHE_MAX_BYTES` | `67108864` | total bytes the page cache may retain, LRU-evicted (`0` = no byte bound; clamped to max `268435456`) |
 | `allow_local_hosts` | `ZOT_WEB_ALLOW_LOCAL_HOSTS` (comma-sep) | — | SSRF escape hatch (see below) |
 
 ### `web_fetch` output
@@ -204,6 +210,15 @@ this with `not inlined; list URLs with web_images`). The cache also retains each
 page's unrendered body (gzip-compressed) so `web_fetch_raw` can hand it back for
 manual grepping without a second fetch.
 
+The cache is bounded by **both** entry count (`fetch_cache_max_entries`) and
+total retained bytes (`fetch_cache_max_bytes`), evicting least-recently-used
+pages once either is exceeded — so a handful of large pages can't grow memory
+without limit. Per page, the harvested link and image lists are themselves
+capped (5000 links, 2000 images) so a link-farm page can't bloat one entry. The
+cache is process-global: a page fetched once is served from cache to every
+subsequent tool call in that extension process (it is single-user, so this is a
+warm-cache win, not a cross-tenant concern).
+
 ## Fetching images for viewing (`web_fetch_image`)
 
 `web_fetch`/`web_images` deal in image *URLs*; `web_fetch_image` retrieves the
@@ -232,8 +247,10 @@ web_fetch_image(url, max_dimension?, save_path?, overwrite?, inject?)
 dimensions and a recommended `max_dimension` — the model then resubmits with
 that value to bring it under the cap. The original is allowed to download past
 the cap so it can be decoded and resized down. Decoded images are also capped at
-80 million pixels before any full decode/resize to reject image decompression
-bombs.
+40 million pixels before any full decode/resize to reject image decompression
+bombs (a 25 MiB file can otherwise unpack into a multi-hundred-MiB pixel
+buffer), and no more than three decode/resize operations run at once so a burst
+of large images can't exhaust memory.
 
 ## Security: SSRF protection + the local allowlist
 
@@ -245,7 +262,10 @@ Because the model chooses the URL, `web_fetch` is the main attack surface
   documentation, benchmarking, CGNAT, multicast, and other special-use
   addresses** — including the cloud metadata address `169.254.169.254`;
 - dials the validated IP directly (closing the DNS-rebinding gap) and re-checks
-  on every redirect; caps redirects, time, and response size.
+  on every redirect; caps redirects, time, and response size;
+- refuses a short list of well-known non-web service ports (SSH, SMTP, MySQL,
+  Redis, RDP, …) outright, so the fetcher can't be steered into poking those
+  services even on a public host.
 
 To deliberately reach local services, add them to **`allow_local_hosts`**. Each
 entry is one of:
