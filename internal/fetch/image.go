@@ -46,6 +46,11 @@ func (e *ImageTooLargeError) Error() string {
 		humanBytes(int64(e.Bytes)), e.Width, e.Height, humanBytes(e.MaxBytes), e.SuggestDim)
 }
 
+// maxImagePixels caps decoded image area before any full image.Decode call.
+// It protects the extension from compressed images that are small on the wire
+// but expand into very large pixel buffers during resize/validation.
+const maxImagePixels int64 = 80_000_000
+
 // FetchImage retrieves an image (http/https only, SSRF-guarded) and returns it
 // ready for multimodal injection. maxDimension (longest edge, px) downsamples
 // the image when set; 0 leaves it at native size. An image still over the
@@ -73,6 +78,9 @@ func (c *Client) FetchImage(ctx context.Context, raw string, maxDimension int) (
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(f.body))
 	if err != nil {
 		return ImageResult{}, fmt.Errorf("could not decode image: %w", err)
+	}
+	if err := validateImageDimensions(cfg.Width, cfg.Height); err != nil {
+		return ImageResult{}, err
 	}
 
 	res := ImageResult{
@@ -137,6 +145,17 @@ func isSupportedImageMIME(ct string) bool {
 		return true
 	}
 	return false
+}
+
+func validateImageDimensions(w, h int) error {
+	if w <= 0 || h <= 0 {
+		return fmt.Errorf("invalid image dimensions %dx%d", w, h)
+	}
+	pixels := int64(w) * int64(h)
+	if pixels > maxImagePixels {
+		return fmt.Errorf("image dimensions %dx%d exceed the safe decode limit of %d pixels", w, h, maxImagePixels)
+	}
+	return nil
 }
 
 // resizeImage decodes data, downscales it so its longest edge is maxDimension

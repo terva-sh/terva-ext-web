@@ -3,7 +3,9 @@ package fetch
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -34,6 +36,28 @@ func encodePNG(t *testing.T, w, h int) []byte {
 		t.Fatalf("encode png: %v", err)
 	}
 	return buf.Bytes()
+}
+
+func pngConfigOnly(w, h uint32) []byte {
+	var out bytes.Buffer
+	out.Write([]byte("\x89PNG\r\n\x1a\n"))
+	writePNGChunk := func(kind string, data []byte) {
+		binary.Write(&out, binary.BigEndian, uint32(len(data)))
+		out.WriteString(kind)
+		out.Write(data)
+		crc := crc32.NewIEEE()
+		crc.Write([]byte(kind))
+		crc.Write(data)
+		binary.Write(&out, binary.BigEndian, crc.Sum32())
+	}
+	ihdr := make([]byte, 13)
+	binary.BigEndian.PutUint32(ihdr[0:4], w)
+	binary.BigEndian.PutUint32(ihdr[4:8], h)
+	ihdr[8] = 8 // bit depth
+	ihdr[9] = 2 // truecolor
+	writePNGChunk("IHDR", ihdr)
+	writePNGChunk("IEND", nil)
+	return out.Bytes()
 }
 
 // imageServer serves body with the given content-type over a loopback test
@@ -144,6 +168,29 @@ func TestFetchImageSniffsWhenContentTypeMissing(t *testing.T) {
 	}
 	if got.MimeType != "image/png" {
 		t.Errorf("sniffed mime = %q, want image/png", got.MimeType)
+	}
+}
+
+func TestFetchImageRejectsHugePixelDimensions(t *testing.T) {
+	// A tiny PNG header can claim dimensions that would allocate enormous pixel
+	// buffers if fully decoded. FetchImage must reject it after DecodeConfig.
+	c, url := imageServer(t, "image/png", pngConfigOnly(100_000, 100_000), 5<<20)
+
+	_, err := c.FetchImage(context.Background(), url, 1024)
+	if err == nil || !bytes.Contains([]byte(err.Error()), []byte("safe decode limit")) {
+		t.Fatalf("expected safe decode limit rejection, got %v", err)
+	}
+}
+
+func TestValidateImageDimensions(t *testing.T) {
+	if err := validateImageDimensions(1, 1); err != nil {
+		t.Fatalf("1x1 should be valid: %v", err)
+	}
+	if err := validateImageDimensions(0, 10); err == nil {
+		t.Fatal("zero width should be rejected")
+	}
+	if err := validateImageDimensions(100_000, 100_000); err == nil {
+		t.Fatal("huge dimensions should be rejected")
 	}
 }
 
