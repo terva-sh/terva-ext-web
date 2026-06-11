@@ -288,6 +288,15 @@ bombs (a 25 MiB file can otherwise unpack into a multi-hundred-MiB pixel
 buffer), and no more than three decode/resize operations run at once so a burst
 of large images can't exhaust memory.
 
+## The `/web-cache` command and status notes
+
+`/web-cache` (a zot slash command, run by you rather than the model) lists the
+cached pages — URL, size, age, title — and `/web-cache clear` empties the
+cache, which is handy when a page changed and you want the model's next fetch
+to see the live version before the TTL expires. The extension also pushes
+one-shot status notes into the TUI (e.g. when a tool's rate limit trips) so
+backoff is visible without digging through `$ZOT_HOME/logs/ext-web.log`.
+
 ## Security: SSRF protection + the local allowlist
 
 Because the model chooses the URL, `web_fetch` is the main attack surface

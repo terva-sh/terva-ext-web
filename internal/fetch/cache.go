@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"sort"
 	"sync"
 	"time"
 )
@@ -122,6 +123,36 @@ func (c *cache) remove(key string) {
 		c.bytes -= e.size
 		delete(c.entries, key)
 	}
+}
+
+// CacheEntryInfo describes one cached page, for the /web-cache command.
+type CacheEntryInfo struct {
+	URL    string
+	Title  string
+	Size   int64
+	Stored time.Time
+}
+
+// list snapshots the cache contents, newest-stored first.
+func (c *cache) list() []CacheEntryInfo {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]CacheEntryInfo, 0, len(c.entries))
+	for k, e := range c.entries {
+		out = append(out, CacheEntryInfo{URL: k, Title: e.page.Title, Size: e.size, Stored: e.stored})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Stored.After(out[j].Stored) })
+	return out
+}
+
+// clear empties the cache, returning how many entries were dropped.
+func (c *cache) clear() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	n := len(c.entries)
+	c.entries = map[string]*entry{}
+	c.bytes = 0
+	return n
 }
 
 // evict drops least-recently-accessed entries until the cache is within both

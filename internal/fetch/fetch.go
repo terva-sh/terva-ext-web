@@ -208,6 +208,12 @@ func (c *Client) Links(ctx context.Context, raw string) ([]Link, error) {
 	return p.Links, nil
 }
 
+// CacheList snapshots the page cache for inspection (newest first).
+func (c *Client) CacheList() []CacheEntryInfo { return c.cache.list() }
+
+// CacheClear empties the page cache, returning the number of entries dropped.
+func (c *Client) CacheClear() int { return c.cache.clear() }
+
 // RawDoc is the unrendered response body for a fetched page.
 type RawDoc struct {
 	Body        []byte

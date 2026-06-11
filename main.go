@@ -125,6 +125,7 @@ func main() {
 				return proto.Errorf("web_search is not configured: %v", provErr)
 			}
 			if !rl.allow("web_search", 5*time.Second) {
+				e.Notify("warn", "web_search rate limit hit; backing off")
 				return proto.Errorf("web_search: rate limit reached; wait a few seconds")
 			}
 			var in struct {
@@ -164,6 +165,7 @@ func main() {
 		func(args json.RawMessage) proto.Result {
 			ensure()
 			if !rl.allow("web_fetch", 2*time.Second) {
+				e.Notify("warn", "web_fetch rate limit hit; backing off")
 				return proto.Errorf("web_fetch: rate limit reached; wait a few seconds")
 			}
 			var in struct {
@@ -333,6 +335,39 @@ func main() {
 				return proto.Image(img.MimeType, img.Data, meta.String())
 			}
 			return proto.Text(meta.String())
+		})
+
+	e.Command("web-cache",
+		"inspect the web page cache (`/web-cache`) or empty it (`/web-cache clear`)",
+		func(args string) proto.CommandResult {
+			ensure()
+			switch strings.TrimSpace(args) {
+			case "clear":
+				n := fetcher.CacheClear()
+				return proto.Display(fmt.Sprintf("web cache cleared (%d entries dropped)", n))
+			case "", "list":
+				entries := fetcher.CacheList()
+				if len(entries) == 0 {
+					return proto.Display("web cache is empty")
+				}
+				var b strings.Builder
+				var total int64
+				for _, en := range entries {
+					total += en.Size
+				}
+				fmt.Fprintf(&b, "web cache: %d entries, %.1f KiB total\n", len(entries), float64(total)/1024)
+				for _, en := range entries {
+					age := time.Since(en.Stored).Round(time.Second)
+					fmt.Fprintf(&b, "  %s  (%.1f KiB, %s old)", en.URL, float64(en.Size)/1024, age)
+					if en.Title != "" {
+						fmt.Fprintf(&b, "  — %s", en.Title)
+					}
+					b.WriteString("\n")
+				}
+				return proto.Display(strings.TrimRight(b.String(), "\n"))
+			default:
+				return proto.CommandResult{Action: "noop", Err: fmt.Sprintf("unknown argument %q (use `/web-cache` or `/web-cache clear`)", args)}
+			}
 		})
 
 	if err := e.Run(); err != nil {

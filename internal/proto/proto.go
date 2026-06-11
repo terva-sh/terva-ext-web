@@ -67,6 +67,30 @@ type toolDef struct {
 	handler     ToolHandler
 }
 
+// CommandResult is a slash-command handler's reply. Action selects how zot
+// renders Text: "display" (one-shot styled note in the chat), "prompt"
+// (submit Text as a user message), "insert" (insert into the editor), or
+// "noop" (the handler already did its work, e.g. via Notify). A non-empty
+// Err renders as a red status line.
+type CommandResult struct {
+	Action string
+	Text   string
+	Err    string
+}
+
+// Display builds a CommandResult that shows s as a one-shot chat note.
+func Display(s string) CommandResult { return CommandResult{Action: "display", Text: s} }
+
+// CommandHandler runs when the user invokes a registered slash command. args
+// is everything typed after the command name, trimmed.
+type CommandHandler func(args string) CommandResult
+
+type commandDef struct {
+	name        string
+	description string
+	handler     CommandHandler
+}
+
 // Host carries the hello_ack fields this extension cares about.
 type Host struct {
 	ProtocolVersion int
@@ -88,9 +112,10 @@ type Extension struct {
 	out     io.Writer
 	writeMu sync.Mutex
 
-	mu    sync.Mutex
-	tools []toolDef
-	host  Host
+	mu       sync.Mutex
+	tools    []toolDef
+	commands []commandDef
+	host     Host
 }
 
 // New constructs an Extension that talks to zot over stdin/stdout.
@@ -104,6 +129,22 @@ func (e *Extension) Tool(name, description string, schema json.RawMessage, h Too
 	e.mu.Lock()
 	e.tools = append(e.tools, toolDef{name, description, schema, h})
 	e.mu.Unlock()
+}
+
+// Command registers a user-invocable slash command. Call before Run.
+func (e *Extension) Command(name, description string, h CommandHandler) {
+	e.mu.Lock()
+	e.commands = append(e.commands, commandDef{name, description, h})
+	e.mu.Unlock()
+}
+
+// Notify pushes a one-shot status note below the transcript (cleared on the
+// user's next prompt). level is "info", "success", "warn", or "error".
+func (e *Extension) Notify(level, format string, a ...any) {
+	e.send(map[string]any{
+		"type": "notify", "level": level,
+		"message": fmt.Sprintf(format, a...),
+	})
 }
 
 // Host returns the info zot sent in hello_ack. Zero value until the handshake
@@ -133,17 +174,28 @@ func (e *Extension) send(v any) {
 // Run sends the hello + registrations, then serves tool calls until zot closes
 // stdin or sends shutdown. Blocks until then.
 func (e *Extension) Run() error {
-	e.send(map[string]any{
-		"type": "hello", "name": e.name, "version": e.version,
-		"capabilities": []string{"tools"},
-	})
 	e.mu.Lock()
 	tools := append([]toolDef(nil), e.tools...)
+	commands := append([]commandDef(nil), e.commands...)
 	e.mu.Unlock()
+	caps := []string{"tools"}
+	if len(commands) > 0 {
+		caps = append(caps, "commands")
+	}
+	e.send(map[string]any{
+		"type": "hello", "name": e.name, "version": e.version,
+		"capabilities": caps,
+	})
 	for _, t := range tools {
 		e.send(map[string]any{
 			"type": "register_tool", "name": t.name,
 			"description": t.description, "schema": t.schema,
+		})
+	}
+	for _, c := range commands {
+		e.send(map[string]any{
+			"type": "register_command", "name": c.name,
+			"description": c.description,
 		})
 	}
 	e.send(map[string]any{"type": "ready"})
@@ -200,6 +252,23 @@ func (e *Extension) Run() error {
 				}()
 				e.sendToolResult(id, h(args))
 			}(f.ID, f.Args)
+		case "command_invoked":
+			// args is a plain string for commands (everything after the name).
+			var cmdArgs string
+			_ = json.Unmarshal(f.Args, &cmdArgs)
+			h := e.commandFor(f.Name)
+			if h == nil {
+				e.sendCommandResult(f.ID, CommandResult{Action: "noop", Err: fmt.Sprintf("no handler for command %q", f.Name)})
+				continue
+			}
+			go func(id, args string) {
+				defer func() {
+					if r := recover(); r != nil {
+						e.sendCommandResult(id, CommandResult{Action: "noop", Err: fmt.Sprintf("panic: %v", r)})
+					}
+				}()
+				e.sendCommandResult(id, h(args))
+			}(f.ID, cmdArgs)
 		case "shutdown":
 			e.send(map[string]any{"type": "shutdown_ack"})
 			return nil
@@ -217,6 +286,33 @@ func (e *Extension) handlerFor(name string) ToolHandler {
 		}
 	}
 	return nil
+}
+
+func (e *Extension) commandFor(name string) CommandHandler {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, c := range e.commands {
+		if c.name == name {
+			return c.handler
+		}
+	}
+	return nil
+}
+
+func (e *Extension) sendCommandResult(id string, r CommandResult) {
+	action := r.Action
+	if action == "" {
+		action = "noop"
+	}
+	frame := map[string]any{"type": "command_response", "id": id, "action": action}
+	switch action {
+	case "display", "prompt", "insert":
+		frame[action] = r.Text
+	}
+	if r.Err != "" {
+		frame["error"] = r.Err
+	}
+	e.send(frame)
 }
 
 func (e *Extension) sendToolResult(id string, r Result) {
