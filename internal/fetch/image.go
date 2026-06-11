@@ -48,8 +48,18 @@ func (e *ImageTooLargeError) Error() string {
 
 // maxImagePixels caps decoded image area before any full image.Decode call.
 // It protects the extension from compressed images that are small on the wire
-// but expand into very large pixel buffers during resize/validation.
-const maxImagePixels int64 = 80_000_000
+// but expand into very large pixel buffers during resize/validation. At ~4 bytes
+// per RGBA pixel a 40M-pixel image is already a ~160 MiB decode buffer, so the
+// cap is deliberately well below what a 25 MiB download could otherwise unpack
+// to. It still comfortably admits 4K/8K-class photography.
+const maxImagePixels int64 = 40_000_000
+
+// resizeSem bounds how many image decode/resize operations run concurrently.
+// Each one allocates pixel buffers up to maxImagePixels*4 bytes for the source
+// plus the scaled destination, and tool calls each run in their own goroutine
+// (see proto.Run) behind a burst-10 rate limiter — so without this gate a burst
+// of large images could spike to multiple GiB and OOM the extension.
+var resizeSem = make(chan struct{}, 3)
 
 // FetchImage retrieves an image (http/https only, SSRF-guarded) and returns it
 // ready for multimodal injection. maxDimension (longest edge, px) downsamples
@@ -162,6 +172,10 @@ func validateImageDimensions(w, h int) error {
 // (preserving aspect, never enlarging), and re-encodes. PNG/JPEG/GIF keep their
 // format; WebP transcodes to PNG (Go has no WebP encoder).
 func resizeImage(data []byte, mime string, maxDimension int) (out []byte, w, h int, outMime string, err error) {
+	// Bound concurrent decode+scale memory across simultaneous tool calls.
+	resizeSem <- struct{}{}
+	defer func() { <-resizeSem }()
+
 	src, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, 0, 0, "", err
