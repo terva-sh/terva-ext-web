@@ -3,8 +3,11 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"git.local.sothr.com/warricksothr/zot-web/internal/version"
 )
 
 func TestSaveToWorkspaceWritesUnderCWD(t *testing.T) {
@@ -110,5 +113,15 @@ func TestSaveToWorkspaceRejectsFinalSymlink(t *testing.T) {
 	}
 	if string(got) != "original" {
 		t.Fatalf("symlink target was modified: %q", got)
+	}
+}
+
+func TestVersionString(t *testing.T) {
+	got := versionString()
+	if !strings.HasPrefix(got, "zot-web "+version.Version) {
+		t.Errorf("versionString() = %q, want prefix %q", got, "zot-web "+version.Version)
+	}
+	if !strings.Contains(got, runtime.GOOS+"/"+runtime.GOARCH) {
+		t.Errorf("versionString() = %q, missing platform", got)
 	}
 }

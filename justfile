@@ -121,6 +121,10 @@ ci: lint
 try DIR=".": build
     zot --ext "$PWD" --cwd "{{DIR}}"
 
+# Print the version string the binary would report, built from source.
+version:
+    @go run -mod=vendor . --version
+
 # Remove build output.
 clean:
     rm -f zot-web

@@ -39,6 +39,9 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
+      # Stamp the tag version so `zot-web --version` (and the protocol hello
+      # + default User-Agent) report the release, not the committed default.
+      - -X git.local.sothr.com/warricksothr/zot-web/internal/version.Version={{.Version}}
 
 archives:
   - id: zot-web

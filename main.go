@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -96,6 +97,17 @@ const webFetchImageSchema = `{
 }`
 
 func main() {
+	// The normal mode is the stdio extension protocol, which blocks silently
+	// on stdin — so give a bare `zot-web --version` invocation a way to
+	// identify the installed build instead of appearing to hang.
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version", "--version", "-version":
+			fmt.Println(versionString())
+			return
+		}
+	}
+
 	e := proto.New("web", version.Version)
 
 	// Providers are built lazily on first tool call, by which point the
@@ -372,6 +384,13 @@ func main() {
 	if err := e.Run(); err != nil {
 		e.Logf("fatal: %v", err)
 	}
+}
+
+// versionString is what --version prints: version plus the toolchain and
+// platform, which is exactly what's needed when debugging a mismatched or
+// stale installed binary.
+func versionString() string {
+	return fmt.Sprintf("zot-web %s (%s, %s/%s)", version.Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 }
 
 // saveToWorkspace writes data to savePath resolved under the workspace cwd. It
