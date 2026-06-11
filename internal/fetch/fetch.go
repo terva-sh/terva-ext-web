@@ -368,6 +368,22 @@ type fetched struct {
 func (c *Client) HTTPClient() *http.Client { return c.http }
 
 func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64, userAgent string) (fetched, error) {
+	f, err := c.downloadOnce(ctx, u, maxBytes, userAgent)
+	if err != nil && retryableFetchError(err) && ctx.Err() == nil {
+		// One short-backoff retry absorbs most transient flake (a 502/503 from
+		// a busy origin, a dropped connection) without meaningfully delaying
+		// the hard-failure path.
+		select {
+		case <-time.After(time.Second):
+		case <-ctx.Done():
+			return fetched{}, classifyFetchError(ctx.Err())
+		}
+		return c.downloadOnce(ctx, u, maxBytes, userAgent)
+	}
+	return f, err
+}
+
+func (c *Client) downloadOnce(ctx context.Context, u *url.URL, maxBytes int64, userAgent string) (fetched, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return fetched{}, err
@@ -381,7 +397,7 @@ func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64, userA
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return fetched{}, fmt.Errorf("http %d fetching %s", resp.StatusCode, u)
+		return fetched{}, &HTTPStatusError{Status: resp.StatusCode, URL: u.String()}
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBytes+1))
@@ -399,6 +415,41 @@ func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64, userA
 		f.truncated = true
 	}
 	return f, nil
+}
+
+// HTTPStatusError is a ≥400 response, rendered with per-class guidance so the
+// model knows whether to fix the URL, change identity, back off, or give up.
+type HTTPStatusError struct {
+	Status int
+	URL    string
+}
+
+func (e *HTTPStatusError) Error() string {
+	hint := "client error"
+	switch {
+	case e.Status == 401 || e.Status == 403:
+		hint = `access denied — the site may be blocking automated clients; retry with user_agent: "browser", or try another source`
+	case e.Status == 404 || e.Status == 410:
+		hint = "page not found — check the URL; the page may have moved or been removed"
+	case e.Status == 429:
+		hint = "rate limited by the site — wait before retrying this host"
+	case e.Status >= 500:
+		hint = "server error — usually transient; retrying later may succeed"
+	}
+	return fmt.Sprintf("http %d fetching %s (%s)", e.Status, e.URL, hint)
+}
+
+// retryableFetchError reports whether one immediate retry is worth it: a
+// 502/503/504 from a flaky origin or a dropped connection. Timeouts are not
+// retried (the overall deadline is already mostly spent) and neither are
+// other 4xx/5xx (they would just repeat).
+func retryableFetchError(err error) bool {
+	var hs *HTTPStatusError
+	if errors.As(err, &hs) {
+		return hs.Status == http.StatusBadGateway || hs.Status == http.StatusServiceUnavailable || hs.Status == http.StatusGatewayTimeout
+	}
+	s := err.Error()
+	return strings.Contains(s, "connection reset") || strings.Contains(s, "unexpected EOF")
 }
 
 // classifyFetchError maps a transport error to a stable, recognizable prefix so
