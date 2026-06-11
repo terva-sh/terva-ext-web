@@ -17,7 +17,7 @@ web access through six LLM-callable tools:
 - **`web_images(url)`** — resolve the `[image:N]` placeholders from a fetched
   page back to their URLs (plus dimensions, caption, and source page). Served
   from cache when warm; fetches on a cold cache, so it also works standalone.
-  Discovery covers lazy-load attributes (`data-src`, `srcset`), `<picture>`
+  Discovery covers lazy-load attributes (`data-src`, `srcset`, `data-bg`/`data-background-image`), `<noscript>` fallbacks, `<picture>`
   sources, `<a>` links straight to an image, and `og:image`/`twitter:image`,
   and falls back to a whole-page scan on pages readability can't article-ify.
 - **`web_links(url)`** — every hyperlink on a page (absolute URL + anchor text),

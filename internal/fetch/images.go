@@ -212,6 +212,20 @@ func collectImages(root *xhtml.Node, base *url.URL) []Image {
 				add(resolveImageRef(src, base), Image{})
 			case "a":
 				add(imageHref(n, base), Image{Alt: oneLine(nodeText(n))})
+			case "noscript":
+				// With scripting assumed on (x/net/html's default), <noscript>
+				// content parses as one opaque text node — but it's where
+				// lazy-load setups put their real <img> fallback. Re-parse it.
+				if frag, err := xhtml.Parse(strings.NewReader(nodeText(n))); err == nil {
+					walk(frag)
+				}
+			}
+			// CSS background-image lazy-loaders stash the URL in data-bg-style
+			// attributes on arbitrary elements (usually <div>).
+			for _, key := range []string{"data-bg", "data-background", "data-background-image"} {
+				if v := strings.TrimSpace(attrVal(n, key)); v != "" {
+					add(resolveImageRef(stripCSSURL(v), base), Image{})
+				}
 			}
 		}
 		for ch := n.FirstChild; ch != nil; ch = ch.NextSibling {
@@ -220,6 +234,18 @@ func collectImages(root *xhtml.Node, base *url.URL) []Image {
 	}
 	walk(root)
 	return images
+}
+
+// stripCSSURL unwraps a `url(...)` value (some lazy-loaders store the full CSS
+// function, others the bare URL).
+func stripCSSURL(v string) string {
+	s := strings.TrimSpace(v)
+	low := strings.ToLower(s)
+	if strings.HasPrefix(low, "url(") && strings.HasSuffix(s, ")") {
+		s = strings.TrimSpace(s[4 : len(s)-1])
+		s = strings.Trim(s, `'"`)
+	}
+	return s
 }
 
 // imageHref returns the absolute href of an <a> that points straight at an
