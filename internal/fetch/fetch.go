@@ -26,6 +26,7 @@ import (
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
 	xhtml "golang.org/x/net/html"
+	"golang.org/x/net/html/charset"
 
 	"git.local.sothr.com/warricksothr/zot-web/internal/config"
 	"git.local.sothr.com/warricksothr/zot-web/internal/version"
@@ -478,8 +479,13 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		if !isTextual(contentType, body) {
 			return page{Markdown: fmt.Sprintf("[%s content, %d bytes — not rendered as text]", displayType(contentType), len(body))}
 		}
-		return page{Markdown: capMarkdown(strings.TrimSpace(string(body)))}
+		return page{Markdown: capMarkdown(strings.TrimSpace(string(decodeToUTF8(body, contentType))))}
 	}
+	// Decode legacy charsets (windows-1252, Shift_JIS, GBK, …) to UTF-8 before
+	// any parsing: x/net/html and readability both assume UTF-8 input, so
+	// without this non-UTF-8 pages render as mojibake. The raw cache entry
+	// (web_fetch_raw) keeps the undecoded bytes as served.
+	body = decodeToUTF8(body, contentType)
 
 	// Parse the full document once for whole-page harvesting: links and many
 	// images (nav thumbnails, og:image, lazy-loaded galleries) live outside the
@@ -531,6 +537,22 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		images = collectImages(fullDoc, u)
 	}
 	return page{Markdown: capMarkdown(heuristicExtract(body)), Images: images, Links: links}
+}
+
+// decodeToUTF8 converts body to UTF-8, determining the source encoding from
+// the Content-Type charset parameter, a <meta charset> declaration, or content
+// sniffing (in that order). UTF-8 input passes through cheaply; on any error
+// the original bytes are returned unchanged (best effort).
+func decodeToUTF8(body []byte, contentType string) []byte {
+	r, err := charset.NewReader(bytes.NewReader(body), contentType)
+	if err != nil {
+		return body
+	}
+	out, err := io.ReadAll(r)
+	if err != nil {
+		return body
+	}
+	return out
 }
 
 // collectLinksOpt is collectLinks guarded against a nil (unparseable) document.

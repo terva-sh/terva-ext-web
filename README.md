@@ -188,6 +188,11 @@ Images: 17 (shown as [image:N]; resolve with web_images)
 - Relative links and image sources are resolved against the **final** URL after
   redirects, so an `http→https` redirect doesn't leave stale links in the body.
 
+Pages in legacy encodings (windows-1252, Shift_JIS, GBK, …) are transcoded to
+UTF-8 before rendering, using the `Content-Type` charset, the page's
+`<meta charset>`, or content sniffing — in that order. `web_fetch_raw` still
+returns the bytes exactly as served.
+
 Binary responses (images, PDFs, octet-streams) are not dumped as raw bytes —
 `web_fetch` returns a one-line summary like
 `[image/png content, 40075 bytes — not rendered as text]` instead. Textual
