@@ -60,6 +60,10 @@ func (im Image) dimensions() string {
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 
+// maxImages bounds how many images the harvesters retain, keeping a gallery- or
+// sprite-heavy page from bloating the cache entry and the model's context.
+const maxImages = 2000
+
 // indexImages walks root, replacing each <img> with a sentinel text node and
 // collecting the (absolute) image URLs. Identical URLs share one id. base is
 // the page URL, used to resolve relative srcs.
@@ -76,7 +80,7 @@ func indexImages(root *xhtml.Node, base *url.URL) []Image {
 			if ch.Type == xhtml.ElementNode && ch.Data == "img" {
 				if abs := imgURL(ch, base); abs != "" {
 					id, ok := byURL[abs]
-					if !ok {
+					if !ok && len(images) < maxImages {
 						id = len(images) + 1
 						byURL[abs] = id
 						// Read surrounding metadata before the node is detached.
@@ -89,8 +93,13 @@ func indexImages(root *xhtml.Node, base *url.URL) []Image {
 							Height:     strings.TrimSpace(attrVal(ch, "height")),
 							SourcePage: enclosingLink(ch, base),
 						})
+						ok = true
 					}
-					replaceWithSentinel(ch, id)
+					// Only placeholder images we actually indexed; once the cap is
+					// hit, leave the overflow <img> untouched (no stray sentinel).
+					if ok {
+						replaceWithSentinel(ch, id)
+					}
 				}
 				// <img> is void; nothing to recurse into.
 			} else {
@@ -165,7 +174,7 @@ func collectImages(root *xhtml.Node, base *url.URL) []Image {
 	var images []Image
 	byURL := map[string]bool{}
 	add := func(abs string, im Image) {
-		if abs == "" || byURL[abs] {
+		if abs == "" || byURL[abs] || len(images) >= maxImages {
 			return
 		}
 		byURL[abs] = true

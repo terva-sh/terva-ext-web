@@ -15,6 +15,11 @@ type Link struct {
 	Text string `json:"text,omitempty"`
 }
 
+// maxLinks bounds how many links collectLinks retains, so a link-farm page
+// can't blow up the cache entry (or the model's context). Reaching it is rare;
+// when it happens the excess is silently dropped after document order.
+const maxLinks = 5000
+
 // collectLinks gathers every <a href> across the whole document (not just the
 // readability article), resolved to absolute and de-duplicated by URL keeping
 // the first anchor text seen. This is what backs web_links: it lets the model
@@ -24,6 +29,9 @@ func collectLinks(root *xhtml.Node, base *url.URL) []Link {
 	seen := map[string]bool{}
 	var walk func(n *xhtml.Node)
 	walk = func(n *xhtml.Node) {
+		if len(links) >= maxLinks {
+			return
+		}
 		if n.Type == xhtml.ElementNode && n.Data == "a" {
 			if abs := resolveHref(attrVal(n, "href"), base); abs != "" && !seen[abs] {
 				seen[abs] = true

@@ -17,11 +17,14 @@ const (
 	DefaultFetchTimeoutSec            = 25
 	DefaultFetchCacheTTLSec           = 600
 	DefaultFetchCacheMaxEntries       = 32
+	DefaultFetchCacheMaxBytes   int64 = 64 << 20 // 64 MiB
 
 	MaxFetchMaxBytes        int64 = 32 << 20 // 32 MiB
 	MaxFetchImageMaxBytes   int64 = 20 << 20 // 20 MiB
 	MaxFetchTimeoutSec            = 60
+	MaxFetchCacheTTLSec           = 3600 // 1 hour
 	MaxFetchCacheMaxEntries       = 128
+	MaxFetchCacheMaxBytes   int64 = 256 << 20 // 256 MiB
 )
 
 // Config is the effective settings for the web extension.
@@ -55,6 +58,12 @@ type Config struct {
 	FetchCacheTTLSec int `json:"fetch_cache_ttl_sec"`
 	// FetchCacheMaxEntries bounds the in-memory page cache (LRU). Default 32; max 128.
 	FetchCacheMaxEntries int `json:"fetch_cache_max_entries"`
+	// FetchCacheMaxBytes bounds the page cache by total retained bytes (rendered
+	// Markdown + compressed raw body + harvested links/images), evicting LRU
+	// entries until under budget. This is the real memory backstop: a handful of
+	// large pages can dominate long before the entry count does. Default 64 MiB;
+	// max 256 MiB. 0 disables the byte bound (entry count still applies).
+	FetchCacheMaxBytes int64 `json:"fetch_cache_max_bytes"`
 
 	// AllowLocalHosts is the SSRF escape hatch: targets that resolve to
 	// private/reserved addresses are refused UNLESS they match an entry here.
@@ -72,6 +81,7 @@ func Load(dataDir string) Config {
 		FetchTimeoutSec:      DefaultFetchTimeoutSec,
 		FetchCacheTTLSec:     DefaultFetchCacheTTLSec,
 		FetchCacheMaxEntries: DefaultFetchCacheMaxEntries,
+		FetchCacheMaxBytes:   DefaultFetchCacheMaxBytes,
 	}
 	if dataDir != "" {
 		if b, err := os.ReadFile(filepath.Join(dataDir, "config.json")); err == nil {
@@ -125,6 +135,11 @@ func Load(dataDir string) Config {
 			c.FetchCacheMaxEntries = n
 		}
 	}
+	if v := os.Getenv("ZOT_WEB_FETCH_CACHE_MAX_BYTES"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n >= 0 {
+			c.FetchCacheMaxBytes = n
+		}
+	}
 
 	c.SearchBackend = strings.ToLower(strings.TrimSpace(c.SearchBackend))
 	if c.SearchBackend == "" {
@@ -148,11 +163,23 @@ func Load(dataDir string) Config {
 	if c.FetchTimeoutSec > MaxFetchTimeoutSec {
 		c.FetchTimeoutSec = MaxFetchTimeoutSec
 	}
+	if c.FetchCacheTTLSec < 0 {
+		c.FetchCacheTTLSec = 0
+	}
+	if c.FetchCacheTTLSec > MaxFetchCacheTTLSec {
+		c.FetchCacheTTLSec = MaxFetchCacheTTLSec
+	}
 	if c.FetchCacheMaxEntries < 0 {
 		c.FetchCacheMaxEntries = 0
 	}
 	if c.FetchCacheMaxEntries > MaxFetchCacheMaxEntries {
 		c.FetchCacheMaxEntries = MaxFetchCacheMaxEntries
+	}
+	if c.FetchCacheMaxBytes < 0 {
+		c.FetchCacheMaxBytes = 0
+	}
+	if c.FetchCacheMaxBytes > MaxFetchCacheMaxBytes {
+		c.FetchCacheMaxBytes = MaxFetchCacheMaxBytes
 	}
 	return c
 }

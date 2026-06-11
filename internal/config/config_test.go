@@ -27,6 +27,9 @@ func TestLoadDefaults(t *testing.T) {
 	if c.FetchCacheMaxEntries != 32 {
 		t.Errorf("FetchCacheMaxEntries = %d, want 32", c.FetchCacheMaxEntries)
 	}
+	if c.FetchCacheMaxBytes != DefaultFetchCacheMaxBytes {
+		t.Errorf("FetchCacheMaxBytes = %d, want %d", c.FetchCacheMaxBytes, DefaultFetchCacheMaxBytes)
+	}
 	if c.FetchInlineImages != false {
 		t.Errorf("FetchInlineImages = %v, want false", c.FetchInlineImages)
 	}
@@ -225,6 +228,41 @@ func TestOversizedEnvValuesAreClamped(t *testing.T) {
 	if c.FetchMaxBytes != MaxFetchMaxBytes || c.FetchImageMaxBytes != MaxFetchImageMaxBytes ||
 		c.FetchTimeoutSec != MaxFetchTimeoutSec || c.FetchCacheMaxEntries != MaxFetchCacheMaxEntries {
 		t.Fatalf("oversized env values not clamped: %+v", c)
+	}
+}
+
+func TestFetchCacheTTLSecClamped(t *testing.T) {
+	dir := t.TempDir()
+	writeJSON(t, dir, `{"fetch_cache_ttl_sec": 999999}`)
+	c := Load(dir)
+	if c.FetchCacheTTLSec != MaxFetchCacheTTLSec {
+		t.Errorf("FetchCacheTTLSec = %d, want max %d", c.FetchCacheTTLSec, MaxFetchCacheTTLSec)
+	}
+
+	writeJSON(t, dir, `{"fetch_cache_ttl_sec": -5}`)
+	c = Load(dir)
+	if c.FetchCacheTTLSec != 0 {
+		t.Errorf("FetchCacheTTLSec = %d, want 0 (negative clamped)", c.FetchCacheTTLSec)
+	}
+}
+
+func TestFetchCacheMaxBytesClampedAndDefaulted(t *testing.T) {
+	dir := t.TempDir()
+	writeJSON(t, dir, `{"fetch_cache_max_bytes": 9999999999}`)
+	if c := Load(dir); c.FetchCacheMaxBytes != MaxFetchCacheMaxBytes {
+		t.Errorf("FetchCacheMaxBytes = %d, want max %d", c.FetchCacheMaxBytes, MaxFetchCacheMaxBytes)
+	}
+
+	// Negative from JSON clamps to 0 (byte bound disabled); env negative is
+	// rejected by the n >= 0 guard and keeps the default.
+	writeJSON(t, dir, `{"fetch_cache_max_bytes": -1}`)
+	if c := Load(dir); c.FetchCacheMaxBytes != 0 {
+		t.Errorf("FetchCacheMaxBytes = %d, want 0 (negative clamped)", c.FetchCacheMaxBytes)
+	}
+
+	t.Setenv("ZOT_WEB_FETCH_CACHE_MAX_BYTES", "33554432")
+	if c := Load(""); c.FetchCacheMaxBytes != 33554432 {
+		t.Errorf("FetchCacheMaxBytes = %d, want 33554432 (env override)", c.FetchCacheMaxBytes)
 	}
 }
 

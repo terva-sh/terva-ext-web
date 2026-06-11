@@ -35,26 +35,46 @@ type page struct {
 	BodyTruncated bool   // raw body hit the byte cap before rendering
 }
 
-// cache is a small, concurrency-safe, TTL + LRU page cache. Tool handlers run
-// in their own goroutines (see proto.Run), so every access takes the lock.
+// cache is a small, concurrency-safe, TTL + LRU page cache bounded by both entry
+// count and total retained bytes. Tool handlers run in their own goroutines (see
+// proto.Run), so every access takes the lock.
 type cache struct {
-	mu      sync.Mutex
-	ttl     time.Duration
-	max     int
-	entries map[string]*entry
+	mu       sync.Mutex
+	ttl      time.Duration
+	max      int
+	maxBytes int64
+	bytes    int64 // sum of entry sizes currently held
+	entries  map[string]*entry
 }
 
 type entry struct {
 	page     page
+	size     int64
 	stored   time.Time
 	accessed time.Time
 }
 
 // newCache builds a cache. A non-positive max disables caching entirely (get
 // always misses, put is a no-op); a non-positive ttl means entries never
-// expire by age (still bounded by max).
-func newCache(ttl time.Duration, max int) *cache {
-	return &cache{ttl: ttl, max: max, entries: map[string]*entry{}}
+// expire by age; a non-positive maxBytes disables the byte bound (entry count
+// still applies).
+func newCache(ttl time.Duration, max int, maxBytes int64) *cache {
+	return &cache{ttl: ttl, max: max, maxBytes: maxBytes, entries: map[string]*entry{}}
+}
+
+// pageSize estimates the heap a cached page retains, so the cache can evict on
+// bytes rather than just entry count. It counts the two big buffers (compressed
+// raw body + rendered Markdown) plus the harvested link/image strings, which are
+// otherwise unbounded on link-farm pages.
+func pageSize(p page) int64 {
+	n := int64(len(p.RawGzip) + len(p.Markdown))
+	for _, l := range p.Links {
+		n += int64(len(l.URL)+len(l.Text)) + 16
+	}
+	for _, im := range p.Images {
+		n += int64(len(im.URL)+len(im.Alt)+len(im.Caption)+len(im.SourcePage)+len(im.Width)+len(im.Height)) + 32
+	}
+	return n
 }
 
 // get returns the cached page for url and whether it was a live hit. Expired
@@ -70,30 +90,58 @@ func (c *cache) get(url string) (page, bool) {
 		return page{}, false
 	}
 	if c.ttl > 0 && time.Since(e.stored) > c.ttl {
-		delete(c.entries, url)
+		c.remove(url)
 		return page{}, false
 	}
 	e.accessed = time.Now()
 	return e.page, true
 }
 
-// put stores p, evicting the least-recently-accessed entry if over capacity.
+// put stores p, evicting the least-recently-accessed entries until both the
+// entry-count and byte budgets are satisfied.
 func (c *cache) put(p page) {
 	if c.max <= 0 {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if old, ok := c.entries[p.URL]; ok {
+		c.bytes -= old.size
+	}
 	now := time.Now()
-	c.entries[p.URL] = &entry{page: p, stored: now, accessed: now}
-	for len(c.entries) > c.max {
+	size := pageSize(p)
+	c.entries[p.URL] = &entry{page: p, size: size, stored: now, accessed: now}
+	c.bytes += size
+	c.evict(p.URL)
+}
+
+// remove deletes key and decrements the byte total. Caller holds the lock.
+func (c *cache) remove(key string) {
+	if e, ok := c.entries[key]; ok {
+		c.bytes -= e.size
+		delete(c.entries, key)
+	}
+}
+
+// evict drops least-recently-accessed entries until the cache is within both
+// bounds. keep is never evicted (the entry just inserted), so a single page
+// larger than the whole byte budget is still cached as the sole entry rather
+// than thrashing. Caller holds the lock.
+func (c *cache) evict(keep string) {
+	for len(c.entries) > c.max || (c.maxBytes > 0 && c.bytes > c.maxBytes) {
 		var oldestKey string
 		var oldest time.Time
 		for k, e := range c.entries {
+			if k == keep {
+				continue
+			}
 			if oldestKey == "" || e.accessed.Before(oldest) {
 				oldestKey, oldest = k, e.accessed
 			}
 		}
-		delete(c.entries, oldestKey)
+		if oldestKey == "" { // only keep remains
+			return
+		}
+		c.remove(oldestKey)
 	}
 }

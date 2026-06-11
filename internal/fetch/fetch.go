@@ -51,7 +51,7 @@ func New(cfg config.Config, allow AllowList) *Client {
 		imageMaxBytes: cfg.FetchImageMaxBytes,
 		allow:         allow,
 		inlineImages:  cfg.FetchInlineImages,
-		cache:         newCache(time.Duration(cfg.FetchCacheTTLSec)*time.Second, cfg.FetchCacheMaxEntries),
+		cache:         newCache(time.Duration(cfg.FetchCacheTTLSec)*time.Second, cfg.FetchCacheMaxEntries, cfg.FetchCacheMaxBytes),
 	}
 	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
 
@@ -254,13 +254,19 @@ func (c *Client) load(ctx context.Context, u *url.URL) (page, error) {
 	return p, nil
 }
 
-// gzipBytes returns b gzip-compressed. A nil/empty input yields nil.
+// gzipBytes returns b gzip-compressed. A nil/empty input yields nil. It runs on
+// every fetch (to keep warm-cache entries small) but the raw body is consumed
+// only by the comparatively rare web_fetch_raw, so it compresses at BestSpeed —
+// most of the size win on HTML for a fraction of the CPU of the default level.
 func gzipBytes(b []byte) []byte {
 	if len(b) == 0 {
 		return nil
 	}
 	var buf bytes.Buffer
-	w := gzip.NewWriter(&buf)
+	w, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	if err != nil {
+		return nil
+	}
 	if _, err := w.Write(b); err != nil {
 		w.Close()
 		return nil
