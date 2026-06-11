@@ -321,3 +321,31 @@ func TestFetchRejectsNonHTTPScheme(t *testing.T) {
 		t.Fatalf("expected scheme rejection, got: %v", err)
 	}
 }
+
+func TestCacheKeyStripsOnlyKnownTrackingParams(t *testing.T) {
+	got := cacheKey("https://example.com/page?b=2&utm_source=x&a=1&fbclid=y")
+	want := "https://example.com/page?a=1&b=2"
+	if got != want {
+		t.Fatalf("cacheKey stripped known trackers = %q, want %q", got, want)
+	}
+
+	semantic := "https://example.com/page?ref=docs&r=2&t=chapter&cache=no&cb=variant&rand=seed&_=underscore"
+	if got := cacheKey(semantic); got != semantic {
+		t.Fatalf("cacheKey should preserve ambiguous params: got %q, want %q", got, semantic)
+	}
+}
+
+func TestCapMarkdownDoesNotSplitRunes(t *testing.T) {
+	prefix := strings.Repeat("a", maxRenderedRunes-1) + "☃"
+	input := prefix + "tail"
+	got := capMarkdown(input)
+	if !strings.HasPrefix(got, prefix) {
+		t.Fatal("capMarkdown did not preserve the complete rune at the boundary")
+	}
+	if strings.Contains(got, "tail") {
+		t.Fatal("capMarkdown did not truncate content beyond the rune cap")
+	}
+	if !strings.Contains(got, "Markdown output capped") {
+		t.Fatal("capMarkdown should append a truncation note")
+	}
+}

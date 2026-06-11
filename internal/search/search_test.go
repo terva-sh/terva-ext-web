@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"git.local.sothr.com/warricksothr/zot-web/internal/config"
 )
@@ -84,6 +85,23 @@ func TestNew(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), "unknown search backend") {
 			t.Errorf("error should mention unknown backend, got: %v", err)
+		}
+	})
+
+	t.Run("nil HTTP client gets timeout", func(t *testing.T) {
+		p, err := New(config.Config{
+			SearchBackend: "tavily",
+			TavilyAPIKey:  "sk-abc123",
+		}, nil)
+		if err != nil {
+			t.Fatalf("expected success, got error: %v", err)
+		}
+		tv, ok := p.(*tavily)
+		if !ok {
+			t.Fatalf("provider = %T, want *tavily", p)
+		}
+		if tv.client.Timeout != 25*time.Second {
+			t.Fatalf("default client timeout = %s, want 25s", tv.client.Timeout)
 		}
 	})
 }

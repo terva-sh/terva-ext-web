@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"git.local.sothr.com/warricksothr/zot-web/internal/config"
 )
@@ -30,7 +31,7 @@ type Provider interface {
 // user-configurable).
 func New(cfg config.Config, httpClient *http.Client) (Provider, error) {
 	if httpClient == nil {
-		httpClient = http.DefaultClient
+		httpClient = &http.Client{Timeout: 25 * time.Second}
 	}
 	switch cfg.SearchBackend {
 	case "tavily":

@@ -130,7 +130,7 @@ func main() {
 			defer cancel()
 			results, err := provider.Search(ctx, in.Query, in.Count)
 			if err != nil {
-				return proto.Errorf("search failed: %v", err)
+				return proto.Errorf("search failed: %v", logSSRF(e, err))
 			}
 			return proto.Text(search.Format(in.Query, results))
 		})

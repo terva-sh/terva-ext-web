@@ -527,17 +527,19 @@ const maxRenderedRunes = 500_000
 
 // capMarkdown truncates s at maxRenderedRunes runes and appends a note.
 func capMarkdown(s string) string {
-	r := []rune(s)
-	if len(r) <= maxRenderedRunes {
-		return s
+	count := 0
+	for i := range s {
+		if count == maxRenderedRunes {
+			return s[:i] + "\n\n…[Markdown output capped at " + fmt.Sprint(maxRenderedRunes) + " runes]"
+		}
+		count++
 	}
-	return string(r[:maxRenderedRunes]) + "\n\n…[Markdown output capped at " + fmt.Sprint(maxRenderedRunes) + " runes]"
+	return s
 }
 
 // cacheKey returns a normalized key for the page cache: the URL with common
-// tracking/utm and cache-buster query parameters stripped. These parameters
-// never affect page content, so normalizing prevents an attacker from filling
-// the LRU cache with duplicates of the same page.
+// tracking parameters stripped. Keep ambiguous short/generic parameters intact
+// because they can affect page content on some sites.
 func cacheKey(rawURL string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -546,9 +548,9 @@ func cacheKey(rawURL string) string {
 	q := u.Query()
 	dropped := false
 	for _, p := range []string{
-		"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-		"fbclid", "gclid", "mc_cid", "mc_eid",
-		"_", "cb", "cache", "t", "rand", "ref", "r",
+		"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
+		"fbclid", "gclid", "dclid", "gbraid", "wbraid", "msclkid",
+		"mc_cid", "mc_eid", "igshid",
 	} {
 		if q.Has(p) {
 			q.Del(p)

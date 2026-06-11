@@ -86,16 +86,16 @@ func TestLoadFromConfigJSON(t *testing.T) {
 
 func TestEnvOverrides(t *testing.T) {
 	env := map[string]string{
-		"ZOT_WEB_SEARCH_BACKEND":       "SEARXNG",
-		"TAVILY_API_KEY":               "tvly-env",
-		"ZOT_WEB_SEARXNG_URL":          "http://searxng.env:8888",
-		"ZOT_WEB_FETCH_MAX_BYTES":      "4194304",
-		"ZOT_WEB_FETCH_IMAGE_MAX_BYTES":"10485760",
-		"ZOT_WEB_FETCH_TIMEOUT_SEC":    "45",
-		"ZOT_WEB_FETCH_INLINE_IMAGES":  "true",
-		"ZOT_WEB_FETCH_CACHE_TTL_SEC":  "1200",
+		"ZOT_WEB_SEARCH_BACKEND":          "SEARXNG",
+		"TAVILY_API_KEY":                  "tvly-env",
+		"ZOT_WEB_SEARXNG_URL":             "http://searxng.env:8888",
+		"ZOT_WEB_FETCH_MAX_BYTES":         "4194304",
+		"ZOT_WEB_FETCH_IMAGE_MAX_BYTES":   "10485760",
+		"ZOT_WEB_FETCH_TIMEOUT_SEC":       "45",
+		"ZOT_WEB_FETCH_INLINE_IMAGES":     "true",
+		"ZOT_WEB_FETCH_CACHE_TTL_SEC":     "1200",
 		"ZOT_WEB_FETCH_CACHE_MAX_ENTRIES": "64",
-		"ZOT_WEB_ALLOW_LOCAL_HOSTS":    "env-host,192.168.1.0/24, , 10.0.0.1",
+		"ZOT_WEB_ALLOW_LOCAL_HOSTS":       "env-host,192.168.1.0/24, , 10.0.0.1",
 	}
 	for k, v := range env {
 		os.Setenv(k, v)
