@@ -75,12 +75,25 @@ configure-searxng url=SEARXNG_URL:
     line="$(zot ext list | grep -E "/${name}\$" || true)"
     [[ -n "$line" ]] || { echo "extension not installed; run \`just install\` first" >&2; exit 1; }
     dir="/${line#*/}"
-    cat > "$dir/config.json" <<JSON
+
+    host="${url#*://}"; host="${host%%/*}"; host="${host%@*}"
+    if [[ "$host" == \[*\] ]]; then host="${host#[}"; host="${host%]}"; else host="${host%%:*}"; fi
+    if [[ "$host" == "localhost" || "$host" == "127."* || "$host" == "::1" ]]; then
+      cat > "$dir/config.json" <<JSON
+    {
+      "search_backend": "searxng",
+      "searxng_url": "$url",
+      "allow_local_hosts": ["localhost", "127.0.0.1", "::1"]
+    }
+    JSON
+    else
+      cat > "$dir/config.json" <<JSON
     {
       "search_backend": "searxng",
       "searxng_url": "$url"
     }
     JSON
+    fi
     echo "configured searxng -> $url"
     echo "wrote $dir/config.json"
 
