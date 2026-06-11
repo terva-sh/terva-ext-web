@@ -9,7 +9,7 @@ web access through six LLM-callable tools:
   publication date; `include_domains`/`exclude_domains` filter by site
   (Tavily natively; SearXNG via a `site:` hint plus post-filtering);
   `depth: "advanced"` requests Tavily's deeper search tier.
-- **`web_fetch(url, max_chars?, offset?)`** — a page's main content as Markdown,
+- **`web_fetch(url, max_chars?, offset?, user_agent?)`** — a page's main content as Markdown,
   led by a metadata block. Image URLs are replaced with compact `[image:N]`
   placeholders to save tokens; `offset` pages through long documents. The
   rendered page is cached, so paging with `offset` (or re-fetching) within the
@@ -23,10 +23,10 @@ web access through six LLM-callable tools:
 - **`web_links(url)`** — every hyperlink on a page (absolute URL + anchor text),
   de-duplicated. Lets the model enumerate a page's links without scraping the
   fetched text. Cache-backed like `web_images`.
-- **`web_fetch_image(url, max_dimension?, save_path?, overwrite?, inject?)`** —
+- **`web_fetch_image(url, max_dimension?, save_path?, overwrite?, inject?, user_agent?)`** —
   fetch an image and return it for native multimodal viewing and/or save it into
   the workspace. `max_dimension` downscales oversized images.
-- **`web_fetch_raw(url, save_path, overwrite?)`** — save a page's *unrendered*
+- **`web_fetch_raw(url, save_path, overwrite?, user_agent?)`** — save a page's *unrendered*
   source (HTML/JSON/text, exactly as served) to a workspace file for the model
   to grep/parse itself — an escape hatch when the structured tools miss
   something. Reuses the same SSRF guard and page cache as `web_fetch`.
@@ -166,6 +166,14 @@ be overridden at three levels (most specific wins):
 
 The value `browser` (any case) expands to a current desktop-Chrome UA string;
 anything else is sent literally.
+
+**robots.txt policy.** Every fetch this extension makes is a single,
+user-/model-initiated page retrieval — the moral equivalent of a person
+opening the URL — so `robots.txt` is deliberately not consulted, and the
+default UA identifies the client honestly instead. If a bulk/multi-page
+crawl path is ever added, it must check `robots.txt` before fetching.
+(This resolves the open question in the design doc: lenient for single
+on-demand fetches, compliant for anything crawl-shaped.)
 
 ### `web_fetch` output
 
@@ -338,9 +346,17 @@ targets you list are exempted.
       grepping (raw body cached gzip-compressed).
 - [x] Recover data tables that readability strips, rendered leniently under a
       `## Tables` section (row-capped). Tables land at the end, not inline.
+- [x] Legacy-charset transcoding; PDF text-layer extraction; RSS/Atom feeds as
+      structured entry lists; per-class HTTP error guidance with one transient
+      retry; truncation caps surfaced in tool output.
+- [x] Search filters (freshness, include/exclude domains, depth) + published
+      dates; configurable User-Agent with `browser` alias and per-call
+      override; `/web-cache` command and TUI status notes.
 - [ ] Infobox / vertical key-value tables → cleaner key/value lists (irregular
       tables still degrade to spaced blocks today).
 - [ ] More search backends (Brave, Serper, Exa) behind the same interface.
 - [ ] Optional JS rendering fallback (e.g. Jina Reader) — deferred for now.
 - [ ] Optional prebuilt per-platform binaries (goreleaser) so the `run.sh`
       launcher can skip the on-host build and drop the Go-toolchain requirement.
+      Worth prioritizing: the vendored-build launcher is the main install
+      friction (Go toolchain on PATH, first-launch build stall).
