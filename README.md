@@ -202,7 +202,12 @@ UTF-8 before rendering, using the `Content-Type` charset, the page's
 `<meta charset>`, or content sniffing — in that order. `web_fetch_raw` still
 returns the bytes exactly as served.
 
-Binary responses (images, PDFs, octet-streams) are not dumped as raw bytes —
+PDFs (by content type or `%PDF-` magic bytes) get their text layer extracted
+and rendered with per-page markers through the normal paging pipeline. There
+is no OCR: encrypted, malformed, or scanned image-only PDFs fall back to a
+summary that suggests `web_fetch_raw` to save the file instead.
+
+Other binary responses (images, octet-streams) are not dumped as raw bytes —
 `web_fetch` returns a one-line summary like
 `[image/png content, 40075 bytes — not rendered as text]` instead. Textual
 types (`text/*`, JSON, XML, SVG) pass through normally.

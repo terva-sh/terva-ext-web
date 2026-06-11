@@ -544,6 +544,12 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		(ct == "" && strings.Contains(strings.ToLower(string(body)), "<html"))
 	if !isHTML {
 		if !isTextual(contentType, body) {
+			if isPDF(contentType, body) {
+				if fp, ok := renderPDF(body); ok {
+					return fp
+				}
+				return page{Markdown: fmt.Sprintf("[application/pdf content, %d bytes — no extractable text layer (encrypted, malformed, or scanned images); use web_fetch_raw to save the file]", len(body))}
+			}
 			return page{Markdown: fmt.Sprintf("[%s content, %d bytes — not rendered as text]", displayType(contentType), len(body))}
 		}
 		// RSS/Atom feeds get a structured per-entry render instead of being
