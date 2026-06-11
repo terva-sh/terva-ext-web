@@ -546,6 +546,11 @@ func (c *Client) render(u *url.URL, contentType string, body []byte) page {
 		if !isTextual(contentType, body) {
 			return page{Markdown: fmt.Sprintf("[%s content, %d bytes — not rendered as text]", displayType(contentType), len(body))}
 		}
+		// RSS/Atom feeds get a structured per-entry render instead of being
+		// dumped as raw XML text.
+		if fp, ok := renderFeed(contentType, body); ok {
+			return fp
+		}
 		return cappedPage(page{}, strings.TrimSpace(string(decodeToUTF8(body, contentType))))
 	}
 	// Decode legacy charsets (windows-1252, Shift_JIS, GBK, …) to UTF-8 before

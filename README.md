@@ -193,6 +193,10 @@ Images: 17 (shown as [image:N]; resolve with web_images)
 - Relative links and image sources are resolved against the **final** URL after
   redirects, so an `http→https` redirect doesn't leave stale links in the body.
 
+RSS and Atom feeds (detected by content type or XML root element) render as a
+per-entry list — title, date, link, summary — instead of raw XML, capped at
+100 entries.
+
 Pages in legacy encodings (windows-1252, Shift_JIS, GBK, …) are transcoded to
 UTF-8 before rendering, using the `Content-Type` charset, the page's
 `<meta charset>`, or content sniffing — in that order. `web_fetch_raw` still
