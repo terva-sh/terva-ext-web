@@ -20,7 +20,7 @@ needs_build() {
 	[ -x "$bin" ] || return 0
 	# Rebuild if any Go source or the module files are newer than the binary,
 	# so a `git pull` that changes sources doesn't run a stale build.
-	if find . -name '*.go' -newer "$bin" 2>/dev/null | head -n1 | grep -q .; then
+	if [ -n "$(find . -name '*.go' -newer "$bin" -print -quit 2>/dev/null)" ]; then
 		return 0
 	fi
 	if [ go.mod -nt "$bin" ] || [ go.sum -nt "$bin" ]; then
