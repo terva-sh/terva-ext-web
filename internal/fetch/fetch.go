@@ -28,8 +28,8 @@ import (
 	xhtml "golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
 
-	"git.local.sothr.com/warricksothr/zot-web/internal/config"
-	"git.local.sothr.com/warricksothr/zot-web/internal/version"
+	"github.com/terva-sh/zot-web/internal/config"
+	"github.com/terva-sh/zot-web/internal/version"
 )
 
 // defaultUserAgent identifies the extension honestly (the robots/etiquette

@@ -23,11 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"git.local.sothr.com/warricksothr/zot-web/internal/config"
-	"git.local.sothr.com/warricksothr/zot-web/internal/fetch"
-	"git.local.sothr.com/warricksothr/zot-web/internal/proto"
-	"git.local.sothr.com/warricksothr/zot-web/internal/search"
-	"git.local.sothr.com/warricksothr/zot-web/internal/version"
+	"github.com/terva-sh/zot-web/internal/config"
+	"github.com/terva-sh/zot-web/internal/fetch"
+	"github.com/terva-sh/zot-web/internal/proto"
+	"github.com/terva-sh/zot-web/internal/search"
+	"github.com/terva-sh/zot-web/internal/version"
 )
 
 const searchSchema = `{

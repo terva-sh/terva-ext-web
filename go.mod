@@ -1,4 +1,4 @@
-module git.local.sothr.com/warricksothr/zot-web
+module github.com/terva-sh/zot-web
 
 go 1.25.0
 

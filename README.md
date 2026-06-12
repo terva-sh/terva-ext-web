@@ -71,7 +71,7 @@ See `just --list` for the rest (`try`, `lint`, `test`, …).
 
 ```bash
 # From a git URL — zot shallow-clones the repo (it does NOT build Go sources):
-zot ext install https://git.local.sothr.com/warricksothr/zot-web.git
+zot ext install https://github.com/terva-sh/zot-web.git
 # From a local checkout:
 zot ext install /path/to/zot-web
 # Or, for one session straight from the working copy:

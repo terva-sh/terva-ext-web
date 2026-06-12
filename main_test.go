@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.local.sothr.com/warricksothr/zot-web/internal/version"
+	"github.com/terva-sh/zot-web/internal/version"
 )
 
 func TestSaveToWorkspaceWritesUnderCWD(t *testing.T) {

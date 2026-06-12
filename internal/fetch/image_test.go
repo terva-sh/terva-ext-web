@@ -14,7 +14,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"git.local.sothr.com/warricksothr/zot-web/internal/config"
+	"github.com/terva-sh/zot-web/internal/config"
 )
 
 // patternImage builds a w×h image whose pixels vary per coordinate, so it does

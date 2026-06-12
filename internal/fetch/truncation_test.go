@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.local.sothr.com/warricksothr/zot-web/internal/config"
+	"github.com/terva-sh/zot-web/internal/config"
 )
 
 func TestFormatLinksCapNote(t *testing.T) {
