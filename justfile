@@ -1,6 +1,11 @@
 # zot-web dev tasks. Run `just` to list.
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
+# Maintainer-only release-cut targets (release-cut/-verify/-publish/…).
+# Optional import: the public tree ships without release.just and this
+# justfile still works there.
+import? 'release.just'
+
 # Default SearXNG instance for `just configure-searxng` (override by passing a URL).
 SEARXNG_URL := "http://127.0.0.1:11984"
 
