@@ -34,6 +34,7 @@ EXCLUDES=(
   ".forgejo"
   ".goreleaser.yaml"
   ".claude"
+  "docs/plans"
   "scripts/release.sh"
   "release.just"
 )

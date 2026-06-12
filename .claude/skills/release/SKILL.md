@@ -5,10 +5,13 @@ description: Cut and publish zot-web's curated public history to github.com/terv
 
 # Releasing zot-web
 
-Modeled on terva's release flow (terva's docs/plans/release-process.md
-is the engineering record) minus versions, tags, and binaries: the
-public `release` branch's curated feat/fix history IS the product.
-Tooling: `scripts/release.sh` behind `just release-*`.
+You are driving the flow recorded in `docs/plans/release-process.md`
+(THIS repo's engineering record — read it if anything here
+surprises you; it also records where zot-web deliberately differs
+from terva's flow, which it is modeled on). No versions, tags, or
+binaries ship publicly: the `release` branch's curated feat/fix
+history IS the product. Tooling: `scripts/release.sh` behind
+`just release-*`.
 
 ## Flow
 
