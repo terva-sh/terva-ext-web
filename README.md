@@ -478,3 +478,7 @@ zot the `permissions` key is an unknown manifest field and is simply ignored.
       gate on every push, and a goreleaser snapshot on `main`.
 - [ ] Teach `run.sh` / the install flow to consume those prebuilt archives, so
       a plain `zot ext install <git-url>` also skips the on-host build.
+
+## License
+
+[MIT](LICENSE) © 2026 Drew Short
