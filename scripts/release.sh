@@ -122,6 +122,39 @@ next_cut_marker() {
   printf 'cut/%d' "$(( ${n:-0} + 1 ))"
 }
 
+# The cut/N marker (if any) pointing exactly at the given commit. publish
+# creates the marker before the gate push, so a partial publish leaves it
+# behind; reusing it on a re-run keeps the number stable instead of minting a
+# spurious cut/N+1.
+marker_on() {
+  local sha=$1 t
+  for t in $(git -C "$ROOT" tag -l 'cut/[0-9]*'); do
+    if [ "$(git -C "$ROOT" rev-parse "$t^{commit}" 2>/dev/null)" = "$sha" ]; then
+      printf '%s' "$t"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Where the gate push will land: an existing 'mirror' remote wins, else the
+# probed default (the same path ensure_mirror_remote would add).
+mirror_dir() {
+  git -C "$ROOT" remote get-url mirror 2>/dev/null || printf '%s' "$MIRROR_URL_DEFAULT"
+}
+
+# Fail before any side effect if the staging gate has a dirty working tree:
+# receive.denyCurrentBranch=updateInstead rejects the push otherwise, which
+# would strand a half-done publish (marker + origin pushed, gate not). No-op
+# when the mirror is a real remote — the gateless case has no working tree.
+require_clean_gate() {
+  local gate
+  gate=$(mirror_dir)
+  git -C "$gate" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  [ -z "$(git -C "$gate" status --porcelain)" ] \
+    || die "staging gate at $gate has uncommitted changes — clean it (git -C \"$gate\" status) and re-run publish"
+}
+
 ensure_mirror_remote() {
   if ! git -C "$ROOT" remote get-url mirror >/dev/null 2>&1; then
     git -C "$ROOT" remote add mirror "$MIRROR_URL_DEFAULT"
@@ -253,9 +286,15 @@ cmd_publish() {
   [ -z "$(git -C "$WT" status --porcelain)" ] || die "worktree not clean — re-verify"
   [ "$(worktree_tree)" = "$verified_tree" ] || die "tree changed since verify — run 'just release-verify' again"
 
+  # Fail fast before any side effect if the gate can't receive the push. With
+  # the marker reused (not re-minted) below, a publish that dies past this point
+  # is safe to re-run once the cause is fixed.
+  require_clean_gate
+
   local marker
-  marker=$(next_cut_marker)
-  git -C "$ROOT" tag "$marker" "$cut_sha"
+  marker=$(marker_on "$cut_sha" || next_cut_marker)
+  git -C "$ROOT" rev-parse -q --verify "refs/tags/$marker" >/dev/null 2>&1 \
+    || git -C "$ROOT" tag "$marker" "$cut_sha"
 
   msg "pushing the internal channel (origin: release backup + $marker range marker)"
   git -C "$ROOT" push origin "refs/heads/release:refs/heads/release" "refs/tags/$marker"

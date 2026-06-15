@@ -32,6 +32,9 @@ history IS the product. Tooling: `scripts/release.sh` behind
    range marker. If publish warns the mirror is the real GitHub
    remote, the gate is missing on this machine — set it up like
    terva's (clone + `receive.denyCurrentBranch updateInstead`).
+   Publish is re-runnable: a dirty gate fails fast before any push,
+   and the `cut/N` marker is reused (not re-minted), so clean the gate
+   and run it again to resume a partial publish.
 6. **Test from the gate** (`go test ./...`, run the extension), then
    go live from inside it — publish prints the exact command. Ask the
    maintainer before the go-live push unless they already said to.

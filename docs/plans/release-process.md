@@ -85,6 +85,13 @@ external exists before the gate push). The gate can always be
 hard-reset to `origin/release`; the source of truth for an unpushed
 cut is re-cuttable from main at any time.
 
+`release-publish` is safe to re-run. It preflights the gate working
+tree (a dirty gate fails *before* any push, since
+`denyCurrentBranch=updateInstead` would reject it and strand a
+half-done publish) and reuses the existing `cut/N` marker rather than
+minting a fresh one — so if a push dies partway, fix the cause and run
+it again to resume.
+
 ## First-cut record
 
 2026-06-12: orphan root, four commits — the extension skeleton
