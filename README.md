@@ -97,12 +97,14 @@ after the source folder's basename (here, `zot-web`), not the manifest `name`
 
 ## terva compatibility
 
-[terva](https://github.com/terva-sh) is the renamed successor to zot (rename
-boundary: **v0.104.0**). terva keeps the extension wire protocol
-backward-compatible, so this extension loads and runs under it unchanged — the
-same `--ext` and `ext install` flows work with `terva` in place of `zot`, and
-config resolves from the host-provided `data_dir` (so `$ZOT_HOME` vs
-`$TERVA_HOME` is invisible here):
+[terva](https://github.com/terva-sh) is a **hard fork of zot**: it started from
+zot's codebase and has grown into its own project — hardening and expanding a
+minimal agentic harness — evolving *alongside* zot, not replacing or renaming
+it. As part of that lineage terva deliberately keeps zot's extension wire
+protocol, so this extension loads and runs on terva unchanged — the same
+`--ext` and `ext install` flows work with `terva` in place of `zot`, and config
+resolves from the host-provided `data_dir` (so `$ZOT_HOME` vs `$TERVA_HOME` is
+invisible here):
 
 ```bash
 terva --ext /path/to/zot-web      # one session from the working copy
@@ -114,7 +116,7 @@ The protocol layer is **host-aware**: `hello_ack` carries a `terva_version`
 field only on a terva host, which `proto.Host.IsTerva()` exposes as the
 zot-vs-terva discriminator (presence, not a version comparison). On terva the
 tools register with `authority: "network-read"` so the host gates them
-correctly (prompted in workspace/auto-edit, refused in plan); pre-terva zot
+correctly (prompted in workspace/auto-edit, refused in plan); upstream zot
 hosts ignore the unknown field and keep treating the tools as prompt-gated.
 The extension's own SSRF guard (below) is unchanged — it stays defense-in-depth
 alongside terva's host egress guard, since the extension fetches in its own

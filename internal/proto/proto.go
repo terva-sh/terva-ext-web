@@ -87,7 +87,7 @@ type ToolOption func(*toolDef)
 // WithAuthority declares a tool's authority class, mirroring terva's
 // ext.WithAuthority. terva uses it to gate the tool (only "local-read" is
 // auto-allowable; everything else prompts or is refused per mode). The field is
-// sent on register_tool; pre-terva zot hosts ignore the unknown field, so it is
+// sent on register_tool; upstream zot hosts ignore the unknown field, so it is
 // safe to set unconditionally.
 func WithAuthority(class string) ToolOption {
 	return func(t *toolDef) { t.authority = class }
@@ -134,10 +134,12 @@ type Host struct {
 	CWD             string
 }
 
-// IsTerva reports whether the host is a terva-era host (>= v0.104.0). terva's
-// hello_ack adds terva_version (omitempty, sent only by terva) while always
-// keeping zot_version for compat, so its presence — not a version comparison —
-// is the robust zot-vs-terva discriminator.
+// IsTerva reports whether the host is terva rather than upstream zot. terva is
+// a hard fork of zot that keeps zot's extension wire protocol; its hello_ack
+// adds a terva_version field (sent only by terva) while still sending
+// zot_version so plain zot extensions keep working. That added field's
+// presence — not a version comparison — is the robust zot-vs-terva
+// discriminator.
 func (h Host) IsTerva() bool { return h.TervaVersion != "" }
 
 // Session carries the active-session identity a protocol-2 host sends on a
@@ -296,7 +298,7 @@ func (e *Extension) Run() error {
 		}
 		// Sent unconditionally: registration happens before hello_ack arrives,
 		// so the host's identity isn't known yet. terva consumes authority;
-		// pre-terva zot hosts ignore the unknown field harmlessly.
+		// upstream zot hosts ignore the unknown field harmlessly.
 		if t.authority != "" {
 			frame["authority"] = t.authority
 		}
