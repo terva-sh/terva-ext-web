@@ -54,6 +54,13 @@ jobs:
       - name: go test (race)
         run: go test -race ./...
 
+      - name: extension conformance
+        # Build ./zot-web and drive it over stdio as both an upstream-zot host
+        # and a terva host (handshake, tool round-trip, session_start, clean
+        # shutdown, pure-JSON stdout). Tagged `conformance` so it stays out of
+        # the default unit run above; this is its dedicated gate.
+        run: go test -tags conformance -run Conformance -v .
+
       - name: vendor in sync
         # Rebuild vendor/ from go.mod and fail on any diff, so a dependency
         # change that forgot `just vendor` can't land and break the offline
