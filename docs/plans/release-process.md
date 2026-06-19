@@ -92,10 +92,26 @@ half-done publish) and reuses the existing `cut/N` marker rather than
 minting a fresh one — so if a push dies partway, fix the cause and run
 it again to resume.
 
-## First-cut record
+## Cut record
 
-2026-06-12: orphan root, four commits — the extension skeleton
-(proto/config/manifest/run.sh), hardened fetch, SearXNG search,
-vendored deps. Verified (scrub + race tests), gate-tested (build,
-tests, `--version` → zot-web 0.2.0), staged. Go-live: _pending — fill
-in date + confirm the default branch flipped to `release`._
+Each entry is a curated cut and its go-live. The `cut/N` markers are
+internal tags on the main commit each was cut from; there are no public
+versions. The public mirror's only branch is `release`, so it is the
+default branch by construction.
+
+- **cut/1** — 2026-06-12, orphan root, four commits: the extension
+  skeleton (proto/config/manifest/run.sh), hardened fetch, SearXNG
+  search, vendored deps. Live.
+- **cut/2** — 2026-06-13: terva host integration (read-only /
+  ask-before-write hints, bundled research skill), loopback-by-default
+  SSRF allowlist, save-path preflight + fetch-hint polish, and config
+  reading from `data_dir` with an install-dir fallback. Live.
+- **cut/3** — 2026-06-14: the MIT license. Live.
+- **cut/4** — 2026-06-19: terva extension protocol v2 (host detection
+  via `terva_version`, network-read authority on every tool, the
+  `session_start` subscription with live-cwd saves, no `min_protocol`)
+  and the zot/terva conformance harness. Live.
+
+Each cut was verified (byte-identity to the candidate, scrub, race
+tests) and gate-tested (build, `go test ./...`, `--version` →
+zot-web 0.2.0) before go-live.
