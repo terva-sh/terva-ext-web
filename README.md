@@ -95,6 +95,54 @@ pre-seeding it so the first launch skips the build. The install dir is named
 after the source folder's basename (here, `zot-web`), not the manifest `name`
 (`web`); `zot --ext` runs from the working copy directly.
 
+## terva compatibility
+
+[terva](https://github.com/terva-sh) is the renamed successor to zot (rename
+boundary: **v0.104.0**). terva keeps the extension wire protocol
+backward-compatible, so this extension loads and runs under it unchanged — the
+same `--ext` and `ext install` flows work with `terva` in place of `zot`, and
+config resolves from the host-provided `data_dir` (so `$ZOT_HOME` vs
+`$TERVA_HOME` is invisible here):
+
+```bash
+terva --ext /path/to/zot-web      # one session from the working copy
+terva ext install /path/to/zot-web
+terva ext logs web                # the extension's stderr log
+```
+
+The protocol layer is **host-aware**: `hello_ack` carries a `terva_version`
+field only on a terva host, which `proto.Host.IsTerva()` exposes as the
+zot-vs-terva discriminator (presence, not a version comparison). On terva the
+tools register with `authority: "network-read"` so the host gates them
+correctly (prompted in workspace/auto-edit, refused in plan); pre-terva zot
+hosts ignore the unknown field and keep treating the tools as prompt-gated.
+The extension's own SSRF guard (below) is unchanged — it stays defense-in-depth
+alongside terva's host egress guard, since the extension fetches in its own
+process.
+
+It speaks **protocol version 2** (`internal/proto` matches terva's
+`extproto.ProtocolVersion`): it subscribes to the `session_start` event and
+tracks the live session identity terva sends — `session_id`, `project_id`, and
+a `cwd` that **follows `/cd`** and session switches. The file-saving tools
+(`web_fetch_raw`, `web_fetch_image`) resolve workspace paths against that live
+cwd (`e.CWD()`) instead of the launch cwd frozen at the handshake, so saves
+land in the directory you're actually in. Protocol 2 is adopted
+*opportunistically*: the extension declares **no `min_protocol`**, so a
+pre-v2 (protocol-1) zot host still loads it and simply never fires
+`session_start` — the cwd then falls back to the handshake value. Nothing here
+requires terva.
+
+This follows terva's **optimistic protocol-adoption** convention — speak the
+newest revision you implement, presence-gate its features, degrade instead of
+demanding, and reserve `min_protocol` for genuine correctness floors. The
+principle is documented for all extension authors in terva's
+`write-terva-extension` skill (*Protocol version negotiation*); zot-web's
+`internal/proto` is the worked reference.
+
+**Naming:** the wire/installed identifiers stay `zot-*` (registers as `web`,
+binary/repo `zot-web`) — they're just strings on the wire, and stability beats
+churn. No `terva-web` rename.
+
 ### Dependencies are vendored
 
 `vendor/` is committed so the first-launch build is fast and offline (see

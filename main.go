@@ -168,7 +168,8 @@ func main() {
 				return proto.Errorf("search failed: %v", logSSRF(e, err))
 			}
 			return proto.Text(search.Format(in.Query, results))
-		})
+		},
+		proto.NetworkRead())
 
 	e.Tool("web_fetch",
 		"Fetch a web page (http/https) and return its main text content. Results are cached briefly: paging with offset (or repeating the call) within that window reads the same snapshot, so it won't drift mid-read; after the cache expires a re-fetch may differ, with new content typically appended at the end. Private/internal addresses are blocked unless explicitly allowlisted.",
@@ -198,7 +199,8 @@ func main() {
 				return proto.Errorf("fetch failed: %v", logSSRF(e, err))
 			}
 			return proto.Text(text)
-		})
+		},
+		proto.NetworkRead())
 
 	e.Tool("web_images",
 		"List the image URLs on a page that web_fetch represented as [image:N] placeholders. Cheap when the page was recently fetched (it is served from cache).",
@@ -221,7 +223,8 @@ func main() {
 				return proto.Errorf("web_images failed: %v", logSSRF(e, err))
 			}
 			return proto.Text(fetch.FormatImages(in.URL, imgs))
-		})
+		},
+		proto.NetworkRead())
 
 	e.Tool("web_links",
 		"List every hyperlink on a page (absolute URL plus anchor text). Use to enumerate a page's outbound links without scraping the fetched text yourself. Cheap when the page was recently fetched (served from cache).",
@@ -244,7 +247,8 @@ func main() {
 				return proto.Errorf("web_links failed: %v", logSSRF(e, err))
 			}
 			return proto.Text(fetch.FormatLinks(in.URL, links))
-		})
+		},
+		proto.NetworkRead())
 
 	e.Tool("web_fetch_raw",
 		"Fetch a page and save its UNRENDERED source (HTML/JSON/text, exactly as the server sent it) to a workspace file for you to grep or parse yourself. A fallback for when web_fetch/web_images/web_links don't surface what you need. Served from the same cache as web_fetch. Private/internal addresses are blocked unless explicitly allowlisted.",
@@ -272,7 +276,7 @@ func main() {
 			if err != nil {
 				return proto.Errorf("web_fetch_raw failed: %v", logSSRF(e, err))
 			}
-			rel, werr := saveToWorkspace(e.Host().CWD, in.SavePath, raw.Body, in.Overwrite)
+			rel, werr := saveToWorkspace(e.CWD(), in.SavePath, raw.Body, in.Overwrite)
 			if werr != nil {
 				return proto.Errorf("fetched the page but could not save it: %v", werr)
 			}
@@ -289,7 +293,8 @@ func main() {
 				meta.WriteString("\n…source was capped at the fetch byte limit before saving")
 			}
 			return proto.Text(meta.String())
-		})
+		},
+		proto.NetworkRead())
 
 	e.Tool("web_fetch_image",
 		"Fetch an image (PNG/JPEG/GIF/WebP) by URL and return it for you to view, and/or save it into the workspace. Use max_dimension to downscale a large image. Private/internal addresses are blocked unless explicitly allowlisted.",
@@ -334,7 +339,7 @@ func main() {
 			}
 
 			if strings.TrimSpace(in.SavePath) != "" {
-				rel, werr := saveToWorkspace(e.Host().CWD, in.SavePath, img.Data, in.Overwrite)
+				rel, werr := saveToWorkspace(e.CWD(), in.SavePath, img.Data, in.Overwrite)
 				if werr != nil {
 					return proto.Errorf("fetched the image but could not save it: %v", werr)
 				}
@@ -346,7 +351,8 @@ func main() {
 				return proto.Image(img.MimeType, img.Data, meta.String())
 			}
 			return proto.Text(meta.String())
-		})
+		},
+		proto.NetworkRead())
 
 	e.Command("web-cache",
 		"inspect the web page cache (`/web-cache`) or empty it (`/web-cache clear`)",

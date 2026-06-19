@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -94,6 +95,137 @@ func TestSendImageResultWithCaption(t *testing.T) {
 	}
 	if f.Content[1].Type != "text" || f.Content[1].Text != "a logo" {
 		t.Errorf("second block = %+v, want text caption", f.Content[1])
+	}
+}
+
+// runHandshake feeds the given host frames (a hello_ack and any follow-on
+// frames, each a JSON line), then a shutdown, through a fresh Extension that has
+// one network-read tool registered. It returns the Extension (for Host/Session/
+// CWD assertions) and the frames the extension emitted on the wire.
+func runHandshake(t *testing.T, hostFrames ...string) (*Extension, []map[string]json.RawMessage) {
+	t.Helper()
+	var out bytes.Buffer
+	in := strings.Join(append(hostFrames, `{"type":"shutdown"}`), "\n") + "\n"
+	e := &Extension{
+		name: "web",
+		in:   strings.NewReader(in),
+		out:  &out,
+	}
+	e.Tool("web_fetch", "fetch a page", json.RawMessage(`{"type":"object"}`),
+		func(json.RawMessage) Result { return Text("") }, NetworkRead())
+	if err := e.Run(); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	var frames []map[string]json.RawMessage
+	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+		var f map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(line), &f); err != nil {
+			t.Fatalf("unmarshal emitted frame %q: %v", line, err)
+		}
+		frames = append(frames, f)
+	}
+	return e, frames
+}
+
+func frameType(f map[string]json.RawMessage) string {
+	var s string
+	_ = json.Unmarshal(f["type"], &s)
+	return s
+}
+
+func TestHelloAckZotHost(t *testing.T) {
+	// An old zot host sends zot_version but no terva_version.
+	e, _ := runHandshake(t, `{"type":"hello_ack","protocol_version":1,"zot_version":"0.103.2","data_dir":"/tmp/x"}`)
+	host := e.Host()
+	if host.IsTerva() {
+		t.Errorf("IsTerva() = true for a zot-only ack; want false (terva_version=%q)", host.TervaVersion)
+	}
+	if host.ZotVersion != "0.103.2" {
+		t.Errorf("ZotVersion = %q, want 0.103.2", host.ZotVersion)
+	}
+}
+
+func TestHelloAckTervaHost(t *testing.T) {
+	// A terva host adds terva_version while keeping zot_version for compat.
+	e, _ := runHandshake(t, `{"type":"hello_ack","protocol_version":2,"zot_version":"0.103.x","terva_version":"0.104.0","data_dir":"/tmp/x"}`)
+	host := e.Host()
+	if !host.IsTerva() {
+		t.Error("IsTerva() = false for a terva ack; want true")
+	}
+	if host.TervaVersion != "0.104.0" {
+		t.Errorf("TervaVersion = %q, want 0.104.0", host.TervaVersion)
+	}
+}
+
+func TestRegisterToolCarriesAuthority(t *testing.T) {
+	_, frames := runHandshake(t, `{"type":"hello_ack","zot_version":"0.103.2"}`)
+	var found bool
+	for _, f := range frames {
+		if frameType(f) != "register_tool" {
+			continue
+		}
+		found = true
+		var auth string
+		_ = json.Unmarshal(f["authority"], &auth)
+		if auth != "network-read" {
+			t.Errorf("register_tool authority = %q, want network-read", auth)
+		}
+	}
+	if !found {
+		t.Fatal("no register_tool frame emitted")
+	}
+}
+
+func TestSubscribesToSessionStart(t *testing.T) {
+	// Adopting protocol 2 means subscribing to session_start so the host
+	// delivers the event (events go only to subscribers).
+	_, frames := runHandshake(t, `{"type":"hello_ack","zot_version":"0.103.2"}`)
+	var events []string
+	for _, f := range frames {
+		if frameType(f) != "subscribe" {
+			continue
+		}
+		_ = json.Unmarshal(f["events"], &events)
+	}
+	var subscribed bool
+	for _, ev := range events {
+		if ev == "session_start" {
+			subscribed = true
+		}
+	}
+	if !subscribed {
+		t.Errorf("no subscribe frame for session_start (got events %v)", events)
+	}
+}
+
+func TestSessionStartTracksLiveCWD(t *testing.T) {
+	// On a protocol-2 host, session_start refreshes session identity and the
+	// live cwd (which follows /cd); CWD() prefers it over the frozen launch cwd.
+	e, _ := runHandshake(t,
+		`{"type":"hello_ack","protocol_version":2,"zot_version":"0.104.0","terva_version":"0.104.0","cwd":"/launch/dir"}`,
+		`{"type":"event","event":"session_start","session_id":"s1","session_title":"my session","cwd":"/work/now","project_id":"proj-abc"}`,
+	)
+	if got := e.Host().CWD; got != "/launch/dir" {
+		t.Errorf("Host().CWD = %q, want the frozen launch cwd /launch/dir", got)
+	}
+	sess := e.Session()
+	if sess.ID != "s1" || sess.ProjectID != "proj-abc" || sess.CWD != "/work/now" {
+		t.Errorf("Session() = %+v, want id=s1 project=proj-abc cwd=/work/now", sess)
+	}
+	if got := e.CWD(); got != "/work/now" {
+		t.Errorf("CWD() = %q, want the live session cwd /work/now", got)
+	}
+}
+
+func TestCWDFallsBackToLaunchCWD(t *testing.T) {
+	// Without a session_start (pre-v2 host, or no session yet), CWD() returns
+	// the launch cwd from the handshake.
+	e, _ := runHandshake(t, `{"type":"hello_ack","zot_version":"0.103.2","cwd":"/launch/dir"}`)
+	if got := e.CWD(); got != "/launch/dir" {
+		t.Errorf("CWD() = %q, want launch cwd /launch/dir", got)
+	}
+	if sess := e.Session(); sess != (Session{}) {
+		t.Errorf("Session() = %+v, want zero value (no session_start fired)", sess)
 	}
 }
 
