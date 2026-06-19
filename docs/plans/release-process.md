@@ -40,6 +40,26 @@ lowercase `feat:`/`fix:` messages, never an internal SHA, hostname,
 or branch name. The staged diff must be partitioned, not changed —
 verify enforces byte-identity against the prepared candidate.
 
+## Versioning
+
+There are no *public* versions (no tags, release objects, or binaries —
+see above), but the extension artifact still carries one: terva/zot
+require a `version` in `extension.json` and surface it in `ext list`,
+and the same string rides the protocol hello, the default User-Agent,
+and `--version` (`internal/version.Version`, the committed default a
+source build reports). Keep them in lockstep and bump when a cut changes
+behavior:
+
+- **Before `release-cut`**, set both `extension.json` `"version"` and
+  `internal/version.Version` to the same value — minor for features,
+  patch for fixes.
+- `TestManifestVersionMatchesCode` pins the two equal, so a drift fails
+  `release-verify`'s race-test pass (and ordinary `go test`). They had
+  silently disagreed (`0.1.0` vs `0.2.0`) before this guard.
+
+(Internal goreleaser builds override `Version` from the `v*` git tag via
+ldflags; that path is internal-only and unrelated to the public cut.)
+
 ## Cut ranges without versions
 
 Each publish drops a lightweight `cut/N` tag (N increments) on the
