@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 )
 
 // parseResult decodes the single tool_result frame written to the buffer.
@@ -227,6 +228,82 @@ func TestCWDFallsBackToLaunchCWD(t *testing.T) {
 	if sess := e.Session(); sess != (Session{}) {
 		t.Errorf("Session() = %+v, want zero value (no session_start fired)", sess)
 	}
+}
+
+// Item 1: a tool_call dispatched through Run after a session_start must let the
+// handler (which runs in its own goroutine) observe the live session cwd. The
+// host guarantees session_start precedes the session's first tool_call, and Run
+// processes frames in order, so the session is set before the tool goroutine
+// reads it. Also the only direct coverage of tool_call dispatch via Run.
+func TestToolCallObservesLiveSessionCWD(t *testing.T) {
+	in := strings.Join([]string{
+		`{"type":"hello_ack","protocol_version":2,"terva_version":"0.104.0","cwd":"/launch"}`,
+		`{"type":"event","event":"session_start","session_id":"s1","cwd":"/work/now"}`,
+		`{"type":"tool_call","id":"t1","name":"probe","args":{}}`,
+	}, "\n") + "\n"
+
+	var buf bytes.Buffer
+	e := &Extension{name: "web", in: strings.NewReader(in), out: &buf}
+	seen := make(chan string, 1)
+	e.Tool("probe", "probe", json.RawMessage(`{"type":"object"}`),
+		func(json.RawMessage) Result {
+			seen <- e.CWD()
+			return Text("ok")
+		})
+
+	if err := e.Run(); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	select {
+	case got := <-seen:
+		if got != "/work/now" {
+			t.Errorf("handler observed CWD() = %q, want live session cwd /work/now", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("tool handler never ran")
+	}
+}
+
+// Item 2: a second session_start (e.g. after /cd or a session switch) refreshes
+// the live cwd.
+func TestSessionStartRefireUpdatesCWD(t *testing.T) {
+	e, _ := runHandshake(t,
+		`{"type":"hello_ack","protocol_version":2,"terva_version":"0.104.0","cwd":"/launch"}`,
+		`{"type":"event","event":"session_start","session_id":"s1","cwd":"/first"}`,
+		`{"type":"event","event":"session_start","session_id":"s1","cwd":"/second"}`,
+	)
+	if got := e.CWD(); got != "/second" {
+		t.Errorf("CWD() = %q after re-fire, want /second", got)
+	}
+}
+
+// Item 3: a session_start that carries no cwd (e.g. --no-session) must not
+// clobber the launch cwd — CWD() falls back to the handshake value.
+func TestSessionStartEmptyCWDFallsBack(t *testing.T) {
+	e, _ := runHandshake(t,
+		`{"type":"hello_ack","terva_version":"0.104.0","cwd":"/launch"}`,
+		`{"type":"event","event":"session_start","session_id":""}`,
+	)
+	if got := e.CWD(); got != "/launch" {
+		t.Errorf("CWD() = %q, want fallback to launch cwd /launch", got)
+	}
+}
+
+// Item 4: optimistic adoption means the hello must NOT declare a min_protocol,
+// or an older (protocol-1) zot host would refuse to load the extension. Guards
+// the backward-compatibility invariant against an accidental regression.
+func TestHelloDeclaresNoMinProtocol(t *testing.T) {
+	_, frames := runHandshake(t, `{"type":"hello_ack","zot_version":"0.103.2"}`)
+	for _, f := range frames {
+		if frameType(f) != "hello" {
+			continue
+		}
+		if _, ok := f["min_protocol"]; ok {
+			t.Error("hello frame carries min_protocol; want it absent (a floor would break pre-v2 hosts)")
+		}
+		return
+	}
+	t.Fatal("no hello frame emitted")
 }
 
 func TestSendImageResultNoCaption(t *testing.T) {

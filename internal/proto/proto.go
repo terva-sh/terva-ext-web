@@ -19,18 +19,21 @@ import (
 	"sync"
 )
 
-// ProtocolVersion is the extension wire revision this package speaks, matching
-// terva's extproto.ProtocolVersion:
+// ProtocolVersion is the newest wire revision whose frames this package
+// handles, tracking terva's extproto.ProtocolVersion:
 //
 //	1 — baseline: tool_result fanout, crash surfacing, min-protocol negotiation.
 //	2 — session identity: a session_start event carrying session_id/path/title
 //	    plus a live cwd/project_id that follow /cd and session switches.
 //
-// The host's protocol_version arrives in hello_ack. We speak 2 but do NOT
-// declare a min_protocol, so an older (protocol-1) zot host still loads this
-// extension — protocol 2's additions are opportunistic, not required. Only a
-// host NEWER than this is logged (we'd be ignoring features), never an older
-// one (we degrade by simply not receiving the v2 frames).
+// An extension announces no protocol version on the wire: the host's
+// protocol_version arrives in hello_ack, and the extension's only lever is an
+// optional min_protocol floor in its hello. We deliberately send NO
+// min_protocol, so an older (protocol-1) zot host still loads this extension;
+// protocol 2's additions are adopted opportunistically, not required. This
+// constant is a local yardstick only — it gates the drift note below (we log a
+// host NEWER than this, and degrade against older ones by simply not receiving
+// the v2 frames).
 const ProtocolVersion = 2
 
 // Result is a tool handler's reply. Text is sent back to the model as a text
@@ -185,6 +188,26 @@ func (e *Extension) Tool(name, description string, schema json.RawMessage, h Too
 	e.mu.Lock()
 	e.tools = append(e.tools, td)
 	e.mu.Unlock()
+}
+
+// ToolInfo is metadata for a registered tool, returned by Tools for
+// introspection and testing (e.g. asserting every network tool declares its
+// authority).
+type ToolInfo struct {
+	Name        string
+	Description string
+	Authority   string
+}
+
+// Tools returns metadata for the registered tools, in registration order.
+func (e *Extension) Tools() []ToolInfo {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	out := make([]ToolInfo, len(e.tools))
+	for i, t := range e.tools {
+		out[i] = ToolInfo{Name: t.name, Description: t.description, Authority: t.authority}
+	}
+	return out
 }
 
 // Command registers a user-invocable slash command. Call before Run.

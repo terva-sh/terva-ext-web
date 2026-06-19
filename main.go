@@ -109,7 +109,18 @@ func main() {
 	}
 
 	e := proto.New("web", version.Version)
+	register(e)
 
+	if err := e.Run(); err != nil {
+		e.Logf("fatal: %v", err)
+	}
+}
+
+// register wires all of zot-web's tools and the /web-cache command onto e.
+// Split out from main so a test can inspect the registered tool set — e.g. that
+// every network tool declares network-read authority — without running the
+// stdio loop.
+func register(e *proto.Extension) {
 	// Providers are built lazily on first tool call, by which point the
 	// hello_ack (and thus data_dir for config.json) has arrived.
 	var (
@@ -386,10 +397,6 @@ func main() {
 				return proto.CommandResult{Action: "noop", Err: fmt.Sprintf("unknown argument %q (use `/web-cache` or `/web-cache clear`)", args)}
 			}
 		})
-
-	if err := e.Run(); err != nil {
-		e.Logf("fatal: %v", err)
-	}
 }
 
 // versionString is what --version prints: version plus the toolchain and
