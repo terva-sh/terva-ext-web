@@ -131,6 +131,8 @@ default branch by construction.
   via `terva_version`, network-read authority on every tool, the
   `session_start` subscription with live-cwd saves, no `min_protocol`)
   and the zot/terva conformance harness. Live.
+- **cut/5** — 2026-06-19: version bumped to 0.3.0 (manifest = code,
+  pinned equal by a test). Live.
 
 Each cut was verified (byte-identity to the candidate, scrub, race
 tests) and gate-tested (build, `go test ./...`, `--version` →
