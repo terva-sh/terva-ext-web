@@ -281,7 +281,7 @@ func register(e *proto.Extension) {
 			if strings.TrimSpace(in.SavePath) == "" {
 				return proto.Errorf("save_path is required")
 			}
-			if err := checkSavePath(e.Host().CWD, in.SavePath, in.Overwrite); err != nil {
+			if err := checkSavePath(e.CWD(), in.SavePath, in.Overwrite); err != nil {
 				return proto.Errorf("invalid save_path (nothing was fetched): %v", err)
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
@@ -330,7 +330,7 @@ func register(e *proto.Extension) {
 				return proto.Errorf("url is required")
 			}
 			if strings.TrimSpace(in.SavePath) != "" {
-				if err := checkSavePath(e.Host().CWD, in.SavePath, in.Overwrite); err != nil {
+				if err := checkSavePath(e.CWD(), in.SavePath, in.Overwrite); err != nil {
 					return proto.Errorf("invalid save_path (nothing was fetched): %v", err)
 				}
 			}
