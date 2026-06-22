@@ -133,7 +133,13 @@ default branch by construction.
   and the zot/terva conformance harness. Live.
 - **cut/5** — 2026-06-19: version bumped to 0.3.0 (manifest = code,
   pinned equal by a test). Live.
+- **cut/6** — 2026-06-21: flatten untrusted page-derived values (page
+  `<title>`, search result title, `<img>` width/height) out of the
+  tools' own result scaffolding so a newline can't forge a metadata,
+  result, or listing line; version 0.3.1. (The decision to *not* add an
+  inline untrusted-content marker is recorded in
+  `untrusted-web-content.md` — internal, never shipped.) Live.
 
 Each cut was verified (byte-identity to the candidate, scrub, race
 tests) and gate-tested (build, `go test ./...`, `--version` →
-zot-web 0.2.0) before go-live.
+zot-web 0.3.1) before go-live.
