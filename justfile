@@ -43,10 +43,14 @@ install host=HOST: build
     #!/usr/bin/env bash
     set -euo pipefail
     host="{{host}}"
-    name="$(basename "$PWD")"
+    # terva (>= v0.109.1) installs under the manifest NAME ("web"); upstream zot
+    # (and older terva) keys the dir off the repo basename ("zot-web"). Handle
+    # both so `just install` and `just install zot` each find the right dir.
+    mname="web"
+    bname="$(basename "$PWD")"
     # Install dir is the last column of `ext list`; the path can contain
     # spaces, so take everything from the first '/'.
-    resolve_dir() { local l; l="$("$host" ext list | grep -E "/${name}\$" || true)"; [[ -n "$l" ]] && printf '/%s' "${l#*/}"; }
+    resolve_dir() { local l; l="$("$host" ext list | grep -E "/(${mname}|${bname})\$" | head -1 || true)"; [[ -n "$l" ]] && printf '/%s' "${l#*/}"; }
 
     # Stash the current config.json (if any) before remove wipes the dir.
     saved=""
@@ -56,7 +60,8 @@ install host=HOST: build
       echo "preserving existing config.json"
     fi
 
-    "$host" ext remove "$name" -y || true             # -y skips the confirm; matches the dir basename
+    "$host" ext remove "$mname" -y >/dev/null 2>&1 || true   # manifest-named dir (terva >= v0.109.1)
+    "$host" ext remove "$bname" -y >/dev/null 2>&1 || true   # basename dir (upstream zot / older terva)
     "$host" ext install "$PWD"
 
     dir="$(resolve_dir || true)"
@@ -84,8 +89,10 @@ configure-searxng url=SEARXNG_URL host=HOST:
     url="{{url}}"
     [[ "$url" == *://* ]] || url="http://$url"
     host="{{host}}"
-    name="$(basename "$PWD")"
-    line="$("$host" ext list | grep -E "/${name}\$" || true)"
+    # See `install`: terva keys the dir off the manifest name ("web"), upstream
+    # zot off the repo basename ("zot-web") — match either.
+    bname="$(basename "$PWD")"
+    line="$("$host" ext list | grep -E "/(web|${bname})\$" | head -1 || true)"
     [[ -n "$line" ]] || { echo "extension not installed in $host; run \`just install\` first" >&2; exit 1; }
     dir="/${line#*/}"
 
