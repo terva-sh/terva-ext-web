@@ -127,14 +127,22 @@ func register(e *proto.Extension) {
 		once     sync.Once
 		provider search.Provider
 		provErr  error
+		cfgErr   error
 		fetcher  *fetch.Client
 		rl       = newRateLimiter(10) // 10 burst, refilled per-tool at different rates
 	)
 	ensure := func() {
 		once.Do(func() {
-			cfg := config.Load(e.Host().DataDir, e.Host().ExtensionDir)
+			var cfg config.Config
+			cfg, cfgErr = config.Load(e.Host().DataDir, e.Host().ExtensionDir)
 			fetcher = fetch.New(cfg, fetch.ParseAllowList(cfg.AllowLocalHosts))
 			provider, provErr = search.New(cfg, fetcher.HTTPClient())
+			if cfgErr != nil {
+				// A present-but-invalid config.json is the real failure; report
+				// it verbatim rather than the misleading default-backend error
+				// (e.g. "tavily backend selected") it would otherwise surface as.
+				provErr = cfgErr
+			}
 		})
 	}
 
@@ -187,6 +195,9 @@ func register(e *proto.Extension) {
 		json.RawMessage(fetchSchema),
 		func(args json.RawMessage) proto.Result {
 			ensure()
+			if cfgErr != nil {
+				return proto.Errorf("web_fetch is not configured: %v", cfgErr)
+			}
 			if !rl.allow("web_fetch", 2*time.Second) {
 				e.Notify("warn", "web_fetch rate limit hit; backing off")
 				return proto.Errorf("web_fetch: rate limit reached; wait a few seconds")

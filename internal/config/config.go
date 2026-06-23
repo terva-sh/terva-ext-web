@@ -5,6 +5,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -98,7 +99,7 @@ type Config struct {
 // existing config.json readable across that host change, and the lookup
 // is identical (a harmless double-read) on an old host. Pass "" for
 // extensionDir if the host didn't provide one.
-func Load(dataDir, extensionDir string) Config {
+func Load(dataDir, extensionDir string) (Config, error) {
 	c := Config{
 		SearchBackend:        "tavily",
 		FetchMaxBytes:        DefaultFetchMaxBytes,
@@ -111,14 +112,25 @@ func Load(dataDir, extensionDir string) Config {
 		// present, and the package-level default must not be clobbered.
 		AllowLocalHosts: append([]string(nil), DefaultAllowLocalHosts...),
 	}
+	var loadErr error
 	for _, dir := range []string{dataDir, extensionDir} {
 		if dir == "" {
 			continue
 		}
-		if b, err := os.ReadFile(filepath.Join(dir, "config.json")); err == nil {
-			_ = json.Unmarshal(b, &c)
-			break
+		p := filepath.Join(dir, "config.json")
+		b, err := os.ReadFile(p)
+		if err != nil {
+			continue // no config.json in this dir; try the next
 		}
+		// First existing config.json wins, valid or not. A parse failure is
+		// REPORTED, not silently swallowed: falling back to defaults turned a
+		// stray comment or typo into a baffling "tavily backend selected" error
+		// downstream. encoding/json validates the whole document before
+		// applying any field, so c is left at its defaults on a syntax error.
+		if uerr := json.Unmarshal(b, &c); uerr != nil {
+			loadErr = fmt.Errorf("%s is not valid JSON: %w", p, uerr)
+		}
+		break
 	}
 
 	if v := os.Getenv("ZOT_WEB_SEARCH_BACKEND"); v != "" {
@@ -216,5 +228,5 @@ func Load(dataDir, extensionDir string) Config {
 	if c.FetchCacheMaxBytes > MaxFetchCacheMaxBytes {
 		c.FetchCacheMaxBytes = MaxFetchCacheMaxBytes
 	}
-	return c
+	return c, loadErr
 }
