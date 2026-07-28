@@ -40,7 +40,7 @@ jobs:
         run: apk add --no-cache git gcc musl-dev
 
       - name: Checkout Code
-        uses: https://git.local.sothr.com/Sothr-Mirrors/forgejo-actions-checkout@v6
+        uses: Actions-Mirrors/forgejo-actions-checkout@v6
 
       - name: gofmt check
         run: |
@@ -83,11 +83,11 @@ jobs:
         run: apk add --no-cache git
 
       - name: Checkout Code
-        uses: https://git.local.sothr.com/Sothr-Mirrors/forgejo-actions-checkout@v6
+        uses: Actions-Mirrors/forgejo-actions-checkout@v6
         with:
           fetch-depth: 0
 
       - name: Run GoReleaser (snapshot)
-        uses: https://git.local.sothr.com/Sothr-Mirrors/goreleaser-action@v6
+        uses: Actions-Mirrors/goreleaser-action@v6
         with:
           args: release --snapshot --clean

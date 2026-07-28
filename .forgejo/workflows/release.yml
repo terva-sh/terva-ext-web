@@ -29,14 +29,14 @@ jobs:
         run: apk add --no-cache git
 
       - name: Checkout Code
-        uses: https://git.local.sothr.com/Sothr-Mirrors/forgejo-actions-checkout@v6
+        uses: Actions-Mirrors/forgejo-actions-checkout@v6
         with:
           # Full history so goreleaser can derive the changelog from
           # git log between tags (changelog.use: git).
           fetch-depth: 0
 
       - name: Run GoReleaser
-        uses: https://git.local.sothr.com/Sothr-Mirrors/goreleaser-action@v6
+        uses: Actions-Mirrors/goreleaser-action@v6
         with:
           args: release --clean
         env:
