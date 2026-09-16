@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQT535ETD2WACPHJ93PA48
 title: Resolve configuration provenance and legacy import semantics
 type: spike
-status: in-progress
+status: done
 status_reason: null
 priority: high
 due_on: null
@@ -31,17 +31,10 @@ references:
     path: docs/plans/terva-ext-web.md
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim:
-  actor: agent:codex/modernization-run
-  branch: spike/config-provenance
-  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
-  commit: 8c38900aff0c2ee9e48b8b67cef9ecd505500656
-  session: null
-  claimed_at: 2026-09-16T19:32:20Z
-  expires_at: null
+claim: null
 archive: null
 created_at: 2026-09-16T18:31:36Z
-updated_at: 2026-09-16T19:33:41Z
+updated_at: 2026-09-16T19:34:37Z
 created_by:
   id: agent:codex/critical-path
   name: ""
@@ -57,15 +50,15 @@ The inspected Terva SDK exposes Config as resolved raw JSON values: manifest def
 
 ## Acceptance criteria
 
-- [ ] Record how the selected published host distinguishes explicit settings from defaults, or prove that the distinction is unavailable
-- [ ] Choose and document a deterministic import/precedence policy using only available APIs; compare missing, explicitly default-valued, zero/false/empty and invalid values
-- [ ] Define a field-by-field precedence table including allowlist replace-versus-append behavior, new/legacy env variables and TAVILY_API_KEY
-- [ ] Specify opt-in/idempotent legacy import and rollback behavior without silently rewriting credentials or inventing host provenance
-- [ ] Provide synthetic migration fixtures/cases for config and secret implementation; record any host change as an explicit blocker and linked ticket
+- [x] Record how the selected published host distinguishes explicit settings from defaults, or prove that the distinction is unavailable
+- [x] Choose and document a deterministic import/precedence policy using only available APIs; compare missing, explicitly default-valued, zero/false/empty and invalid values
+- [x] Define a field-by-field precedence table including allowlist replace-versus-append behavior, new/legacy env variables and TAVILY_API_KEY
+- [x] Specify opt-in/idempotent legacy import and rollback behavior without silently rewriting credentials or inventing host provenance
+- [x] Provide synthetic migration fixtures/cases for config and secret implementation; record any host change as an explicit blocker and linked ticket
 
 ## Definition of done
 
-- [ ] Record reviewed decisions, reusable validation inputs and outstanding external requirements in the ticket; pass strict ticket validation
+- [x] Record reviewed decisions, reusable validation inputs and outstanding external requirements in the ticket; pass strict ticket validation
 
 ## Implementation plan
 
@@ -80,3 +73,7 @@ Entry inputs: verified published SDK/host capability report and the existing con
 **agent:codex/modernization-run** at 2026-09-16T19:33:41Z
 
 Published resolver proves Config.Has has no provenance when manifest defaults exist. Decision: omit schema defaults and keep application defaults, use explicit configuration_source host mode for opt-in credential migration and disabling legacy reads. Host drops undecryptable secrets, so legacy mode deliberately retains legacy credential ownership until opt-in; host mode never resurrects a legacy key. Host form blank means unset for nonsecrets and keep for secrets. docs/plans/config-provenance.md records full field precedence, allowlist exception, validation, immutable runtime/cache semantics, rollback and synthetic cases. Manual host-form import wins over automatic file/credential rewriting; no new host API needed.
+
+## Summary
+
+Recorded available resolver/form/SDK contract and deterministic no-manifest-default policy in docs/plans/config-provenance.md. Explicit host mode opts into credential import and disables legacy reads. Field table, env and allowlist semantics, immutable updates, synthetic cases and rollback require no new host API. Config and secret tickets consume this decision; production remains legacy until those batches.

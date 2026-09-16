@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R
 title: Migrate protocol integration to the verified Terva SDK
 type: task
-status: in-progress
+status: done
 status_reason: null
 priority: high
 due_on: null
@@ -37,17 +37,10 @@ references:
     path: docs/plans/modernization-critical-path.md
   - ref: file:docs/plans/sdk-verification.md
     path: docs/plans/sdk-verification.md
-claim:
-  actor: agent:codex/modernization-run
-  branch: feat/terva-sdk
-  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
-  commit: 94ef28e81bbdcea20be708e5f3b22fd25ef96e98
-  session: null
-  claimed_at: 2026-09-16T19:27:25Z
-  expires_at: null
+claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:31:56Z
+updated_at: 2026-09-16T19:34:13Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -65,18 +58,18 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 
 ## Acceptance criteria
 
-- [ ] Pin and vendor the verified published SDK without a local replace directive
-- [ ] Preserve web hello/manifest identity, six web_* tools, web-cache, permissions and JSON-only stdout
-- [ ] Use ordered session lifecycle and advertised event capabilities while preserving concurrent network reads
-- [ ] Retire the handwritten protocol integration and adapt existing behavior tests without weakening SSRF, limits, paths or sanitization
-- [ ] Run applicable just CI, race, vendor-sync and snapshot checks; document unsupported cancellation/trust features honestly
-- [ ] Carry the session-switch save regression through SDK migration if it has landed; coordinate overlapping main.go edits and preserve legacy config until its own migration batch
-- [ ] Update typed ticket references to retired protocol files when deleting them so git ticket check stays valid
-- [ ] Upgrade go.mod, source-build documentation/launcher requirements and CI to Go 1.27+ together; verify the CI image and inspect combined transitive/vendor changes before accepting the published SDK pin
+- [x] Pin and vendor the verified published SDK without a local replace directive
+- [x] Preserve web hello/manifest identity, six web_* tools, web-cache, permissions and JSON-only stdout
+- [x] Use ordered session lifecycle and advertised event capabilities while preserving concurrent network reads
+- [x] Retire the handwritten protocol integration and adapt existing behavior tests without weakening SSRF, limits, paths or sanitization
+- [x] Run applicable just CI, race, vendor-sync and snapshot checks; document unsupported cancellation/trust features honestly
+- [x] Carry the session-switch save regression through SDK migration if it has landed; coordinate overlapping main.go edits and preserve legacy config until its own migration batch
+- [x] Update typed ticket references to retired protocol files when deleting them so git ticket check stays valid
+- [x] Upgrade go.mod, source-build documentation/launcher requirements and CI to Go 1.27+ together; verify the CI image and inspect combined transitive/vendor changes before accepting the published SDK pin
 
 ## Definition of done
 
-- [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+- [x] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
 
 ## Implementation plan
 
@@ -111,3 +104,11 @@ Post-removal CI caught a third handwritten-protocol test file left behind (comma
 **agent:codex/modernization-run** at 2026-09-16T19:31:56Z
 
 Final local just ci now passes after retiring the remaining protocol test; gofmt/vet/race/conformance and vendor synchronization are green. GoReleaser snapshot produced all five archives and checksums with SDK/Go 1.27. Vendor tree is 8.4 MiB; retains offline launch. Remote Go 1.27 CI is pending; migration remains in progress until verified.
+
+**agent:codex/modernization-run** at 2026-09-16T19:34:13Z
+
+Remote Go 1.27 runner verified: commit 8c38900 passed Forgejo Lint and Test on push and PR (1m22s/1m21s). Snapshot jobs are skipped on topic/PR by design, not executed; local five-target GoReleaser snapshot passed. PR #8 records the migration batch.
+
+## Summary
+
+SDK v0.137.0 pinned and vendored, handwritten protocol retired, Go 1.27 approved and verified in remote CI. Identities, authority/ask defaults, legacy settings and session-save snapshot preserved. Full local CI, uncached race/conformance, module verification and five-target snapshot passed. PR #8; actual host integration and expanded recovery tests remain separate conformance work.
