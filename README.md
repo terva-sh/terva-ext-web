@@ -48,7 +48,9 @@ just install
 just configure-searxng https://searx.example/
 ```
 
-No new remote or downloadable release has been published yet. Source installs
+Source repository: [terva-sh/terva-ext-web](https://git.local.sothr.com/terva-sh/terva-ext-web).
+The identity cutover is recorded in [PR #1](https://git.local.sothr.com/terva-sh/terva-ext-web/pulls/1).
+No downloadable binary release has been published yet. Source installs
 use `run.sh`, which builds `terva-ext-web` offline from the committed vendor
 tree on first launch or after a source change. Build messages go to stderr;
 stdout carries only protocol frames. `just install` delegates to Terva and

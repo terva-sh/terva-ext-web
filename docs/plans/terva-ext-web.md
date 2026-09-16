@@ -4,7 +4,7 @@ Status: remote repository created for the fork, 2026-09-16, at the user's
 request. Origin is the server-verified
 `ssh://git@git.local.sothr.com:2222/terva-sh/terva-ext-web.git` (public).
 The API and `git ls-remote` confirmed it was empty before the initial push.
-The cutover PR targets main at `b6efdecbd7439543a7d39dc8a77e609f887002f9`
+[Cutover PR #1](https://git.local.sothr.com/terva-sh/terva-ext-web/pulls/1) targets main at `b6efdecbd7439543a7d39dc8a77e609f887002f9`
 and includes identity implementation commit `6e1d43c`. No binary release has
 been published and no repository has been archived. This document was moved from the zot-web
 worktree after cloning the exact fork point; it is not part of that tree.
