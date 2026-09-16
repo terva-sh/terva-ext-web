@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQT58ZQPSE95M1WEXPN8SF
 title: Define release test matrix and secure platform test access
 type: spike
-status: ready
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -32,15 +32,22 @@ references:
     path: docs/plans/terva-ext-web.md
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: spike/release-test-access
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: 99f68ba27385b730c3cff28080407aa18f6ad660
+  session: null
+  claimed_at: 2026-09-16T19:23:13Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T18:31:36Z
-updated_at: 2026-09-16T18:44:48Z
+updated_at: 2026-09-16T19:23:13Z
 created_by:
   id: agent:codex/critical-path
   name: ""
 updated_by:
-  id: agent:codex/critical-path
+  id: agent:codex/modernization-run
   name: ""
 extensions: {}
 ---
@@ -61,6 +68,10 @@ The build matrix advertises linux amd64/arm64, darwin amd64/arm64 and windows am
 ## Definition of done
 
 - [ ] Record reviewed decisions, reusable validation inputs and outstanding external requirements in the ticket; pass strict ticket validation
+
+## Implementation plan
+
+Inventory documented build targets, available local executables and Forgejo runtime/runner metadata using read-only filtered output. Record a five-target runtime matrix and a candidate-bound test report template with source/archive/legacy fixture slots. Keep Go 1.27 and published Terva v0.137.0 as the verified version inputs. Identify actual missing access without inventing hosts or treating cross-builds as runtime tests; ask the user for the missing platform environment or an explicit support decision and record an external prerequisite if unavailable.
 
 ## Notes
 
