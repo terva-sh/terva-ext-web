@@ -57,7 +57,7 @@ const maxImagePixels int64 = 40_000_000
 // resizeSem bounds how many image decode/resize operations run concurrently.
 // Each one allocates pixel buffers up to maxImagePixels*4 bytes for the source
 // plus the scaled destination, and tool calls each run in their own goroutine
-// (see proto.Run) behind a burst-10 rate limiter — so without this gate a burst
+// (see ext.Extension.Run) behind a burst-10 rate limiter — so without this gate a burst
 // of large images could spike to multiple GiB and OOM the extension.
 var resizeSem = make(chan struct{}, 3)
 

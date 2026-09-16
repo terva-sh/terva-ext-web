@@ -15,7 +15,7 @@ The machine-wide rules and `/home/sothr/workspace/AGENTS.md` also apply.
    compatibility and no-rename statements as historical policy superseded by
    the split plan. The identity and packaging batch is recorded in
    `docs/plans/identity-packaging.md`.
-4. Read `go.mod`, `extension.json`, `main.go`, `internal/proto/proto.go`,
+4. Read `go.mod`, `extension.json`, `main.go`, the vendored `packages/agent/ext` SDK,
    `conformance_test.go`, `justfile`, `run.sh`, and `.goreleaser.yaml`.
 5. Consult the sibling Terva checkout's `docs/extensions.md`,
    `packages/agent/ext/ext.go`, and `packages/agent/extproto/extproto.go` for
@@ -36,10 +36,10 @@ publication. Preserve existing configuration; do not rename or delete users'
 installed extensions or credential files as part of source changes.
 
 Keep the SDK migration as a separate reviewable batch after identity and
-packaging pass their checks. The current code still uses handwritten
-`internal/proto`; SDK migration was not done before this fork. Carry forward
-SSRF, resource-limit, path, and output-sanitization defenses. Fix the
-double-read of cwd around downloads with a meaningful session-switch test.
+packaging pass their checks. The protocol now uses published Terva SDK v0.137.0; see
+`docs/plans/sdk-verification.md` for the verified pin and host policy. Carry forward
+SSRF, resource-limit, path, and output-sanitization defenses. Preserve the
+single workspace snapshot and deterministic session-switch save regression.
 Do not promise per-call cancellation or trust metadata that the SDK does not
 provide. Verify a published SDK version before pinning and vendoring it.
 

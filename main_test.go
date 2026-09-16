@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"terva-ext-web/internal/proto"
 	"terva-ext-web/internal/version"
 )
 
@@ -29,38 +28,6 @@ func TestManifestVersionMatchesCode(t *testing.T) {
 	}
 	if m.Version != version.Version {
 		t.Errorf("extension.json version %q != internal/version.Version %q — bump them together", m.Version, version.Version)
-	}
-}
-
-// TestNetworkToolsDeclareAuthority guards that every tool terva-ext-web registers
-// declares network-read authority. They all reach the network, so terva must
-// gate them; a tool added without proto.NetworkRead() would silently be treated
-// as side-effecting/auto-allowable. This catches that the moment a new tool is
-// added — register() is the same wiring main() runs.
-func TestNetworkToolsDeclareAuthority(t *testing.T) {
-	e := proto.New("web", "test")
-	register(e)
-
-	tools := e.Tools()
-	if len(tools) == 0 {
-		t.Fatal("register() declared no tools")
-	}
-	// Every web tool reaches the network; none may be unmarked.
-	for _, ti := range tools {
-		if ti.Authority != "network-read" {
-			t.Errorf("tool %q authority = %q, want network-read (all web tools reach the network)", ti.Name, ti.Authority)
-		}
-	}
-	// And the known set is present (catches an accidental drop / rename).
-	want := []string{"web_search", "web_fetch", "web_images", "web_links", "web_fetch_raw", "web_fetch_image"}
-	have := map[string]bool{}
-	for _, ti := range tools {
-		have[ti.Name] = true
-	}
-	for _, name := range want {
-		if !have[name] {
-			t.Errorf("expected tool %q to be registered", name)
-		}
 	}
 }
 

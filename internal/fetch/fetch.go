@@ -409,7 +409,7 @@ func (c *Client) download(ctx context.Context, u *url.URL, maxBytes int64, userA
 }
 
 // fetchSem bounds concurrent downloads. Every tool call runs in its own
-// goroutine (see proto.Run) and each in-flight download can buffer up to its
+// goroutine (see ext.Extension.Run) and each in-flight download can buffer up to its
 // byte cap (2 MiB pages, 25+ MiB image ceilings), so without a gate a burst of
 // parallel calls could hold tens of MiB of bodies at once. Four is plenty for
 // an agent's realistic call pattern; excess callers queue here briefly.

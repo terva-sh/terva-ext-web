@@ -29,8 +29,6 @@ references:
     path: vendor/modules.txt
   - ref: file:main.go
     path: main.go
-  - ref: file:internal/proto/proto.go
-    path: internal/proto/proto.go
   - ref: file:extension.json
     path: extension.json
   - ref: file:conformance_test.go
@@ -49,7 +47,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:28:39Z
+updated_at: 2026-09-16T19:29:49Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -101,3 +99,7 @@ Readiness/coordination: main.go overlaps the cwd fix: prefer landing that small 
 **agent:codex/modernization-run** at 2026-09-16T19:25:50Z
 
 User explicitly approved upgrading to Go 1.27 on 2026-09-16. Update module, CI and source-launch requirements together in the SDK batch.
+
+**agent:codex/modernization-run** at 2026-09-16T19:29:49Z
+
+Migrated to ext SDK with min_protocol 2, OnSession subscription and Host().CWD snapshot. Published v0.137.0 harness replaces obsolete zot/early-Terva profiles; actual host tests remain next batch. Registration authority checks moved from inaccessible in-process registry to real SDK wire (exact six tools, network-read, not read_only). Legacy configuration and manifest ask rules unchanged. Combined module selection upgrades x/image 0.42→0.44, x/net 0.55→0.56 and x/text 0.38→0.40, and introduces age/hpke/crypto/sys through SDK imports. Inspected resulting decoder/parser/normalization and vendor package changes; go mod verify and full uncached race+conformance suite pass. Direct CI registry probe requires authentication (401); actual CI execution will verify the approved Go 1.27 image. Removed retired protocol package and repointed typed references to main.go.

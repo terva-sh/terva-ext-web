@@ -33,12 +33,12 @@ web access through six LLM-callable tools:
 
 Single static Go binary with an offline source launcher. This independent fork
 of zot-web targets Terva. The first new release version is **0.4.0**; publication
-and SDK migration are still pending. The handwritten protocol-2 integration
-remains in place for this identity and packaging batch.
+is pending. Protocol integration uses the published Terva SDK v0.137.0.
+The supported host baseline is Terva v0.137.0; older hosts are unvalidated.
 
 ## Install and try locally
 
-With Go 1.25+ on PATH and [just](https://github.com/casey/just):
+With Go 1.27+ on PATH and [just](https://github.com/casey/just):
 
 ```bash
 just build
@@ -69,8 +69,9 @@ host launch and non-Linux runtime validation remain release checks.
 Repository, module, binary, and default User-Agent use `terva-ext-web`.
 Manifest and handshake name **web**, all six **web_*** tools, and **/web-cache**
 retain their identities. Stock zot compatibility is no longer a product goal;
-legacy conformance profiles remain until the separate SDK migration establishes
-the supported Terva floor and current-host checks.
+the protocol harness covers the v0.137.0 wire contract (protocol 6). The
+extension requires protocol 2 for ordered session identity. Actual host launch
+validation is tracked separately; a harness pass alone does not establish it.
 
 Do not enable zot-web and terva-ext-web together: they share tool, command,
 configuration, and secret identities. Use `terva ext list` and host-reported
@@ -80,7 +81,10 @@ only enable the replacement after its smoke test. Rollback disables the new
 installation and re-enables the old one. Do not infer data paths from the new
 repository name. Automated upgrade/migration is a later batch.
 
-The existing protocol integration tracks `session_start` and live cwd. Each
+The SDK supplies no per-call cancellation context or dedicated result trust
+metadata. Existing timeouts, SSRF/resource limits and sanitization still apply.
+
+The SDK integration tracks `session_start` and live cwd. Each
 download captures its workspace when the handler starts, so a session switch
 during the fetch cannot redirect its eventual save into a different workspace.
 

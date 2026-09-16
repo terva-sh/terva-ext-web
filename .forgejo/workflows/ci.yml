@@ -35,7 +35,7 @@ jobs:
     name: Lint and Test
     runs-on: docker
     container:
-      image: container.local.sothr.com/library/golang:1.25-alpine
+      image: container.local.sothr.com/library/golang:1.27-alpine
     steps:
       - name: Install dependencies
         run: apk add --no-cache git gcc musl-dev
@@ -56,8 +56,8 @@ jobs:
         run: go test -race ./...
 
       - name: extension conformance
-        # Build ./terva-ext-web and drive it over stdio as both an upstream-zot host
-        # and a terva host (handshake, tool round-trip, session_start, clean
+        # Build ./terva-ext-web and drive it over stdio as the supported Terva wire profile
+        # (handshake, tool round-trip, session_start, clean
         # shutdown, pure-JSON stdout). Tagged `conformance` so it stays out of
         # the default unit run above; this is its dedicated gate.
         run: go test -tags conformance -run Conformance -v .
@@ -78,7 +78,7 @@ jobs:
     if: github.event_name == 'push' && github.ref_name == 'main'
     runs-on: docker
     container:
-      image: container.local.sothr.com/library/golang:1.25-alpine
+      image: container.local.sothr.com/library/golang:1.27-alpine
     steps:
       - name: Install dependencies
         run: apk add --no-cache git

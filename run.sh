@@ -36,7 +36,7 @@ needs_build() {
 if needs_build; then
 	if ! command -v go >/dev/null 2>&1; then
 		echo "[terva-ext-web] Go toolchain not found on PATH; cannot build the extension." >&2
-		echo "[terva-ext-web] Install Go 1.25+ (https://go.dev/dl/) and relaunch terva." >&2
+		echo "[terva-ext-web] Install Go 1.27+ (https://go.dev/dl/) and relaunch terva." >&2
 		exit 1
 	fi
 	echo "[terva-ext-web] building $bin (first launch or sources changed)…" >&2
