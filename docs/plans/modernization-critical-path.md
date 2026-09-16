@@ -5,8 +5,8 @@ release dependency path, not a duration-based schedule: effort estimates and
 platform access are not established. Both branches below are release gates;
 we cannot yet say which will take longer. Ticket status and dependency fields
 remain authoritative. At the user's request, the three independent starting
-tickets were promoted to ready. The save fix is now complete; SDK verification
-and platform preparation remain available. Consult git ticket for live status.
+tickets were promoted to ready. The save fix and SDK verification are complete; platform preparation is
+next. Consult git ticket for live status.
 
 ## Release prerequisite graph
 
@@ -51,7 +51,7 @@ platform provisioning remain separate actions within their recorded boundaries.
 
 | Ready ticket | Why it can begin | Output needed by successors |
 | --- | --- | --- |
-| [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/tickets/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) | Requirements and local reference contracts exist | Published version, host floor, API/capability matrix and toolchain constraints |
+| [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/done/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) | Requirements and local reference contracts exist | Published version, host floor, API/capability matrix and toolchain constraints |
 | [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/done/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md) | Bug and both handlers are identified; existing path guards provide a baseline | Deterministic blocked-fetch regressions and captured workspace identity |
 | [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/tickets/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md) | Build targets, CI and current runtime evidence are known | Runtime access/support matrix, fixture slots and candidate-report template |
 
@@ -65,7 +65,7 @@ platform provisioning remain separate actions within their recorded boundaries.
 The sibling Terva checkout was inspected at
 `7f754b9bb7c6754284dc4f3cc5fa6a96525de49d`; its unrelated untracked ticket
 was left untouched. These are local contract observations, not verification
-of a published SDK. The SDK verification ticket remains open.
+of a published SDK. Published SDK verification is now complete; see [sdk-verification.md](sdk-verification.md).
 
 | Observation | Grooming change |
 | --- | --- |
@@ -89,7 +89,7 @@ carry the same detail. Implementation plans remain empty until work is claimed.
 
 | Input | Owner / resolution point |
 | --- | --- |
-| Published SDK availability, host floor/current test versions, Go requirements | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/tickets/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) |
+| Published SDK availability, host floor/current test versions, Go requirements | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/done/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) |
 | Host config provenance or a safe import alternative | [TKT-01M2NQT535ETD2WACPHJ93PA48 (Resolve configuration provenance and legacy import semantics)](../../.tickets/draft/TKT-01M2NQT535ETD2WACPHJ93PA48.md) |
 | Runtime access for linux arm64, both macOS targets, Windows/Bash and supported host fixtures | [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/tickets/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md); user decides any reduction of the five-target release support matrix |
 | Candidate-specific installation/upgrade/rollback evidence | [TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A (Validate replacement installation, upgrades and release platforms)](../../.tickets/draft/TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A.md) |
