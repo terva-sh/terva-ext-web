@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NWQSBVHEYHFW8C1FD5ZTVX
 title: Bound tool results to the supported host frame limit
 type: bug
-status: draft
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -20,10 +20,17 @@ origin: null
 dependencies: []
 blocks_on: none
 references: []
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: fix/result-frame-budget
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: cec0228a573372c5b5629085564031858cf13572
+  session: null
+  claimed_at: 2026-09-16T19:58:11Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T19:57:41Z
-updated_at: 2026-09-16T19:57:41Z
+updated_at: 2026-09-16T19:58:30Z
 created_by:
   id: agent:codex/modernization-run
   name: ""
@@ -46,3 +53,7 @@ Release review found a published SDK/host limit mismatch: extproto reads at most
 ## Definition of done
 
 - [ ] Record deviation and validation; merge separately before release validation
+
+## Implementation plan
+
+Bound marshaled content (including JSON/base64 expansion) below the published 4 MiB host ceiling with 4 KiB envelope reserve for generated host IDs. Wrap all registered tool results and cache command display output; reject oversized image injection before writes with resize/save-only guidance. Preserve configured fetch/download byte limits. Verify escaped text, large images and normal results, including actual host-driver large-image round-trip and save-only fallback.
