@@ -47,7 +47,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:31:03Z
+updated_at: 2026-09-16T19:31:56Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -107,3 +107,7 @@ Migrated to ext SDK with min_protocol 2, OnSession subscription and Host().CWD s
 **agent:codex/modernization-run** at 2026-09-16T19:31:03Z
 
 Post-removal CI caught a third handwritten-protocol test file left behind (command_test.go). Removed it and preserved application command/display/error coverage in a real subprocess conformance test; startup checks now also assert web-cache registration and command capability. This supersedes the earlier complete-removal statement until the rerun passes.
+
+**agent:codex/modernization-run** at 2026-09-16T19:31:56Z
+
+Final local just ci now passes after retiring the remaining protocol test; gofmt/vet/race/conformance and vendor synchronization are green. GoReleaser snapshot produced all five archives and checksums with SDK/Go 1.27. Vendor tree is 8.4 MiB; retains offline launch. Remote Go 1.27 CI is pending; migration remains in progress until verified.
