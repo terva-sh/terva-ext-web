@@ -36,7 +36,8 @@ from the parent epic. Epics carry their broad primary areas.
 | `area:workflow` | Ticket-store maintenance and agent workflow, outside the product backlog |
 
 After critical-path grooming, the backlog has 22 modernization tickets: 13 core and 9 follow-up,
-including one epic in each scope. All remain draft. Labels do not promote or
+including one epic in each scope. The three independent starting tickets are
+ready by user approval; the other 19 remain draft. Labels do not promote or
 claim work, and grouping legacy archival under release does not authorize it.
 
 ## CLI examples

@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQT58ZQPSE95M1WEXPN8SF
 title: Define release test matrix and secure platform test access
 type: spike
-status: draft
+status: ready
 status_reason: null
 priority: high
 due_on: null
@@ -35,7 +35,7 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:31:36Z
-updated_at: 2026-09-16T18:34:37Z
+updated_at: 2026-09-16T18:44:48Z
 created_by:
   id: agent:codex/critical-path
   name: ""
@@ -67,3 +67,7 @@ The build matrix advertises linux amd64/arm64, darwin amd64/arm64 and windows am
 **agent:codex/critical-path** at 2026-09-16T18:33:36Z
 
 Entry inputs: current five-target build matrix, Linux docker CI and documented Linux amd64 archive evidence. Deliverable: platform access/support matrix and reusable candidate-report template. Validation: identify executable target environments, fixture/runner ownership, and missing access; do not provision infrastructure or reduce platform support as an implicit grooming action. Start access preparation independently; final host versions are supplied by SDK verification before release validation.
+
+**agent:codex/critical-path** at 2026-09-16T18:44:48Z
+
+Promoted to ready at the user's explicit request before merging PR #4. Grooming confirmed no unfinished prerequisite dependencies and concrete entry inputs/acceptance criteria. This ticket is available to claim; no implementation work has started.

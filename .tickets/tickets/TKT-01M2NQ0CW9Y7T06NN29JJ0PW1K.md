@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K
 title: Verify a published Terva SDK and supported host floor
 type: spike
-status: draft
+status: ready
 status_reason: null
 priority: high
 due_on: null
@@ -32,7 +32,7 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:34:36Z
+updated_at: 2026-09-16T18:44:48Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -73,3 +73,7 @@ Expected deliverable: A retrievable published SDK pin and capability/host-floor 
 Validation: Clean module retrieval, API inspection and compatible toolchain evidence.
 
 Readiness/coordination: Public module availability and exact oldest supported host are still unverified; a local tag is not sufficient.
+
+**agent:codex/critical-path** at 2026-09-16T18:44:48Z
+
+Promoted to ready at the user's explicit request before merging PR #4. Grooming confirmed no unfinished prerequisite dependencies and concrete entry inputs/acceptance criteria. This ticket is available to claim; no implementation work has started.
