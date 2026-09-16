@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0DANEHS615M5VXNGS7W5
 title: Validate SDK conformance against supported Terva hosts
 type: task
-status: draft
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -37,10 +37,17 @@ references:
     path: README.md
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: test/sdk-conformance
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: df228a854be9b4d3811a2293819aeb02a8c717e1
+  session: null
+  claimed_at: 2026-09-16T19:39:18Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:17:32Z
+updated_at: 2026-09-16T19:39:18Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -69,6 +76,10 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Implementation plan
+
+Extend subprocess conformance with successful local-fixture calls for all six tools including image content, malformed/oversized recovery and blocked-call shutdown. Preserve deterministic concurrency/session cases. Add actual published v0.137.0 host-driver launch to isolated host-contract module, distinguish this from simulated wire and full CLI install smoke. Floor/current coincide at verified v0.137.0. Run race/CI gates, record exact limits, and carry full installation scenarios to release validation.
 
 ## Notes
 
