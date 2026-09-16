@@ -455,3 +455,8 @@ gates them instead (prompted in `workspace`/`auto-edit`, refused in `plan`).
 ## License
 
 [MIT](LICENSE) © 2026 Drew Short
+
+Tool responses must fit the supported host's 4 MiB message limit, including
+JSON escaping and base64. Large images may need `max_dimension`, or
+`inject: false` with `save_path` to retain full bytes. Oversized image injection
+is rejected before saving; download byte limits remain separately configurable.
