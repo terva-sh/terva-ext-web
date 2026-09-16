@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0DANEHS615M5VXNGS7W5
 title: Validate SDK conformance against supported Terva hosts
 type: task
-status: in-progress
+status: done
 status_reason: null
 priority: high
 due_on: null
@@ -37,17 +37,10 @@ references:
     path: README.md
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim:
-  actor: agent:codex/modernization-run
-  branch: test/sdk-conformance
-  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
-  commit: df228a854be9b4d3811a2293819aeb02a8c717e1
-  session: null
-  claimed_at: 2026-09-16T19:39:18Z
-  expires_at: null
+claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:47:11Z
+updated_at: 2026-09-16T19:50:01Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -65,17 +58,17 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 
 ## Acceptance criteria
 
-- [ ] Exercise hello, all six tools, web-cache, text/image results and clean shutdown over real subprocess stdio
-- [ ] Verify malformed/oversized-frame recovery, concurrent calls, ordered sessions and blocked-fetch session-switch saves
-- [ ] Test both documented host floor and current Terva; record versions and real-host smoke evidence
-- [ ] Keep stdout JSON-only and preserve race/vet/format/vendor gates in just and CI
-- [ ] Document capability fallback and support boundaries before removing zot-only profiles
-- [ ] Remove inherited TAVILY_API_KEY, ZOT_WEB_* and TERVA_EXT_WEB_* from subprocess environments; use synthetic fixtures and local servers so tests cannot call real providers
-- [ ] Use image fixtures and bounded timeout/deadlock checks for oversized/malformed frames and concurrent shutdown; record actual-host tests separately from simulated wire profiles
+- [x] Exercise hello, all six tools, web-cache, text/image results and clean shutdown over real subprocess stdio
+- [x] Verify malformed/oversized-frame recovery, concurrent calls, ordered sessions and blocked-fetch session-switch saves
+- [x] Test both documented host floor and current Terva; record versions and real-host smoke evidence
+- [x] Keep stdout JSON-only and preserve race/vet/format/vendor gates in just and CI
+- [x] Document capability fallback and support boundaries before removing zot-only profiles
+- [x] Remove inherited TAVILY_API_KEY, ZOT_WEB_* and TERVA_EXT_WEB_* from subprocess environments; use synthetic fixtures and local servers so tests cannot call real providers
+- [x] Use image fixtures and bounded timeout/deadlock checks for oversized/malformed frames and concurrent shutdown; record actual-host tests separately from simulated wire profiles
 
 ## Definition of done
 
-- [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+- [x] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
 
 ## Implementation plan
 
@@ -106,3 +99,11 @@ Expanded real subprocess suite passes under race: all six tools with successful 
 **agent:codex/modernization-run** at 2026-09-16T19:47:11Z
 
 Remote PR #11 passed extension conformance but failed the newly expanded published-host step. Inspection shows Alpine CI installed git/gcc/musl but not Bash, required by the actual launcher now under test. Added Bash to test dependencies; rerunning remote gate. The tea run-logs API is unavailable on this forge (404), so the stage failure was inspected from public job metadata; missing Bash is directly established by workflow contents.
+
+**agent:codex/modernization-run** at 2026-09-16T19:50:01Z
+
+Remote PR #11 now passes after adding Bash to the Alpine test image (5b57644). Full local just ci passed as well. Both simulated subprocess wire and real published-host driver layers are green; full CLI installation remains release validation.
+
+## Summary
+
+Published floor/current v0.137.0 conformance passes: six successful tools, image bytes, malformed/oversized recovery, session saves, concurrency, bounded shutdown, JSON-only stdout and actual host-driver launcher integration. Local and remote CI pass; Bash is now installed for launcher checks. Full CLI install/upgrade and tag-time native platforms remain release gates. Evidence in docs/plans/sdk-conformance.md, PR #11.
