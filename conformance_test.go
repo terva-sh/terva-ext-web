@@ -674,3 +674,41 @@ func TestConformanceInvalidConfigBlocksEveryNetworkTool(t *testing.T) {
 	d.readUntil("shutdown_ack")
 	d.expectCleanExit()
 }
+
+func TestConformanceHostConfigUpdates(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(r.UserAgent())) }))
+	defer server.Close()
+	d := startExtension(t)
+	defer func() { _ = d.cmd.Process.Kill() }()
+	assertStartup(t, d.readUntil("ready"))
+	cwd := t.TempDir()
+	ack := hostProfiles[0].helloAck(cwd)
+	ack["config"] = map[string]any{"configuration_source": "host", "user_agent": "first"}
+	d.send(ack)
+	call := func(id string) map[string]any {
+		d.send(map[string]any{"type": "tool_call", "id": id, "name": "web_fetch_raw", "args": map[string]any{"url": server.URL, "save_path": id}})
+		return d.awaitToolResult(id)
+	}
+	for _, ua := range []string{"first", "second"} {
+		if ua == "second" {
+			d.send(map[string]any{"type": "event", "event": "config_update", "config": map[string]any{"configuration_source": "host", "user_agent": ua}})
+		}
+		if f := call(ua); f["is_error"] == true {
+			t.Fatalf("call failed: %v", f)
+		}
+		b, err := os.ReadFile(filepath.Join(cwd, ua))
+		if err != nil || string(b) != ua {
+			t.Fatalf("stale config/cache after %s: %q %v", ua, b, err)
+		}
+	}
+	d.send(map[string]any{"type": "event", "event": "config_update", "config": map[string]any{"configuration_source": "host", "allow_local_hosts": "[]"}})
+	if f := call("blocked"); f["is_error"] != true {
+		t.Fatal("tightened allowlist reused cached response")
+	}
+	if _, err := os.Stat(filepath.Join(cwd, "blocked")); !os.IsNotExist(err) {
+		t.Fatal("denied call wrote a file")
+	}
+	d.send(map[string]any{"type": "shutdown"})
+	d.readUntil("shutdown_ack")
+	d.expectCleanExit()
+}
