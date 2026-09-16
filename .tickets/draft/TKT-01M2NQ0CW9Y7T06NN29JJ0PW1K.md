@@ -30,12 +30,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:31:37Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -52,7 +52,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Document minimum Terva/protocol support: ordered sessions require protocol 2; host tools require 3; runtime broker use would require 6
 - [ ] Document available events, display/visibility fallbacks, and actual limits on per-call cancellation and trust metadata
 - [ ] Record any release/vendor/toolchain compatibility constraints for the migration
+- [ ] Deliver a versioned capability matrix and commands that reproduce module retrieval from a clean environment; include module checksum/provenance, supported Go/host versions and launcher bootstrap compatibility
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:37Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: Current go.mod, recorded local Terva revision and the SDK requirements in the plan.
+
+Expected deliverable: A retrievable published SDK pin and capability/host-floor matrix.
+
+Validation: Clean module retrieval, API inspection and compatible toolchain evidence.
+
+Readiness/coordination: Public module availability and exact oldest supported host are still unverified; a local tag is not sufficient.

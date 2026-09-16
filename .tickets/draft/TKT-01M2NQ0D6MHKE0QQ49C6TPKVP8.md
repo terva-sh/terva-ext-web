@@ -36,12 +36,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:31:37Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -58,7 +58,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Show writer ask defaults and network gating remain effective on supported host modes and user overrides remain host-controlled
 - [ ] Record whether selective Sequential use is needed, with concurrency evidence
 - [ ] Retain and run SSRF/redirect, path, byte/image/cache limit and output-sanitization regressions; do not claim an SDK trust field that does not exist
+- [ ] Record host-mode and user-override test cases for both writers and all readers, including overwrite refusal and denied-network behavior; preserve application SSRF defenses even when host permission allows the tool
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:37Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: Migrated SDK registrations and verified host authority semantics.
+
+Expected deliverable: An explicit reader/writer permission matrix and ordering decision.
+
+Validation: Host modes/user overrides plus SSRF, write-path and concurrency regression tests.
+
+Readiness/coordination: Do not conflate single wire authority with combined effects; preserve existing network-read plus ask behavior unless a proven alternative is reviewed.

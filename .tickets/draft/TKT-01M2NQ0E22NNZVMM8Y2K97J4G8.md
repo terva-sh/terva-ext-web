@@ -31,12 +31,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:31:38Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -53,7 +53,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Handle session boundaries and config transitions without stale visibility or removing working fetch tools
 - [ ] Keep runtime readiness errors safe for in-flight calls and retain usable fallback behavior on older supported hosts
 - [ ] Test absent credentials, backend recovery, config updates and unsupported withdrawal capability
+- [ ] A config update changes runtime readiness immediately but withdrawal/restore is asserted at the next supported session boundary; test calls during that interval without mutating the prompt prefix off-boundary
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:38Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: Config snapshot/readiness behavior and SDK session-scoped withdrawal.
+
+Expected deliverable: Predictable available-search visibility with runtime errors between boundaries.
+
+Validation: Absent/invalid credentials, backend recovery, update races and unsupported hosts.
+
+Readiness/coordination: The inspected host guidance forbids changing cached-prefix visibility per config event; apply it at the next session boundary.

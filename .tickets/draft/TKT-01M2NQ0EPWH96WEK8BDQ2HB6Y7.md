@@ -34,12 +34,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:34Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:31:38Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -56,7 +56,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Define checksum verification, version/platform matching, offline/error behavior and rollback before any execution of downloads
 - [ ] Ensure any proposal preserves research skill/manifest identity and avoids credential/configuration mutation
 - [ ] Record adopt/defer/reject rationale and file a separate implementation ticket if selected
+- [ ] Define the trust source for checksums as well as the checksum comparison, immutable version selection, safe archive extraction and offline failure behavior before proposing automatic downloads
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:38Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: Published immutable release artifacts and checksum distribution.
+
+Expected deliverable: A download/extraction/version/integrity policy decision with separate implementation follow-up if adopted.
+
+Validation: Threat/failure cases for wrong platform, unavailable network, corrupted archive, checksum mismatch and interrupted install.
+
+Readiness/coordination: Keep the existing offline source path; checksum availability alone does not establish authenticity.

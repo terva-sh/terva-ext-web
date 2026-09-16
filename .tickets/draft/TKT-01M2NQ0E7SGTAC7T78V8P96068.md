@@ -31,12 +31,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:31:38Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -53,7 +53,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Retain text command output and capability fallback for clients without rich display
 - [ ] Test error/unconfigured states and ensure no credential values appear in display text
 - [ ] Keep presentation separate from model tool output, permission decisions and fetched-content trust
+- [ ] Specify the minimal subject/status payload and test fallback plus bounded output with unusual URLs/query strings; do not expose URL-embedded credentials in display metadata
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:38Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: SDK display API and config/backend/cache status sources.
+
+Expected deliverable: Bounded query/URL subjects and one minimal status surface with text fallback.
+
+Validation: Rich/non-rich clients, malformed/unconfigured states and sensitive URL sanitization.
+
+Readiness/coordination: Do not expand this into panels/widgets everywhere; implementation should choose the smallest useful surface.

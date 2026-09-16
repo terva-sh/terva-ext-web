@@ -28,12 +28,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:31:38Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -50,7 +50,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Prepare and review the legacy migration notice with verified destination links and the shared web-identity warning
 - [ ] Record the source-repository task or PR and leave unrelated source work untouched
 - [ ] Archive only after explicit ticket authorization is recorded; otherwise keep that action outstanding and do not claim archival complete
+- [ ] Separate completion of the migration notice from the archival action in the ticket evidence; do not gate replacement publication on legacy archival approval
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:38Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: Verified published replacement and rollback instructions.
+
+Expected deliverable: Reviewed source-repository migration notice, then separately authorized archival evidence.
+
+Validation: Verify notice URLs/identity warnings and actual archival only if authorized.
+
+Readiness/coordination: This is post-publication work. Coordinate a task in the legacy repository; do not overwrite its unrelated work or treat draft wording as archival authorization.

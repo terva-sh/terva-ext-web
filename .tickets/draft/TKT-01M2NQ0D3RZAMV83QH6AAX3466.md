@@ -30,12 +30,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:31:37Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -52,7 +52,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] For both raw and image saves, block the fetch, switch the session cwd, resume it, and prove only the original workspace receives the file
 - [ ] Keep overwrite, symlink, .git, path traversal and resource-limit protections intact
 - [ ] Run meaningful session-switch regressions under the race detector
+- [ ] Make each blocked-fetch test fail against the original double-read implementation; synchronize via channels/barriers rather than timing sleeps, and assert no file or parent directory is created in the new workspace
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:37Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: Current raw/image handlers and existing path guard tests; no SDK decision is needed.
+
+Expected deliverable: One captured workspace identity per save with deterministic blocked-fetch regression coverage.
+
+Validation: Both raw and image tests fail on the old double-read and pass on the fix under race testing.
+
+Readiness/coordination: Startable when selected. Existing main_test.go covers path helpers but not this in-flight session-switch scenario.

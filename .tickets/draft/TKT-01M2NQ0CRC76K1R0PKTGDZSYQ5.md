@@ -29,12 +29,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:31:38Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -50,3 +50,18 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Core child tickets are completed with recorded validation evidence
 - [ ] Supported-host installation, upgrade and rollback are verified before directing users to migrate
 - [ ] Legacy transition is resolved with explicit authorization for any remote archival
+- [ ] Track the publication milestone separately from subsequent legacy notice/archival completion; optional follow-up features are not hidden release gates
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:38Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: Completed cutover/store work and the groomed core dependency graph.
+
+Expected deliverable: A verified replacement release, followed by resolved legacy transition.
+
+Validation: Child-ticket evidence; publication milestone is separate from epic-wide completion.
+
+Readiness/coordination: No reliable duration estimates yet, so critical path means release prerequisite chains, not a schedule or delivery date.
