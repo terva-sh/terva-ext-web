@@ -40,12 +40,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:34:36Z
+updated_at: 2026-09-16T19:17:32Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/critical-path
+  id: agent:codex/modernization-run
   name: ""
 extensions: {}
 ---
@@ -83,3 +83,7 @@ Expected deliverable: Updated subprocess harness and separate real-host evidence
 Validation: Frame recovery, image/text, concurrency, sessions and bounded clean shutdown with JSON-only stdout.
 
 Readiness/coordination: The existing harness strips ZOT_WEB_* but inherits TAVILY_API_KEY. Fix fixture isolation in this ticket, not by reading real user credentials.
+
+**agent:codex/modernization-run** at 2026-09-16T19:17:32Z
+
+The cwd-save fix pulled forward subprocess environment isolation (drop TAVILY_API_KEY, ZOT_WEB_* and TERVA_EXT_WEB_*) and enabled race instrumentation for the real extension subprocess. Preserve these and the deterministic raw/image session-switch regressions when migrating the harness to SDK/current-host conformance. This does not complete the broader conformance ticket.

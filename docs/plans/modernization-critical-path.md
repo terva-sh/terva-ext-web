@@ -5,7 +5,8 @@ release dependency path, not a duration-based schedule: effort estimates and
 platform access are not established. Both branches below are release gates;
 we cannot yet say which will take longer. Ticket status and dependency fields
 remain authoritative. At the user's request, the three independent starting
-tickets below are ready and unclaimed; the other 19 remain draft.
+tickets were promoted to ready. The save fix is now complete; SDK verification
+and platform preparation remain available. Consult git ticket for live status.
 
 ## Release prerequisite graph
 
@@ -51,7 +52,7 @@ platform provisioning remain separate actions within their recorded boundaries.
 | Ready ticket | Why it can begin | Output needed by successors |
 | --- | --- | --- |
 | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/tickets/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) | Requirements and local reference contracts exist | Published version, host floor, API/capability matrix and toolchain constraints |
-| [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/tickets/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md) | Bug and both handlers are identified; existing path guards provide a baseline | Deterministic blocked-fetch regressions and captured workspace identity |
+| [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/done/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md) | Bug and both handlers are identified; existing path guards provide a baseline | Deterministic blocked-fetch regressions and captured workspace identity |
 | [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/tickets/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md) | Build targets, CI and current runtime evidence are known | Runtime access/support matrix, fixture slots and candidate-report template |
 
 ## Added decision gates

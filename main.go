@@ -276,6 +276,9 @@ func register(e *proto.Extension) {
 		"Fetch a page and save its UNRENDERED source (HTML/JSON/text, exactly as the server sent it) to a workspace file for you to grep or parse yourself. A fallback for when web_fetch/web_images/web_links don't surface what you need. Served from the same cache as web_fetch. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(webFetchRawSchema),
 		func(args json.RawMessage) proto.Result {
+			// Keep preflight and the eventual write in the same workspace,
+			// even if a session switch arrives while the fetch is blocked.
+			cwd := e.CWD()
 			ensure()
 			var in struct {
 				URL       string `json:"url"`
@@ -292,7 +295,7 @@ func register(e *proto.Extension) {
 			if strings.TrimSpace(in.SavePath) == "" {
 				return proto.Errorf("save_path is required")
 			}
-			if err := checkSavePath(e.CWD(), in.SavePath, in.Overwrite); err != nil {
+			if err := checkSavePath(cwd, in.SavePath, in.Overwrite); err != nil {
 				return proto.Errorf("invalid save_path (nothing was fetched): %v", err)
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
@@ -301,7 +304,7 @@ func register(e *proto.Extension) {
 			if err != nil {
 				return proto.Errorf("web_fetch_raw failed: %v", logSSRF(e, err))
 			}
-			rel, werr := saveToWorkspace(e.CWD(), in.SavePath, raw.Body, in.Overwrite)
+			rel, werr := saveToWorkspace(cwd, in.SavePath, raw.Body, in.Overwrite)
 			if werr != nil {
 				return proto.Errorf("fetched the page but could not save it: %v", werr)
 			}
@@ -325,6 +328,9 @@ func register(e *proto.Extension) {
 		"Fetch an image (PNG/JPEG/GIF/WebP) by URL and return it for you to view, and/or save it into the workspace. Use max_dimension to downscale a large image. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(webFetchImageSchema),
 		func(args json.RawMessage) proto.Result {
+			// Keep preflight and the eventual write in the same workspace,
+			// even if a session switch arrives while the fetch is blocked.
+			cwd := e.CWD()
 			ensure()
 			var in struct {
 				URL          string `json:"url"`
@@ -341,7 +347,7 @@ func register(e *proto.Extension) {
 				return proto.Errorf("url is required")
 			}
 			if strings.TrimSpace(in.SavePath) != "" {
-				if err := checkSavePath(e.CWD(), in.SavePath, in.Overwrite); err != nil {
+				if err := checkSavePath(cwd, in.SavePath, in.Overwrite); err != nil {
 					return proto.Errorf("invalid save_path (nothing was fetched): %v", err)
 				}
 			}
@@ -369,7 +375,7 @@ func register(e *proto.Extension) {
 			}
 
 			if strings.TrimSpace(in.SavePath) != "" {
-				rel, werr := saveToWorkspace(e.CWD(), in.SavePath, img.Data, in.Overwrite)
+				rel, werr := saveToWorkspace(cwd, in.SavePath, img.Data, in.Overwrite)
 				if werr != nil {
 					return proto.Errorf("fetched the image but could not save it: %v", werr)
 				}
