@@ -1,8 +1,8 @@
 //go:build conformance
 
 // Protocol conformance harness. It builds the real ./terva-ext-web binary and drives
-// it over stdio exactly as a host would — under both an upstream-zot host
-// profile and a terva host profile — asserting the basics that an in-process
+// it over stdio exactly as a host would — under the supported Terva host
+// profile — asserting the basics that an in-process
 // unit test cannot:
 //
 //   - the binary starts and completes the handshake: hello, tool registration,
@@ -14,8 +14,7 @@
 //     (the stdout-purity invariant — a stray Println would corrupt the wire,
 //     and a buffer-capturing in-process test can't catch it).
 //
-// One driver impersonates either host via hostProfile, so the zot and terva
-// wires are exercised by the same code path. The blocked-download regression
+// The profile records the supported Terva floor/current wire contract. The blocked-download regression
 // also proves that session switches cannot redirect an in-flight save. The
 // subprocess is race-instrumented, so these checks require cgo and a C compiler.
 //
@@ -42,26 +41,23 @@ import (
 	"time"
 )
 
-// hostProfile is exactly what differs between an upstream zot host and a terva
-// host on the wire — one driver, one knob.
+// hostProfile captures the supported Terva wire contract.
 type hostProfile struct {
 	name              string
 	protocolVersion   int
-	zotVersion        string
-	tervaVersion      string // "" => upstream zot; set => terva
+	tervaVersion      string
 	sendsSessionStart bool
 }
 
 var hostProfiles = []hostProfile{
-	{name: "zot", protocolVersion: 1, zotVersion: "0.103.2"},
-	{name: "terva", protocolVersion: 2, zotVersion: "0.104.0", tervaVersion: "0.104.0", sendsSessionStart: true},
+	{name: "terva-0.137.0-floor-and-current", protocolVersion: 6, tervaVersion: "0.137.0", sendsSessionStart: true},
 }
 
 func (p hostProfile) helloAck(dataDir string) map[string]any {
 	ack := map[string]any{
 		"type":             "hello_ack",
 		"protocol_version": p.protocolVersion,
-		"zot_version":      p.zotVersion,
+		"supported_events": []string{"session_start"},
 		"provider":         "anthropic",
 		"model":            "test",
 		"cwd":              dataDir,
@@ -297,28 +293,43 @@ func TestConformance(t *testing.T) {
 func assertStartup(t *testing.T, frames []map[string]any) {
 	t.Helper()
 	var hello, subscribe map[string]any
+	command := false
 	toolAuth := map[string]string{}
 	for _, f := range frames {
 		switch f["type"] {
 		case "hello":
 			hello = f
+		case "register_command":
+			command = command || f["name"] == "web-cache"
 		case "register_tool":
 			name, _ := f["name"].(string)
 			auth, _ := f["authority"].(string)
 			toolAuth[name] = auth
+			if f["read_only"] == true {
+				t.Errorf("network tool %q must not be read_only", name)
+			}
 		case "subscribe":
 			subscribe = f
 		}
 	}
 
+	if !command {
+		t.Error("web-cache command not registered")
+	}
 	if hello == nil {
 		t.Fatal("no hello frame in startup")
 	}
 	if name, _ := hello["name"].(string); name != "web" {
 		t.Errorf("hello name = %q, want web", name)
 	}
+	if hello["min_protocol"] != float64(2) {
+		t.Errorf("min_protocol = %v, want 2", hello["min_protocol"])
+	}
+	if len(toolAuth) != 6 {
+		t.Errorf("registered %d tools, want 6", len(toolAuth))
+	}
 	caps := toStringSet(hello["capabilities"])
-	for _, want := range []string{"tools", "events"} {
+	for _, want := range []string{"tools", "events", "commands"} {
 		if !caps[want] {
 			t.Errorf("hello capabilities missing %q (got %v)", want, hello["capabilities"])
 		}
@@ -390,7 +401,7 @@ func TestConformanceSessionSwitchSaves(t *testing.T) {
 			defer func() { _ = d.cmd.Process.Kill() }()
 			assertStartup(t, d.readUntil("ready"))
 			first, second := t.TempDir(), t.TempDir()
-			profile := hostProfile{protocolVersion: 2, tervaVersion: "0.104.0"}
+			profile := hostProfiles[0]
 			d.send(profile.helloAck(t.TempDir()))
 			d.send(map[string]any{"type": "event", "event": "session_start", "session_id": "first", "cwd": first})
 			d.send(map[string]any{
@@ -432,4 +443,31 @@ func TestConformanceSessionSwitchSaves(t *testing.T) {
 			d.expectCleanExit()
 		})
 	}
+}
+
+func TestConformanceCommands(t *testing.T) {
+	d := startExtension(t)
+	defer func() { _ = d.cmd.Process.Kill() }()
+	assertStartup(t, d.readUntil("ready"))
+	d.send(hostProfiles[0].helloAck(t.TempDir()))
+	for _, tc := range []struct{ args, action, text string }{
+		{"", "display", "web cache is empty"},
+		{"clear", "display", "web cache cleared (0 entries dropped)"},
+		{"invalid", "noop", "unknown argument"},
+	} {
+		d.send(map[string]any{"type": "command_invoked", "id": "cmd", "name": "web-cache", "args": tc.args})
+		frames := d.readUntil("command_response")
+		f := frames[len(frames)-1]
+		field := "display"
+		if tc.action == "noop" {
+			field = "error"
+		}
+		text, _ := f[field].(string)
+		if f["id"] != "cmd" || f["action"] != tc.action || !strings.Contains(text, tc.text) {
+			t.Errorf("command %q: %v", tc.args, f)
+		}
+	}
+	d.send(map[string]any{"type": "shutdown"})
+	d.readUntil("shutdown_ack")
+	d.expectCleanExit()
 }

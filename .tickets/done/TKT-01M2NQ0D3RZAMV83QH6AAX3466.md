@@ -25,14 +25,12 @@ references:
     path: main.go
   - ref: file:main_test.go
     path: main_test.go
-  - ref: file:internal/proto/proto.go
-    path: internal/proto/proto.go
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:17:33Z
+updated_at: 2026-09-16T19:29:33Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""

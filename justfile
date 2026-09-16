@@ -88,8 +88,8 @@ fmt:
 test *ARGS:
     go test ./... {{ARGS}}
 
-# Protocol conformance: build ./terva-ext-web and drive it over stdio as both an
-# upstream-zot host and a terva host. Tagged out of the default `test` run
+# Protocol conformance: build ./terva-ext-web and drive it over stdio as the supported
+# Terva host wire profile. Tagged out of the default `test` run
 # because it shells out to `go build`.
 conformance:
     go test -tags conformance -run Conformance -v .

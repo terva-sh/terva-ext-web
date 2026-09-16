@@ -23,18 +23,18 @@ references:
     path: docs/plans/terva-ext-web.md
   - ref: file:go.mod
     path: go.mod
-  - ref: file:internal/proto/proto.go
-    path: internal/proto/proto.go
   - ref: file:docs/plans/terva-host-features-2026-06.md
     path: docs/plans/terva-host-features-2026-06.md
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
   - ref: file:docs/plans/sdk-verification.md
     path: docs/plans/sdk-verification.md
+  - ref: file:main.go
+    path: main.go
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:22:29Z
+updated_at: 2026-09-16T19:29:33Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""

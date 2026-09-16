@@ -39,7 +39,7 @@ type page struct {
 
 // cache is a small, concurrency-safe, TTL + LRU page cache bounded by both entry
 // count and total retained bytes. Tool handlers run in their own goroutines (see
-// proto.Run), so every access takes the lock.
+// ext.Extension.Run), so every access takes the lock.
 type cache struct {
 	mu       sync.Mutex
 	ttl      time.Duration

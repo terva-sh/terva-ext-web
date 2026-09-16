@@ -25,9 +25,9 @@ import (
 
 	"terva-ext-web/internal/config"
 	"terva-ext-web/internal/fetch"
-	"terva-ext-web/internal/proto"
 	"terva-ext-web/internal/search"
 	"terva-ext-web/internal/version"
+	"terva.sh/terva/packages/agent/ext"
 )
 
 const searchSchema = `{
@@ -108,7 +108,7 @@ func main() {
 		}
 	}
 
-	e := proto.New("web", version.Version)
+	e := ext.New("web", version.Version)
 	register(e)
 
 	if err := e.Run(); err != nil {
@@ -117,10 +117,13 @@ func main() {
 }
 
 // register wires all of terva-ext-web's tools and the /web-cache command onto e.
-// Split out from main so a test can inspect the registered tool set — e.g. that
-// every network tool declares network-read authority — without running the
-// stdio loop.
-func register(e *proto.Extension) {
+// The subprocess conformance gate inspects the actual SDK registration frames.
+func register(e *ext.Extension) {
+	// Ordered session identity is required for workspace saves. No optional
+	// event capabilities are required; OnSession subscribes before hello_ack.
+	e.RequireProtocol(2)
+	e.OnSession(func(ext.Session) {}) // SDK updates Host() on its ordered reader.
+
 	// Providers are built lazily on first tool call, by which point the
 	// hello_ack (and thus data_dir for config.json) has arrived.
 	var (
@@ -149,14 +152,14 @@ func register(e *proto.Extension) {
 	e.Tool("web_search",
 		"Search the web and return ranked results (title, URL, snippet). Use for current events, facts, documentation, or to find pages to read with web_fetch.",
 		json.RawMessage(searchSchema),
-		func(args json.RawMessage) proto.Result {
+		func(args json.RawMessage) ext.ToolResult {
 			ensure()
 			if provErr != nil {
-				return proto.Errorf("web_search is not configured: %v", provErr)
+				return toolErrorf("web_search is not configured: %v", provErr)
 			}
 			if !rl.allow("web_search", 5*time.Second) {
 				e.Notify("warn", "web_search rate limit hit; backing off")
-				return proto.Errorf("web_search: rate limit reached; wait a few seconds")
+				return toolErrorf("web_search: rate limit reached; wait a few seconds")
 			}
 			var in struct {
 				Query          string   `json:"query"`
@@ -167,7 +170,7 @@ func register(e *proto.Extension) {
 				Depth          string   `json:"depth"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
-				return proto.Errorf("invalid args: %v", err)
+				return toolErrorf("invalid args: %v", err)
 			}
 			q := search.Query{
 				Text:           in.Query,
@@ -178,29 +181,29 @@ func register(e *proto.Extension) {
 				Depth:          in.Depth,
 			}
 			if err := q.Normalize(); err != nil {
-				return proto.Errorf("%v", err)
+				return toolErrorf("%v", err)
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 			defer cancel()
 			results, err := provider.Search(ctx, q)
 			if err != nil {
-				return proto.Errorf("search failed: %v", logSSRF(e, err))
+				return toolErrorf("search failed: %v", logSSRF(e, err))
 			}
-			return proto.Text(search.Format(in.Query, results))
+			return ext.TextResult(search.Format(in.Query, results))
 		},
-		proto.NetworkRead())
+		ext.WithAuthority(ext.AuthorityNetworkRead))
 
 	e.Tool("web_fetch",
 		"Fetch a web page (http/https) and return its main text content. Results are cached briefly: paging with offset (or repeating the call) within that window reads the same snapshot, so it won't drift mid-read; after the cache expires a re-fetch may differ, with new content typically appended at the end. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(fetchSchema),
-		func(args json.RawMessage) proto.Result {
+		func(args json.RawMessage) ext.ToolResult {
 			ensure()
 			if cfgErr != nil {
-				return proto.Errorf("web_fetch is not configured: %v", cfgErr)
+				return toolErrorf("web_fetch is not configured: %v", cfgErr)
 			}
 			if !rl.allow("web_fetch", 2*time.Second) {
 				e.Notify("warn", "web_fetch rate limit hit; backing off")
-				return proto.Errorf("web_fetch: rate limit reached; wait a few seconds")
+				return toolErrorf("web_fetch: rate limit reached; wait a few seconds")
 			}
 			var in struct {
 				URL       string `json:"url"`
@@ -209,76 +212,76 @@ func register(e *proto.Extension) {
 				UserAgent string `json:"user_agent"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
-				return proto.Errorf("invalid args: %v", err)
+				return toolErrorf("invalid args: %v", err)
 			}
 			if strings.TrimSpace(in.URL) == "" {
-				return proto.Errorf("url is required")
+				return toolErrorf("url is required")
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
 			text, err := fetcher.Fetch(ctx, in.URL, in.MaxChars, in.Offset, in.UserAgent)
 			if err != nil {
-				return proto.Errorf("fetch failed: %v", logSSRF(e, err))
+				return toolErrorf("fetch failed: %v", logSSRF(e, err))
 			}
-			return proto.Text(text)
+			return ext.TextResult(text)
 		},
-		proto.NetworkRead())
+		ext.WithAuthority(ext.AuthorityNetworkRead))
 
 	e.Tool("web_images",
 		"List the image URLs on a page that web_fetch represented as [image:N] placeholders. Cheap when the page was recently fetched (it is served from cache).",
 		json.RawMessage(imagesSchema),
-		func(args json.RawMessage) proto.Result {
+		func(args json.RawMessage) ext.ToolResult {
 			ensure()
 			var in struct {
 				URL string `json:"url"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
-				return proto.Errorf("invalid args: %v", err)
+				return toolErrorf("invalid args: %v", err)
 			}
 			if strings.TrimSpace(in.URL) == "" {
-				return proto.Errorf("url is required")
+				return toolErrorf("url is required")
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
 			imgs, err := fetcher.Images(ctx, in.URL)
 			if err != nil {
-				return proto.Errorf("web_images failed: %v", logSSRF(e, err))
+				return toolErrorf("web_images failed: %v", logSSRF(e, err))
 			}
-			return proto.Text(fetch.FormatImages(in.URL, imgs))
+			return ext.TextResult(fetch.FormatImages(in.URL, imgs))
 		},
-		proto.NetworkRead())
+		ext.WithAuthority(ext.AuthorityNetworkRead))
 
 	e.Tool("web_links",
 		"List every hyperlink on a page (absolute URL plus anchor text). Use to enumerate a page's outbound links without scraping the fetched text yourself. Cheap when the page was recently fetched (served from cache).",
 		json.RawMessage(linksSchema),
-		func(args json.RawMessage) proto.Result {
+		func(args json.RawMessage) ext.ToolResult {
 			ensure()
 			var in struct {
 				URL string `json:"url"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
-				return proto.Errorf("invalid args: %v", err)
+				return toolErrorf("invalid args: %v", err)
 			}
 			if strings.TrimSpace(in.URL) == "" {
-				return proto.Errorf("url is required")
+				return toolErrorf("url is required")
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
 			links, err := fetcher.Links(ctx, in.URL)
 			if err != nil {
-				return proto.Errorf("web_links failed: %v", logSSRF(e, err))
+				return toolErrorf("web_links failed: %v", logSSRF(e, err))
 			}
-			return proto.Text(fetch.FormatLinks(in.URL, links))
+			return ext.TextResult(fetch.FormatLinks(in.URL, links))
 		},
-		proto.NetworkRead())
+		ext.WithAuthority(ext.AuthorityNetworkRead))
 
 	e.Tool("web_fetch_raw",
 		"Fetch a page and save its UNRENDERED source (HTML/JSON/text, exactly as the server sent it) to a workspace file for you to grep or parse yourself. A fallback for when web_fetch/web_images/web_links don't surface what you need. Served from the same cache as web_fetch. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(webFetchRawSchema),
-		func(args json.RawMessage) proto.Result {
+		func(args json.RawMessage) ext.ToolResult {
 			// Keep preflight and the eventual write in the same workspace,
 			// even if a session switch arrives while the fetch is blocked.
-			cwd := e.CWD()
+			cwd := e.Host().CWD
 			ensure()
 			var in struct {
 				URL       string `json:"url"`
@@ -287,26 +290,26 @@ func register(e *proto.Extension) {
 				UserAgent string `json:"user_agent"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
-				return proto.Errorf("invalid args: %v", err)
+				return toolErrorf("invalid args: %v", err)
 			}
 			if strings.TrimSpace(in.URL) == "" {
-				return proto.Errorf("url is required")
+				return toolErrorf("url is required")
 			}
 			if strings.TrimSpace(in.SavePath) == "" {
-				return proto.Errorf("save_path is required")
+				return toolErrorf("save_path is required")
 			}
 			if err := checkSavePath(cwd, in.SavePath, in.Overwrite); err != nil {
-				return proto.Errorf("invalid save_path (nothing was fetched): %v", err)
+				return toolErrorf("invalid save_path (nothing was fetched): %v", err)
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
 			raw, err := fetcher.Raw(ctx, in.URL, in.UserAgent)
 			if err != nil {
-				return proto.Errorf("web_fetch_raw failed: %v", logSSRF(e, err))
+				return toolErrorf("web_fetch_raw failed: %v", logSSRF(e, err))
 			}
 			rel, werr := saveToWorkspace(cwd, in.SavePath, raw.Body, in.Overwrite)
 			if werr != nil {
-				return proto.Errorf("fetched the page but could not save it: %v", werr)
+				return toolErrorf("fetched the page but could not save it: %v", werr)
 			}
 			ctype := strings.TrimSpace(raw.ContentType)
 			if ctype == "" {
@@ -320,17 +323,17 @@ func register(e *proto.Extension) {
 			if raw.Truncated {
 				meta.WriteString("\n…source was capped at the fetch byte limit before saving")
 			}
-			return proto.Text(meta.String())
+			return ext.TextResult(meta.String())
 		},
-		proto.NetworkRead())
+		ext.WithAuthority(ext.AuthorityNetworkRead))
 
 	e.Tool("web_fetch_image",
 		"Fetch an image (PNG/JPEG/GIF/WebP) by URL and return it for you to view, and/or save it into the workspace. Use max_dimension to downscale a large image. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(webFetchImageSchema),
-		func(args json.RawMessage) proto.Result {
+		func(args json.RawMessage) ext.ToolResult {
 			// Keep preflight and the eventual write in the same workspace,
 			// even if a session switch arrives while the fetch is blocked.
-			cwd := e.CWD()
+			cwd := e.Host().CWD
 			ensure()
 			var in struct {
 				URL          string `json:"url"`
@@ -341,14 +344,14 @@ func register(e *proto.Extension) {
 				UserAgent    string `json:"user_agent"`
 			}
 			if err := json.Unmarshal(args, &in); err != nil {
-				return proto.Errorf("invalid args: %v", err)
+				return toolErrorf("invalid args: %v", err)
 			}
 			if strings.TrimSpace(in.URL) == "" {
-				return proto.Errorf("url is required")
+				return toolErrorf("url is required")
 			}
 			if strings.TrimSpace(in.SavePath) != "" {
 				if err := checkSavePath(cwd, in.SavePath, in.Overwrite); err != nil {
-					return proto.Errorf("invalid save_path (nothing was fetched): %v", err)
+					return toolErrorf("invalid save_path (nothing was fetched): %v", err)
 				}
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
@@ -359,9 +362,9 @@ func register(e *proto.Extension) {
 				// resubmit (with a suggested max_dimension), so pass it through.
 				var tooBig *fetch.ImageTooLargeError
 				if errors.As(err, &tooBig) {
-					return proto.Errorf("web_fetch_image failed: %v", err)
+					return toolErrorf("web_fetch_image failed: %v", err)
 				}
-				return proto.Errorf("web_fetch_image failed: %v", logSSRF(e, err))
+				return toolErrorf("web_fetch_image failed: %v", logSSRF(e, err))
 			}
 
 			var meta strings.Builder
@@ -377,31 +380,31 @@ func register(e *proto.Extension) {
 			if strings.TrimSpace(in.SavePath) != "" {
 				rel, werr := saveToWorkspace(cwd, in.SavePath, img.Data, in.Overwrite)
 				if werr != nil {
-					return proto.Errorf("fetched the image but could not save it: %v", werr)
+					return toolErrorf("fetched the image but could not save it: %v", werr)
 				}
 				fmt.Fprintf(&meta, "\nSaved to %s", rel)
 			}
 
 			inject := in.Inject == nil || *in.Inject
 			if inject {
-				return proto.Image(img.MimeType, img.Data, meta.String())
+				return ext.ToolResult{Content: []ext.ToolContent{ext.ImageBytes(img.MimeType, img.Data), ext.Text(meta.String())}}
 			}
-			return proto.Text(meta.String())
+			return ext.TextResult(meta.String())
 		},
-		proto.NetworkRead())
+		ext.WithAuthority(ext.AuthorityNetworkRead))
 
 	e.Command("web-cache",
 		"inspect the web page cache (`/web-cache`) or empty it (`/web-cache clear`)",
-		func(args string) proto.CommandResult {
+		func(args string) ext.Response {
 			ensure()
 			switch strings.TrimSpace(args) {
 			case "clear":
 				n := fetcher.CacheClear()
-				return proto.Display(fmt.Sprintf("web cache cleared (%d entries dropped)", n))
+				return ext.Display(fmt.Sprintf("web cache cleared (%d entries dropped)", n))
 			case "", "list":
 				entries := fetcher.CacheList()
 				if len(entries) == 0 {
-					return proto.Display("web cache is empty")
+					return ext.Display("web cache is empty")
 				}
 				var b strings.Builder
 				var total int64
@@ -417,9 +420,9 @@ func register(e *proto.Extension) {
 					}
 					b.WriteString("\n")
 				}
-				return proto.Display(strings.TrimRight(b.String(), "\n"))
+				return ext.Display(strings.TrimRight(b.String(), "\n"))
 			default:
-				return proto.CommandResult{Action: "noop", Err: fmt.Sprintf("unknown argument %q (use `/web-cache` or `/web-cache clear`)", args)}
+				return ext.Response{Action: "noop", Error: fmt.Sprintf("unknown argument %q (use `/web-cache` or `/web-cache clear`)", args)}
 			}
 		})
 }
@@ -573,7 +576,7 @@ func pathWithin(root, p string) bool {
 
 // logSSRF logs the full SSRF block details to the extension log when an error
 // chain contains an SSRFBlockedError, and returns the model-safe message.
-func logSSRF(e *proto.Extension, err error) string {
+func logSSRF(e *ext.Extension, err error) string {
 	var ssrf *fetch.SSRFBlockedError
 	if errors.As(err, &ssrf) {
 		e.Logf("%s", ssrf.Full())
@@ -621,4 +624,9 @@ func (rl *rateLimiter) allow(key string, refillSec time.Duration) bool {
 		rl.mu.Unlock()
 	}(key)
 	return true
+}
+
+// toolErrorf formats an application error into the SDK's text result envelope.
+func toolErrorf(format string, args ...any) ext.ToolResult {
+	return ext.TextErrorResult(fmt.Sprintf(format, args...))
 }
