@@ -112,3 +112,7 @@ version:
 # Remove build output.
 clean:
     rm -f terva-ext-web terva-ext-web.exe
+
+# Validate ticket content and detect pending repairs without changing files.
+ticket-check:
+    git ticket check --fix --dry-run --strict
