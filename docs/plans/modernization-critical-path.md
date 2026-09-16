@@ -3,20 +3,19 @@
 The SDK, session-safe saves, host configuration, credential handling, authority
 checks and native source/archive validation are implemented. Native reports
 cover the recorded candidate, not subsequent source or packaging changes.
-The user selected Terva-only configuration cleanup and a documentation pass
-before installation validation. The ticket store holds live status.
+Terva-only configuration cleanup and its documentation pass also passed
+fresh native validation at `b162e83`; PR #17 contains that work. The ticket store holds live status.
 
 ## Release order
 
-1. Complete the selected cleanup and validate its source and archives.
-2. [Validate installation, upgrades and release platforms](../../.tickets/draft/TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A.md).
+1. [Validate installation, upgrades and release platforms](../../.tickets/draft/TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A.md).
    Use the actual supported Terva CLI for isolated source/archive installs,
    manual settings migration and rollback. Check skill discovery, preserve old
    settings and never enable both `web` installations together.
-3. [Publish and smoke-test the first release](../../.tickets/draft/TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7.md).
+2. [Publish and smoke-test the first release](../../.tickets/draft/TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7.md).
    Prepare the concrete versioned candidate, get release approval, and require
    native checks before publication. Test downloaded assets afterward.
-4. [Coordinate legacy notice and archival](../../.tickets/draft/TKT-01M2NQ0DZR9RMP1PRT1VDA7GQP.md).
+3. [Coordinate legacy notice and archival](../../.tickets/draft/TKT-01M2NQ0DZR9RMP1PRT1VDA7GQP.md).
    A migration notice follows the verified replacement. Remote archival needs
    explicit ticket authorization in the old repository.
 

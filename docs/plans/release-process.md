@@ -38,10 +38,10 @@ and Windows amd64 runners. Windows requires Git Bash. Reports include the
 candidate commit, archive and binary checksums, runner images and results.
 See [platform validation](platform-validation.md) for the commands and evidence.
 
-The 2026-09-16 run passed all five targets at commit `7fde307`. Those reports
-apply only to that candidate and those archives. Configuration cleanup and any
-later source, dependency, launcher, manifest or packaging changes require new
-evidence. The eventual tagged release must test its exact versioned archives.
+The 2026-09-16 runs passed all five targets, first at `7fde307` and again
+after Terva-only configuration cleanup at `b162e83`. Each report applies only
+to its recorded candidate and archives. Later source, dependency, launcher,
+manifest or packaging changes require new evidence. The eventual tagged release must test its exact versioned archives.
 
 ## Publication requirements
 

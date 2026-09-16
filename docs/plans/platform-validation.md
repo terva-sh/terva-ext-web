@@ -165,3 +165,15 @@ versioned archives. Full CLI install, legacy settings upgrade and rollback are
 still tracked by TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A (Validate replacement installation,
 upgrades and release platforms); native driver loading does not replace those
 checks.
+
+## Terva-only configuration revalidation
+
+[Run 35150980130](https://github.com/terva-sh/terva-ext-web/actions/runs/35150980130)
+passed packaging and all five native source/archive jobs for cleanup candidate
+`b162e831b076d85084f89c701293fdfbb436f129`. The [ten reports](../validation/native-terva-only-2026-09-16.json)
+record the new archive and binary hashes. This run covers removal of legacy
+configuration, the host-configured test fixtures, ignored-file regressions and
+the rewritten README and research skill in the archives.
+
+The old reports remain as evidence for their own candidate. Full CLI installation,
+manual migration and rollback still require the release-validation ticket.

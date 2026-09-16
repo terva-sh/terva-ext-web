@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2P05BFER2BYNEAVRMBNQN5Y
 title: Remove obsolete zot support and refresh Terva documentation
 type: chore
-status: in-progress
+status: done
 status_reason: null
 priority: normal
 due_on: null
@@ -19,17 +19,10 @@ origin: null
 dependencies: []
 blocks_on: none
 references: []
-claim:
-  actor: agent:codex/terva-cleanup
-  branch: cleanup/terva-only-docs
-  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
-  commit: aafa038811ec350c58930519054099a651e39c9d
-  session: null
-  claimed_at: 2026-09-16T20:57:39Z
-  expires_at: null
+claim: null
 archive: null
 created_at: 2026-09-16T20:57:31Z
-updated_at: 2026-09-16T21:11:32Z
+updated_at: 2026-09-16T21:18:30Z
 created_by:
   id: agent:codex/terva-cleanup
   name: ""
@@ -45,14 +38,14 @@ User requested a review of zot-only support and an unslop documentation pass. Au
 
 ## Acceptance criteria
 
-- [ ] Remove obsolete zot-only code and references without weakening Terva safety checks
-- [ ] Document current configuration and migration behavior with any changed policy recorded explicitly
-- [ ] Apply unslop to maintained documentation and correct stale implementation and validation claims
-- [ ] Pass relevant regression and ticket checks and record native revalidation needs
+- [x] Remove obsolete zot-only code and references without weakening Terva safety checks
+- [x] Document current configuration and migration behavior with any changed policy recorded explicitly
+- [x] Apply unslop to maintained documentation and correct stale implementation and validation claims
+- [x] Pass relevant regression and ticket checks and record native revalidation needs
 
 ## Implementation plan
 
-Baseline just ci, then remove unused config.Load and replace its obsolete clamping tests with production Resolve coverage. Update operator errors to Terva configuration names. Review remaining compatibility against the documented 0.4.x migration contract, preserving active migration inputs unless the user selects their removal. Apply the installed /home/sothr/.claude/skills/unslop/SKILL.md to README, project AGENTS prose, maintained guides and the bundled skill. Replace obsolete release instructions with the current process and label historical evidence. Correct yolo permissions, cache scope and completed native validation claims. Preserve generated workflow, ticket history, vendored code and recorded evidence. Run just ci, document-link checks and native revalidation for changed source/archives.
+Remove unused config.Load and all active legacy configuration paths as explicitly requested: Resolve takes only Terva host settings, TERVA_EXT_WEB overrides and TAVILY_API_KEY. Replace silent-clamping and legacy-mode tests with production resolver bounds/precedence checks and negative regressions for ignored variables/files. Use the published Terva configuration CLI in the SearXNG recipe. Apply /home/sothr/.claude/skills/unslop/SKILL.md to maintained documentation and the bundled research skill, correcting obsolete release instructions, permission/cache claims and status. Preserve generated workflow, vendored code, installed files and historical evidence. Pass local CI and link checks, then run native source/archive validation on all five targets and record candidate-bound reports in PR #17.
 
 ## Notes
 
@@ -71,3 +64,7 @@ Post-change just ci passed: vet/format, race tests, six-tool subprocess conforma
 **agent:codex/terva-cleanup** at 2026-09-16T21:11:32Z
 
 Final review tightened the retired-file regression fixture: it selects an unconfigured SearXNG backend as well as a synthetic key, so even a regression that restores file loading cannot send a request to the real Tavily service. The focused subprocess regression passes. Restart native validation for this final test revision.
+
+## Summary
+
+Removed the unused loader and active legacy file/environment/mode support. Terva host configuration and current env overrides are the only inputs; existing files remain untouched. SearXNG helper uses the host API. Applied the requested unslop skill to maintained docs and research guidance, corrected safety/status claims, and updated release migration criteria. Baseline and final just ci, documentation links and strict ticket checks pass. Native run 35150980130 passed all five source/archive targets at b162e831b076d85084f89c701293fdfbb436f129; ten reports and checksums are preserved in docs/validation/native-terva-only-2026-09-16.json. Code and documentation commits are separate in Forgejo PR #17.

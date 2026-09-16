@@ -56,7 +56,8 @@ checks apply after host approval. See [the authority contract](authority-contrac
 Output sanitization limits forged metadata but does not make fetched text
 trusted; see [untrusted content](untrusted-web-content.md).
 
-SDK and native validation passed before this cleanup. Reports apply to their
+SDK and native validation passed before this cleanup and again for the
+Terva-only configuration candidate `b162e83`. Reports apply to their
 recorded candidates and archive checksums. Changes require revalidation as
 described in [platform validation](platform-validation.md).
 

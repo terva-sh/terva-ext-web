@@ -49,7 +49,7 @@ Additional release work and findings:
 - [Host result frame limits](../../.tickets/done/TKT-01M2NWQSBVHEYHFW8C1FD5ZTVX.md).
 - [Windows paths and cache ordering](../../.tickets/done/TKT-01M2NYSRTKARHFGRF6XFEMM8A6.md).
 - [Explicit Bash launch](../../.tickets/done/TKT-01M2NZD0DP9MTFSJ62F8BZV96V.md).
-- TKT-01M2P05BFER2BYNEAVRMBNQN5Y (Remove obsolete zot support and refresh Terva documentation).
+- [Terva-only configuration and documentation cleanup](../../.tickets/done/TKT-01M2P05BFER2BYNEAVRMBNQN5Y.md).
 
 ## Follow-up features and investigations
 
