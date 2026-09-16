@@ -28,15 +28,17 @@ references:
     path: .goreleaser.yaml
   - ref: file:conformance_test.go
     path: conformance_test.go
+  - ref: file:docs/plans/modernization-critical-path.md
+    path: docs/plans/modernization-critical-path.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:34Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:34:37Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -53,7 +55,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Report first-build/rebuild progress without corrupting protocol stdout or hanging unsupported hosts
 - [ ] Preserve offline vendor compilation, useful stderr errors and immediate execution of prebuilt archives
 - [ ] Exercise first build, rebuild, missing toolchain and prebuilt paths
+- [ ] Do not assume unknown bootstrap frames are ignored: prove startup behavior on every supported host floor or deliberately gate/omit frames before hello when support cannot be known
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:38Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: SDK verification supplies actual host-floor/bootstrap support; current offline launcher.
+
+Expected deliverable: Launcher progress only under a proven compatible startup contract.
+
+Validation: First build/rebuild/prebuilt/no-Go paths and old-host behavior with bounded startup time.
+
+Readiness/coordination: Terva docs explicitly say an unknown bootstrap frame can be treated as malformed hello; compatibility cannot be handshaken before that frame.

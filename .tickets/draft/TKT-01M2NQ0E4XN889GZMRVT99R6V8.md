@@ -27,15 +27,17 @@ references:
     path: skills/web-research/SKILL.md
   - ref: file:README.md
     path: README.md
+  - ref: file:docs/plans/modernization-critical-path.md
+    path: docs/plans/modernization-critical-path.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:34:36Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -51,7 +53,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Record measurements or reproducible observations of default discovery and Essential hints under the host cap
 - [ ] Recommend a minimal hint set or retain defaults, explaining the tradeoff
 - [ ] Verify any adopted hints degrade on supported hosts and do not unexpectedly grow prompt context
+- [ ] Use a fixed set of discovery scenarios and compare tool visibility, host cap and prompt/token impact against the unhinted baseline; specify success thresholds before adopting hints
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:38Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: SDK-backed tools and representative discovery scenarios.
+
+Expected deliverable: Measured recommendation for a minimal Essential set or keeping defaults.
+
+Validation: Compare default/hinted discovery under host cap and prompt budget.
+
+Readiness/coordination: A spike may conclude that no hint is needed; define the comparison before changing registrations.

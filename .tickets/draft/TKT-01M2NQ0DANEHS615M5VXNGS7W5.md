@@ -35,15 +35,17 @@ references:
     path: .forgejo/workflows/ci.yml
   - ref: file:README.md
     path: README.md
+  - ref: file:docs/plans/modernization-critical-path.md
+    path: docs/plans/modernization-critical-path.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:34:36Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -61,7 +63,23 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Test both documented host floor and current Terva; record versions and real-host smoke evidence
 - [ ] Keep stdout JSON-only and preserve race/vet/format/vendor gates in just and CI
 - [ ] Document capability fallback and support boundaries before removing zot-only profiles
+- [ ] Remove inherited TAVILY_API_KEY, ZOT_WEB_* and TERVA_EXT_WEB_* from subprocess environments; use synthetic fixtures and local servers so tests cannot call real providers
+- [ ] Use image fixtures and bounded timeout/deadlock checks for oversized/malformed frames and concurrent shutdown; record actual-host tests separately from simulated wire profiles
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:37Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: SDK integration, cwd regression and authority decision; versioned real hosts from SDK verification.
+
+Expected deliverable: Updated subprocess harness and separate real-host evidence for supported floor/current versions.
+
+Validation: Frame recovery, image/text, concurrency, sessions and bounded clean shutdown with JSON-only stdout.
+
+Readiness/coordination: The existing harness strips ZOT_WEB_* but inherits TAVILY_API_KEY. Fix fixture isolation in this ticket, not by reading real user credentials.

@@ -29,15 +29,17 @@ references:
     path: main_test.go
   - ref: file:docs/plans/untrusted-web-content.md
     path: docs/plans/untrusted-web-content.md
+  - ref: file:docs/plans/modernization-critical-path.md
+    path: docs/plans/modernization-critical-path.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:34:36Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -54,7 +56,22 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Assess network and workspace permission effects together and capability/version fallbacks
 - [ ] Record an evidence-based adopt/defer/reject decision separately for raw text and binary images
 - [ ] If adoption is viable, file scoped implementation/tests rather than weakening existing guards in this investigation
+- [ ] Include non-UTF8 raw responses and binary image fixtures when comparing host text-write semantics; retaining direct guarded saves is an acceptable documented spike outcome
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:38Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: SDK HostToolCall and authority decision.
+
+Expected deliverable: Byte/path/permission comparison for text and binary saves with a feasibility conclusion.
+
+Validation: Synthetic raw/non-UTF8/image, overwrite and escape cases against actual host write contracts.
+
+Readiness/coordination: Do not start a migration just because the API exists; file implementation only if semantic equivalence is demonstrated.

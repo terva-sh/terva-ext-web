@@ -31,15 +31,17 @@ references:
     path: release.just
   - ref: file:docs/plans/release-process.md
     path: docs/plans/release-process.md
+  - ref: file:docs/plans/modernization-critical-path.md
+    path: docs/plans/modernization-critical-path.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:34:36Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -57,7 +59,23 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Publish approved versioned archives/checksums, then download and verify the published artifacts and installation flow
 - [ ] Update installation/release documentation with actual artifact URLs and retain rollback instructions
 - [ ] Do not force-push, rotate/revoke credentials or modify the legacy repository as an incidental release step
+- [ ] If release-enabling changes alter the validated candidate, rebuild and rerun affected checks on the exact tagged commit before publication; do not reuse stale validation evidence
+- [ ] Record whether released artifacts match the tested checksums and retain a recovery plan that does not force-push tags
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:38Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: A validated candidate plus actual publication approval and verified destination.
+
+Expected deliverable: Tagged first release and verified downloadable artifacts with recovery instructions.
+
+Validation: Revalidate any changed candidate then verify downloaded checksums and smoke installation.
+
+Readiness/coordination: Automation is still disabled. Reading metadata/secret names is preparatory; remote settings changes still need specific ticket authorization.

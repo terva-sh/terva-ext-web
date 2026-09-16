@@ -35,15 +35,17 @@ references:
     path: extension.json
   - ref: file:conformance_test.go
     path: conformance_test.go
+  - ref: file:docs/plans/modernization-critical-path.md
+    path: docs/plans/modernization-critical-path.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:22:56Z
+updated_at: 2026-09-16T18:34:36Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/ticket-labels
+  id: agent:codex/critical-path
   name: ""
 extensions: {}
 ---
@@ -61,7 +63,23 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Use ordered session lifecycle and advertised event capabilities while preserving concurrent network reads
 - [ ] Retire the handwritten protocol integration and adapt existing behavior tests without weakening SSRF, limits, paths or sanitization
 - [ ] Run applicable just CI, race, vendor-sync and snapshot checks; document unsupported cancellation/trust features honestly
+- [ ] Carry the session-switch save regression through SDK migration if it has landed; coordinate overlapping main.go edits and preserve legacy config until its own migration batch
+- [ ] Update typed ticket references to retired protocol files when deleting them so git ticket check stays valid
 
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:31:37Z
+
+Grooming review, 2026-09-16 (not an implementation plan).
+
+Entry inputs: Completed SDK verification with published version and contracts.
+
+Expected deliverable: SDK-backed registration/session/result transport while retaining existing config behavior.
+
+Validation: Baseline then just CI, vendor sync, race/conformance and five-target snapshot.
+
+Readiness/coordination: main.go overlaps the cwd fix: prefer landing that small fix first, but it is not a semantic dependency; adapt its test if work overlaps.

@@ -4,7 +4,8 @@ Status: identity/packaging merged in [PR #1](https://git.local.sothr.com/terva-s
 as `2ac463c` (implementation `6e1d43c`); ticket workflow merged in
 [PR #2](https://git.local.sothr.com/terva-sh/terva-ext-web/pulls/2) as `80d3ec6`.
 The outstanding work is tracked in [the modernization backlog](modernization-backlog.md)
-and `.tickets/`. Those tickets own current work status and dependencies; the
+and `.tickets/`; [the critical-path review](modernization-critical-path.md)
+records prerequisites and readiness gaps. Those tickets own current work status and dependencies; the
 assessment below preserves direction and original evidence.
 
 Origin is the server-verified public repository
