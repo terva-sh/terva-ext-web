@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0DK05JAWQRF7TBGF1CY7
 title: Migrate Tavily configuration secrets without losing legacy settings
 type: task
-status: draft
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -36,10 +36,17 @@ references:
     path: docs/plans/modernization-critical-path.md
   - ref: file:docs/plans/config-provenance.md
     path: docs/plans/config-provenance.md
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: feat/host-secrets
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: c0add69a7193e2aaecde11daa8112423c66f908c
+  session: null
+  claimed_at: 2026-09-16T19:52:10Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T19:34:37Z
+updated_at: 2026-09-16T19:52:10Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -67,6 +74,10 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Implementation plan
+
+Expose a default-free host secret field only in explicit host mode; retain provider env precedence and legacy files for rollback. Declare data_secrets true because files may remain. Exercise synthetic duplicate/import/retry/unset/rollback and error-output checks. Remove raw Tavily error body snippets and redact echoed configured key from provider results/errors; keep status guidance. Document host encryption setup separately from secret-field masking; do not use runtime broker.
 
 ## Notes
 
