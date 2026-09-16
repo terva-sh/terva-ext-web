@@ -29,7 +29,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T19:26:49Z
-updated_at: 2026-09-16T20:01:49Z
+updated_at: 2026-09-16T20:05:13Z
 created_by:
   id: agent:codex/modernization-run
   name: ""
@@ -62,3 +62,7 @@ Add GitHub-only version-tag/manual validation workflow following sibling convent
 **agent:codex/modernization-run** at 2026-09-16T20:01:49Z
 
 User supplied https://github.com/terva-sh/terva-ext-web and git@github.com:terva-sh/terva-ext-web.git. Verified GitHub API identifies a public empty repository and authenticated push access; git ls-remote succeeds with no refs. This worktree initially had only origin, so added the supplied URL as local mirror. No remote repository settings changed and no credential contents read.
+
+**agent:codex/modernization-run** at 2026-09-16T20:05:13Z
+
+Implemented GitHub-only tag/manual native workflow with read-only permissions, Linux packaging and five native runner targets. Added candidate checksum/version/skill/no-Go launcher validation and reusable source/archive host-driver checks with JSON reports. Local Linux archive rehearsal passes, including installation path with spaces; native GitHub execution remains pending. Added .exe suffix for Windows subprocess test builds. Manual workflow never publishes; tag builds also skip publication until the separate approved release path.

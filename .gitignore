@@ -11,3 +11,5 @@ config.json
 .DS_Store
 dist/
 /.release-package/
+
+/validation-report-*.json
