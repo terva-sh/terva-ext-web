@@ -47,8 +47,33 @@ the unchanged-source baseline before code changes. The setup session could
 not run Go tests because `go` was absent from PATH; this is a validation gap,
 not a passed baseline. Check the environment again in the new session.
 Commit coherent changes and record implementation rationale in source control.
-There is no project ticket store yet. If one is established, read its generated
-workflow before writing to it; the workspace ledger tracks clone setup only.
+## Project ticket workflow
+
+Track codebase work in this repository's `.tickets/` store. The workspace
+ledger is for workspace infrastructure and clone setup, not this project's
+implementation. Read the generated Tickets block below before writing tickets;
+run `git ticket instructions` for the full rationale.
+
+- At session start, inspect `git ticket ready`, `git ticket list --status draft`,
+  and `git ticket list --status in-progress`. Read the selected ticket before
+  editing, and use `git ticket files PATH` to find recorded work on a file.
+- Keep `docs/plans/terva-ext-web.md` as the modernization direction. Link the
+  relevant plan and source paths from implementation tickets; record decisions,
+  alternatives, progress, and validation in the ticket as the work happens.
+  Keep SDK/correctness, configuration/credentials, and release work separate.
+- Commit ticket changes as you go. Include the ticket ID and title in commits
+  primarily concerning one ticket. Before handing off or ending a session,
+  run `git ticket check` (or the stricter `just ticket-check`), commit all
+  intended ticket changes, and leave unrelated changes untouched.
+- Regenerate the block below with `git ticket instructions --write`; do not
+  hand-edit it. Keep repository-specific additions in this section so they
+  survive regeneration.
+- After cloning, run `git ticket install-merge-driver` to configure the local
+  driver used by the committed `.gitattributes`. Git configuration is local to
+  each clone and is not installed by checking out the attributes file.
+
+`just ticket-check` requires the installed `git-ticket` tool. It is a local
+handoff gate; the Go CI pipeline does not yet provision or run git-ticket.
 
 ## Repository boundaries
 
