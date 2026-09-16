@@ -38,7 +38,7 @@ jobs:
       image: container.local.sothr.com/library/golang:1.27-alpine
     steps:
       - name: Install dependencies
-        run: apk add --no-cache git gcc musl-dev
+        run: apk add --no-cache git bash gcc musl-dev
 
       - name: Checkout Code
         uses: Actions-Mirrors/forgejo-actions-checkout@v6
