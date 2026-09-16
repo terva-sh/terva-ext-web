@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQT535ETD2WACPHJ93PA48
 title: Resolve configuration provenance and legacy import semantics
 type: spike
-status: draft
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -31,15 +31,22 @@ references:
     path: docs/plans/terva-ext-web.md
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: spike/config-provenance
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: 8c38900aff0c2ee9e48b8b67cef9ecd505500656
+  session: null
+  claimed_at: 2026-09-16T19:32:20Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T18:31:36Z
-updated_at: 2026-09-16T18:34:37Z
+updated_at: 2026-09-16T19:33:41Z
 created_by:
   id: agent:codex/critical-path
   name: ""
 updated_by:
-  id: agent:codex/critical-path
+  id: agent:codex/modernization-run
   name: ""
 extensions: {}
 ---
@@ -60,8 +67,16 @@ The inspected Terva SDK exposes Config as resolved raw JSON values: manifest def
 
 - [ ] Record reviewed decisions, reusable validation inputs and outstanding external requirements in the ticket; pass strict ticket validation
 
+## Implementation plan
+
+Inspect published v0.137.0 resolver, manifest schema and SDK Config API against existing config loader. Establish a schema strategy that makes explicit values distinguishable without invented metadata; specify legacy transition, env precedence, validation and synthetic fixtures. Account separately for omitted undecryptable secrets and opt-in host-only operation; do not read or write real credentials.
+
 ## Notes
 
 **agent:codex/critical-path** at 2026-09-16T18:33:36Z
 
 Entry inputs: verified published SDK/host capability report and the existing config loader behavior. Deliverable: a deterministic import/precedence decision and synthetic fixture table for both nonsecret and secret migration. Validation: cover absent, explicit-default, zero/false/empty, legacy/file/env, allowlist append/replace and retry/rollback cases. This decision runs alongside SDK integration and gates config implementation; local SDK presence alone is not evidence of explicit setting provenance.
+
+**agent:codex/modernization-run** at 2026-09-16T19:33:41Z
+
+Published resolver proves Config.Has has no provenance when manifest defaults exist. Decision: omit schema defaults and keep application defaults, use explicit configuration_source host mode for opt-in credential migration and disabling legacy reads. Host drops undecryptable secrets, so legacy mode deliberately retains legacy credential ownership until opt-in; host mode never resurrects a legacy key. Host form blank means unset for nonsecrets and keep for secrets. docs/plans/config-provenance.md records full field precedence, allowlist exception, validation, immutable runtime/cache semantics, rollback and synthetic cases. Manual host-form import wins over automatic file/credential rewriting; no new host API needed.
