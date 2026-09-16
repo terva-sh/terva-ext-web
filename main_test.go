@@ -194,3 +194,26 @@ func TestVersionString(t *testing.T) {
 		t.Errorf("versionString() = %q, missing platform", got)
 	}
 }
+
+// Manifest defaults would erase the distinction between explicit host settings
+// and application fallbacks; keep that provenance invariant reviewable.
+func TestManifestConfigHasNoDefaults(t *testing.T) {
+	b, err := os.ReadFile("extension.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		Config []map[string]any `json:"config"`
+	}
+	if err := json.Unmarshal(b, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest.Config) < 12 {
+		t.Fatal("configuration fields missing")
+	}
+	for _, f := range manifest.Config {
+		if _, ok := f["default"]; ok {
+			t.Errorf("field %s adds a provenance-erasing default", f["key"])
+		}
+	}
+}

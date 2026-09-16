@@ -6,7 +6,85 @@
   "description": "web_search and web_fetch tools for retrieving information from the web",
   "enabled": true,
   "permissions": [
-    { "tool": "web_fetch_raw", "decision": "ask", "reason": "writes the page source to a workspace file" },
-    { "tool": "web_fetch_image", "decision": "ask", "reason": "saves an image into the workspace" }
+    {
+      "tool": "web_fetch_raw",
+      "decision": "ask",
+      "reason": "writes the page source to a workspace file"
+    },
+    {
+      "tool": "web_fetch_image",
+      "decision": "ask",
+      "reason": "saves an image into the workspace"
+    }
+  ],
+  "config": [
+    {
+      "key": "configuration_source",
+      "type": "select",
+      "description": "legacy preserves old files; host ignores them. Set host after entering your choices.",
+      "options": [
+        "legacy",
+        "host"
+      ]
+    },
+    {
+      "key": "search_backend",
+      "type": "select",
+      "description": "Search backend (application default tavily).",
+      "options": [
+        "tavily",
+        "searxng"
+      ]
+    },
+    {
+      "key": "searxng_url",
+      "type": "string",
+      "description": "SearXNG http(s) URL; blank means unconfigured."
+    },
+    {
+      "key": "user_agent",
+      "type": "string",
+      "description": "User-Agent; blank uses application identity, browser uses a browser UA."
+    },
+    {
+      "key": "allow_local_hosts",
+      "type": "string",
+      "description": "JSON array of hosts/IPs/CIDRs; [] blocks loopback. Default loopback only."
+    },
+    {
+      "key": "fetch_max_bytes",
+      "type": "int",
+      "description": "Response bytes, default 2097152, maximum 33554432."
+    },
+    {
+      "key": "fetch_image_max_bytes",
+      "type": "int",
+      "description": "Image bytes, default 5242880, maximum 20971520."
+    },
+    {
+      "key": "fetch_timeout_sec",
+      "type": "int",
+      "description": "Fetch timeout seconds, default 25, maximum 60."
+    },
+    {
+      "key": "fetch_inline_images",
+      "type": "bool",
+      "description": "Keep inline image URLs; default false."
+    },
+    {
+      "key": "fetch_cache_ttl_sec",
+      "type": "int",
+      "description": "Cache seconds, default 600, maximum 3600; 0 means no expiry."
+    },
+    {
+      "key": "fetch_cache_max_entries",
+      "type": "int",
+      "description": "Cache entries, default 32, maximum 128; 0 disables."
+    },
+    {
+      "key": "fetch_cache_max_bytes",
+      "type": "int",
+      "description": "Cache bytes, default 67108864, maximum 268435456; 0 removes byte cap."
+    }
   ]
 }

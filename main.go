@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"terva-ext-web/internal/config"
 	"terva-ext-web/internal/fetch"
 	"terva-ext-web/internal/search"
 	"terva-ext-web/internal/version"
@@ -124,38 +123,23 @@ func register(e *ext.Extension) {
 	e.RequireProtocol(2)
 	e.OnSession(func(ext.Session) {}) // SDK updates Host() on its ordered reader.
 
-	// Providers are built lazily on first tool call, by which point the
-	// hello_ack (and thus data_dir for config.json) has arrived.
-	var (
-		once     sync.Once
-		provider search.Provider
-		provErr  error
-		cfgErr   error
-		fetcher  *fetch.Client
-		rl       = newRateLimiter(10) // 10 burst, refilled per-tool at different rates
-	)
-	ensure := func() {
-		once.Do(func() {
-			var cfg config.Config
-			cfg, cfgErr = config.Load(e.Host().DataDir, e.Host().ExtensionDir)
-			fetcher = fetch.New(cfg, fetch.ParseAllowList(cfg.AllowLocalHosts))
-			provider, provErr = search.New(cfg, fetcher.HTTPClient())
-			if cfgErr != nil {
-				// A present-but-invalid config.json is the real failure; report
-				// it verbatim rather than the misleading default-backend error
-				// (e.g. "tavily backend selected") it would otherwise surface as.
-				provErr = cfgErr
-			}
-		})
+	state := &runtimeStore{
+		read:   func() (ext.HostInfo, ext.Config) { return e.Host(), e.Config() },
+		notify: func(message string) { e.Notify("error", message) },
 	}
+	e.OnConfig(func(ext.Config) { state.snapshot() })
+	rl := newRateLimiter(10)
 
 	e.Tool("web_search",
 		"Search the web and return ranked results (title, URL, snippet). Use for current events, facts, documentation, or to find pages to read with web_fetch.",
 		json.RawMessage(searchSchema),
 		func(args json.RawMessage) ext.ToolResult {
-			ensure()
-			if provErr != nil {
-				return toolErrorf("web_search is not configured: %v", provErr)
+			rt := state.snapshot()
+			if rt.configErr != nil {
+				return toolErrorf("web configuration: %v", rt.configErr)
+			}
+			if rt.providerErr != nil {
+				return toolErrorf("web_search is not configured: %v", rt.providerErr)
 			}
 			if !rl.allow("web_search", 5*time.Second) {
 				e.Notify("warn", "web_search rate limit hit; backing off")
@@ -185,7 +169,7 @@ func register(e *ext.Extension) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 			defer cancel()
-			results, err := provider.Search(ctx, q)
+			results, err := rt.provider.Search(ctx, q)
 			if err != nil {
 				return toolErrorf("search failed: %v", logSSRF(e, err))
 			}
@@ -197,9 +181,9 @@ func register(e *ext.Extension) {
 		"Fetch a web page (http/https) and return its main text content. Results are cached briefly: paging with offset (or repeating the call) within that window reads the same snapshot, so it won't drift mid-read; after the cache expires a re-fetch may differ, with new content typically appended at the end. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(fetchSchema),
 		func(args json.RawMessage) ext.ToolResult {
-			ensure()
-			if cfgErr != nil {
-				return toolErrorf("web_fetch is not configured: %v", cfgErr)
+			rt := state.snapshot()
+			if rt.configErr != nil {
+				return toolErrorf("web configuration: %v", rt.configErr)
 			}
 			if !rl.allow("web_fetch", 2*time.Second) {
 				e.Notify("warn", "web_fetch rate limit hit; backing off")
@@ -219,7 +203,7 @@ func register(e *ext.Extension) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
-			text, err := fetcher.Fetch(ctx, in.URL, in.MaxChars, in.Offset, in.UserAgent)
+			text, err := rt.fetcher.Fetch(ctx, in.URL, in.MaxChars, in.Offset, in.UserAgent)
 			if err != nil {
 				return toolErrorf("fetch failed: %v", logSSRF(e, err))
 			}
@@ -231,7 +215,10 @@ func register(e *ext.Extension) {
 		"List the image URLs on a page that web_fetch represented as [image:N] placeholders. Cheap when the page was recently fetched (it is served from cache).",
 		json.RawMessage(imagesSchema),
 		func(args json.RawMessage) ext.ToolResult {
-			ensure()
+			rt := state.snapshot()
+			if rt.configErr != nil {
+				return toolErrorf("web configuration: %v", rt.configErr)
+			}
 			var in struct {
 				URL string `json:"url"`
 			}
@@ -243,7 +230,7 @@ func register(e *ext.Extension) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
-			imgs, err := fetcher.Images(ctx, in.URL)
+			imgs, err := rt.fetcher.Images(ctx, in.URL)
 			if err != nil {
 				return toolErrorf("web_images failed: %v", logSSRF(e, err))
 			}
@@ -255,7 +242,10 @@ func register(e *ext.Extension) {
 		"List every hyperlink on a page (absolute URL plus anchor text). Use to enumerate a page's outbound links without scraping the fetched text yourself. Cheap when the page was recently fetched (served from cache).",
 		json.RawMessage(linksSchema),
 		func(args json.RawMessage) ext.ToolResult {
-			ensure()
+			rt := state.snapshot()
+			if rt.configErr != nil {
+				return toolErrorf("web configuration: %v", rt.configErr)
+			}
 			var in struct {
 				URL string `json:"url"`
 			}
@@ -267,7 +257,7 @@ func register(e *ext.Extension) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
-			links, err := fetcher.Links(ctx, in.URL)
+			links, err := rt.fetcher.Links(ctx, in.URL)
 			if err != nil {
 				return toolErrorf("web_links failed: %v", logSSRF(e, err))
 			}
@@ -282,7 +272,10 @@ func register(e *ext.Extension) {
 			// Keep preflight and the eventual write in the same workspace,
 			// even if a session switch arrives while the fetch is blocked.
 			cwd := e.Host().CWD
-			ensure()
+			rt := state.snapshot()
+			if rt.configErr != nil {
+				return toolErrorf("web configuration: %v", rt.configErr)
+			}
 			var in struct {
 				URL       string `json:"url"`
 				SavePath  string `json:"save_path"`
@@ -303,7 +296,7 @@ func register(e *ext.Extension) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
-			raw, err := fetcher.Raw(ctx, in.URL, in.UserAgent)
+			raw, err := rt.fetcher.Raw(ctx, in.URL, in.UserAgent)
 			if err != nil {
 				return toolErrorf("web_fetch_raw failed: %v", logSSRF(e, err))
 			}
@@ -334,7 +327,10 @@ func register(e *ext.Extension) {
 			// Keep preflight and the eventual write in the same workspace,
 			// even if a session switch arrives while the fetch is blocked.
 			cwd := e.Host().CWD
-			ensure()
+			rt := state.snapshot()
+			if rt.configErr != nil {
+				return toolErrorf("web configuration: %v", rt.configErr)
+			}
 			var in struct {
 				URL          string `json:"url"`
 				MaxDimension int    `json:"max_dimension"`
@@ -356,7 +352,7 @@ func register(e *ext.Extension) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 			defer cancel()
-			img, err := fetcher.FetchImage(ctx, in.URL, in.MaxDimension, in.UserAgent)
+			img, err := rt.fetcher.FetchImage(ctx, in.URL, in.MaxDimension, in.UserAgent)
 			if err != nil {
 				// ImageTooLargeError's message already tells the model how to
 				// resubmit (with a suggested max_dimension), so pass it through.
@@ -396,13 +392,16 @@ func register(e *ext.Extension) {
 	e.Command("web-cache",
 		"inspect the web page cache (`/web-cache`) or empty it (`/web-cache clear`)",
 		func(args string) ext.Response {
-			ensure()
+			rt := state.snapshot()
+			if rt.configErr != nil {
+				return ext.Errorf("web configuration: %v", rt.configErr)
+			}
 			switch strings.TrimSpace(args) {
 			case "clear":
-				n := fetcher.CacheClear()
+				n := rt.fetcher.CacheClear()
 				return ext.Display(fmt.Sprintf("web cache cleared (%d entries dropped)", n))
 			case "", "list":
-				entries := fetcher.CacheList()
+				entries := rt.fetcher.CacheList()
 				if len(entries) == 0 {
 					return ext.Display("web cache is empty")
 				}
