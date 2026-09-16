@@ -45,7 +45,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:36:04Z
+updated_at: 2026-09-16T19:38:17Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -90,3 +90,7 @@ Expected deliverable: An explicit reader/writer permission matrix and ordering d
 Validation: Host modes/user overrides plus SSRF, write-path and concurrency regression tests.
 
 Readiness/coordination: Do not conflate single wire authority with combined effects; preserve existing network-read plus ask behavior unless a proven alternative is reviewed.
+
+**agent:codex/modernization-run** at 2026-09-16T19:38:17Z
+
+Added isolated tests/host-contract module against actual published v0.137.0 permission resolver and actual extension manifest. All five modes and user allow/deny overrides passed under race instrumentation; writer suggestions are present. Confirmed yolo deliberately overrides ask, plan denies before user allows, and network-read is not local read. Added concurrent blocked-download regression and documented why Sequential is unnecessary. Existing application defense tests run uncached with race. Config provenance PR #9 and SDK PR #8 are merged; keep downstream batches separate.

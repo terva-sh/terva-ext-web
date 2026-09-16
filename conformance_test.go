@@ -471,3 +471,53 @@ func TestConformanceCommands(t *testing.T) {
 	d.readUntil("shutdown_ack")
 	d.expectCleanExit()
 }
+
+// Network calls remain concurrent; serializing both downloads would deadlock
+// at the second request because neither response is released until both arrive.
+func TestConformanceConcurrentDownloads(t *testing.T) {
+	started := make(chan struct{}, 2)
+	release := make(chan struct{})
+	var once sync.Once
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		started <- struct{}{}
+		<-release
+		_, _ = w.Write([]byte("download"))
+	}))
+	defer server.Close()
+	defer once.Do(func() { close(release) })
+	d := startExtension(t)
+	defer func() { _ = d.cmd.Process.Kill() }()
+	assertStartup(t, d.readUntil("ready"))
+	cwd := t.TempDir()
+	d.send(hostProfiles[0].helloAck(cwd))
+	for _, id := range []string{"one", "two"} {
+		d.send(map[string]any{"type": "tool_call", "id": id, "name": "web_fetch_raw", "args": map[string]any{"url": server.URL + "/" + id, "save_path": id}})
+	}
+	for i := 0; i < 2; i++ {
+		select {
+		case <-started:
+		case <-time.After(frameTimeout):
+			t.Fatal("downloads serialized or stalled")
+		}
+	}
+	once.Do(func() { close(release) })
+	seen := map[string]bool{}
+	for len(seen) < 2 {
+		f := d.readFrame()
+		if f["type"] != "tool_result" {
+			continue
+		}
+		id, _ := f["id"].(string)
+		if (id != "one" && id != "two") || seen[id] || f["is_error"] == true {
+			t.Fatalf("unexpected result: %v", f)
+		}
+		seen[id] = true
+		b, err := os.ReadFile(filepath.Join(cwd, id))
+		if err != nil || string(b) != "download" {
+			t.Fatalf("download %s: %v", id, err)
+		}
+	}
+	d.send(map[string]any{"type": "shutdown"})
+	d.readUntil("shutdown_ack")
+	d.expectCleanExit()
+}
