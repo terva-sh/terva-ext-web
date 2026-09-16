@@ -35,6 +35,9 @@ def main():
     try:
         actual = subprocess.check_output(["go", "env", "GOOS", "GOARCH"], text=True).split()
         assert actual == [goos, goarch], "runtime target mismatch"
+        machines = {"amd64": {"amd64", "x86_64"}, "arm64": {"arm64", "aarch64"}}
+        assert platform.machine().lower() in machines[goarch], "native machine architecture mismatch"
+        report["checks"].append("native machine and Go target agree")
         if mode == "source":
             commands = [
                 (["go", "vet", "./..."], root),

@@ -451,8 +451,8 @@ func resolveSavePath(cwd, savePath string, overwrite, mkdir bool) (target, rel s
 	if strings.TrimSpace(cwd) == "" {
 		return "", "", fmt.Errorf("no workspace directory available to save into")
 	}
-	if filepath.IsAbs(savePath) {
-		return "", "", fmt.Errorf("save_path must be relative to the workspace, not absolute")
+	if !filepath.IsLocal(savePath) {
+		return "", "", fmt.Errorf("save_path must be a local relative path within the workspace")
 	}
 	root, err := filepath.Abs(cwd)
 	if err != nil {
@@ -469,7 +469,10 @@ func resolveSavePath(cwd, savePath string, overwrite, mkdir bool) (target, rel s
 	}
 	// Refuse writes into .git/ — a prompt-injected model could overwrite
 	// .git/config or other control files.
-	if strings.HasPrefix(rel, ".git"+string(filepath.Separator)) || rel == ".git" {
+	// Case-insensitive filesystems and Windows trailing-dot/space aliases must
+	// not turn a spelling variant into a write to Git metadata.
+	first, _, _ := strings.Cut(rel, string(filepath.Separator))
+	if strings.EqualFold(strings.TrimRight(first, " ."), ".git") {
 		return "", "", fmt.Errorf("writing to .git/ is not permitted")
 	}
 	if err := walkParentsNoSymlink(root, rootReal, filepath.Dir(rel), mkdir); err != nil {

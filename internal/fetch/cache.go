@@ -45,7 +45,8 @@ type cache struct {
 	ttl      time.Duration
 	max      int
 	maxBytes int64
-	bytes    int64 // sum of entry sizes currently held
+	bytes    int64  // sum of entry sizes currently held
+	sequence uint64 // lock-ordered access rank, independent of clock resolution
 	entries  map[string]*entry
 }
 
@@ -53,7 +54,7 @@ type entry struct {
 	page     page
 	size     int64
 	stored   time.Time
-	accessed time.Time
+	accessed uint64
 }
 
 // newCache builds a cache. A non-positive max disables caching entirely (get
@@ -95,7 +96,8 @@ func (c *cache) get(url string) (page, bool) {
 		c.remove(url)
 		return page{}, false
 	}
-	e.accessed = time.Now()
+	c.sequence++
+	e.accessed = c.sequence
 	return e.page, true
 }
 
@@ -112,7 +114,8 @@ func (c *cache) put(p page) {
 	}
 	now := time.Now()
 	size := pageSize(p)
-	c.entries[p.URL] = &entry{page: p, size: size, stored: now, accessed: now}
+	c.sequence++
+	c.entries[p.URL] = &entry{page: p, size: size, stored: now, accessed: c.sequence}
 	c.bytes += size
 	c.evict(p.URL)
 }
@@ -162,12 +165,12 @@ func (c *cache) clear() int {
 func (c *cache) evict(keep string) {
 	for len(c.entries) > c.max || (c.maxBytes > 0 && c.bytes > c.maxBytes) {
 		var oldestKey string
-		var oldest time.Time
+		var oldest uint64
 		for k, e := range c.entries {
 			if k == keep {
 				continue
 			}
-			if oldestKey == "" || e.accessed.Before(oldest) {
+			if oldestKey == "" || e.accessed < oldest {
 				oldestKey, oldest = k, e.accessed
 			}
 		}

@@ -16,7 +16,8 @@ assignees: []
 milestone: null
 parent: TKT-01M2NQ0CRC76K1R0PKTGDZSYQ5
 origin: null
-dependencies: []
+dependencies:
+  - TKT-01M2NYSRTKARHFGRF6XFEMM8A6
 blocks_on: none
 references: []
 claim:
@@ -29,7 +30,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T19:26:49Z
-updated_at: 2026-09-16T20:29:38Z
+updated_at: 2026-09-16T20:33:55Z
 created_by:
   id: agent:codex/modernization-run
   name: ""
