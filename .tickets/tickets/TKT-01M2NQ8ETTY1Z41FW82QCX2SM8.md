@@ -7,14 +7,19 @@ status: in-progress
 status_reason: null
 priority: normal
 due_on: null
-labels: []
+labels:
+  - area:workflow
 assignees: []
 milestone: null
 parent: null
 origin: null
 dependencies: []
 blocks_on: none
-references: []
+references:
+  - ref: file:docs/ticket-labels.md
+    path: docs/ticket-labels.md
+  - ref: file:.tickets/config.yml
+    path: .tickets/config.yml
 claim:
   actor: agent:codex/ticket-labels
   branch: docs/modernization-tickets
@@ -25,7 +30,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:21:56Z
-updated_at: 2026-09-16T18:22:19Z
+updated_at: 2026-09-16T18:24:04Z
 created_by:
   id: agent:codex/ticket-labels
   name: ""

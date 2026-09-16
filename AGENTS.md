@@ -67,6 +67,9 @@ run `git ticket instructions` for the full rationale.
   primarily concerning one ticket. Before handing off or ending a session,
   run `git ticket check` (or the stricter `just ticket-check`), commit all
   intended ticket changes, and leave unrelated changes untouched.
+- Follow `docs/ticket-labels.md` when labeling tickets. The vocabulary is in
+  `.tickets/config.yml`; use initiative/scope/area labels and native fields
+  for status, type and priority. Repeated `--label` filters match any label.
 - Regenerate the block below with `git ticket instructions --write`; do not
   hand-edit it. Keep repository-specific additions in this section so they
   survive regeneration.

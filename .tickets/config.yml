@@ -1,6 +1,22 @@
 schema: 3
 actors: []
-labels: []
+labels:
+  - initiative:terva-modernization
+  - scope:core
+  - scope:follow-up
+  - area:cache
+  - area:config
+  - area:context
+  - area:discovery
+  - area:downloads
+  - area:launcher
+  - area:presentation
+  - area:release
+  - area:sdk
+  - area:security
+  - area:sessions
+  - area:validation
+  - area:workflow
 milestones: []
 series: []
 defaults:

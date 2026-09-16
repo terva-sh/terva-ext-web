@@ -7,7 +7,11 @@ status: draft
 status_reason: null
 priority: high
 due_on: null
-labels: []
+labels:
+  - initiative:terva-modernization
+  - scope:core
+  - area:config
+  - area:cache
 assignees: []
 milestone: null
 parent: TKT-01M2NQ0CRC76K1R0PKTGDZSYQ5
@@ -33,12 +37,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:17:33Z
+updated_at: 2026-09-16T18:22:56Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/modernization-tickets
+  id: agent:codex/ticket-labels
   name: ""
 extensions: {}
 ---

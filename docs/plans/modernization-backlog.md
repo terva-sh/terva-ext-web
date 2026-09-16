@@ -6,6 +6,13 @@ decisions and validation; this page is a navigation and coverage map. All 20 new
 tickets (two epics and 18 scoped tasks/investigations) are draft, not promoted work.
 Implementation plans are intentionally left for the agent who claims each task.
 
+## Filtering the backlog
+
+All tickets below carry `initiative:terva-modernization`, exactly one of
+`scope:core` or `scope:follow-up`, and relevant `area:*` labels. See
+[Ticket labels](../ticket-labels.md) for the vocabulary, CLI examples, and
+JSON filtering (repeated `--label` options use OR).
+
 ## Completed foundation
 
 - Exact history-preserving split and baseline: see [identity-packaging.md](identity-packaging.md).
