@@ -26,6 +26,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -37,6 +38,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"terva.sh/terva/packages/agent/extproto"
 	"testing"
 	"time"
 )
@@ -520,4 +522,133 @@ func TestConformanceConcurrentDownloads(t *testing.T) {
 	d.send(map[string]any{"type": "shutdown"})
 	d.readUntil("shutdown_ack")
 	d.expectCleanExit()
+}
+
+func TestConformanceAllTools(t *testing.T) {
+	var pngBody bytes.Buffer
+	if err := png.Encode(&pngBody, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/search":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"results":[{"title":"fixture result","url":"https://example.invalid/fixture","content":"fixture snippet"}]}`))
+		case "/image":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write(pngBody.Bytes())
+		default:
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte(`<html><title>Fixture</title><body><article><p>Useful fixture content for web retrieval.</p><a href="/other">Fixture link</a><img src="/image" alt="Fixture image"></article></body></html>`))
+		}
+	}))
+	defer server.Close()
+	cwd := t.TempDir()
+	cfg, _ := json.Marshal(map[string]any{"search_backend": "searxng", "searxng_url": server.URL})
+	if err := os.WriteFile(filepath.Join(cwd, "config.json"), cfg, 0600); err != nil {
+		t.Fatal(err)
+	}
+	d := startExtension(t)
+	defer func() { _ = d.cmd.Process.Kill() }()
+	assertStartup(t, d.readUntil("ready"))
+	d.send(hostProfiles[0].helloAck(cwd))
+	for _, tc := range []struct {
+		name string
+		args map[string]any
+		want string
+	}{
+		{"web_search", map[string]any{"query": "fixture"}, "fixture result"},
+		{"web_fetch", map[string]any{"url": server.URL}, "fixture content"},
+		{"web_images", map[string]any{"url": server.URL}, "/image"},
+		{"web_links", map[string]any{"url": server.URL}, "/other"},
+		{"web_fetch_raw", map[string]any{"url": server.URL, "save_path": "raw.html"}, "raw.html"},
+		{"web_fetch_image", map[string]any{"url": server.URL + "/image"}, "image"},
+	} {
+		d.send(map[string]any{"type": "tool_call", "id": tc.name, "name": tc.name, "args": tc.args})
+		f := d.awaitToolResult(tc.name)
+		if f["is_error"] == true {
+			t.Fatalf("%s failed: %v", tc.name, f)
+		}
+		blocks, ok := f["content"].([]any)
+		if !ok || len(blocks) == 0 {
+			t.Fatalf("%s missing content", tc.name)
+		}
+		found := false
+		for _, b := range blocks {
+			block := b.(map[string]any)
+			if tc.name == "web_fetch_image" && block["type"] == "image" {
+				data, _ := block["data"].(string)
+				raw, err := base64.StdEncoding.DecodeString(data)
+				if err != nil || !bytes.Equal(raw, pngBody.Bytes()) || block["mime_type"] != "image/png" {
+					t.Fatalf("invalid image block: %v", err)
+				}
+				found = true
+			} else if text, ok := block["text"].(string); ok && tc.name != "web_fetch_image" && strings.Contains(text, tc.want) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s content did not contain expected result", tc.name)
+		}
+	}
+	d.send(map[string]any{"type": "shutdown"})
+	d.readUntil("shutdown_ack")
+	d.expectCleanExit()
+}
+
+func TestConformanceFrameRecovery(t *testing.T) {
+	d := startExtension(t)
+	defer func() { _ = d.cmd.Process.Kill() }()
+	assertStartup(t, d.readUntil("ready"))
+	d.send(hostProfiles[0].helloAck(t.TempDir()))
+	// Send asynchronously with a deadline so a reader regression cannot wedge CI.
+	sent := make(chan error, 1)
+	go func() {
+		_, err := d.stdin.WriteString("{invalid JSON\n" + strings.Repeat("x", extproto.MaxFrameBytes+1) + "\n")
+		if err == nil {
+			err = d.stdin.Flush()
+		}
+		sent <- err
+	}()
+	select {
+	case err := <-sent:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(frameTimeout):
+		t.Fatal("oversized frame blocked reader")
+	}
+	d.send(map[string]any{"type": "command_invoked", "id": "recovered", "name": "web-cache", "args": ""})
+	frames := d.readUntil("command_response")
+	if frames[len(frames)-1]["id"] != "recovered" {
+		t.Fatal("frame recovery failed")
+	}
+	d.send(map[string]any{"type": "shutdown"})
+	d.readUntil("shutdown_ack")
+	d.expectCleanExit()
+}
+
+func TestConformanceShutdownDuringDownload(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { close(started); <-release }))
+	defer server.Close()
+	defer close(release)
+	d := startExtension(t)
+	defer func() { _ = d.cmd.Process.Kill() }()
+	assertStartup(t, d.readUntil("ready"))
+	cwd := t.TempDir()
+	d.send(hostProfiles[0].helloAck(cwd))
+	d.send(map[string]any{"type": "tool_call", "id": "blocked", "name": "web_fetch_raw", "args": map[string]any{"url": server.URL, "save_path": "never"}})
+	select {
+	case <-started:
+	case <-time.After(frameTimeout):
+		t.Fatal("request not started")
+	}
+	d.send(map[string]any{"type": "shutdown"})
+	d.readUntil("shutdown_ack")
+	d.expectCleanExit()
+	if _, err := os.Stat(filepath.Join(cwd, "never")); !os.IsNotExist(err) {
+		t.Fatalf("shutdown created file: %v", err)
+	}
 }

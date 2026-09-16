@@ -70,8 +70,8 @@ Repository, module, binary, and default User-Agent use `terva-ext-web`.
 Manifest and handshake name **web**, all six **web_*** tools, and **/web-cache**
 retain their identities. Stock zot compatibility is no longer a product goal;
 the protocol harness covers the v0.137.0 wire contract (protocol 6). The
-extension requires protocol 2 for ordered session identity. Actual host launch
-validation is tracked separately; a harness pass alone does not establish it.
+extension requires protocol 2 for ordered session identity. The published v0.137.0 host driver also passes launcher/tool/session smoke
+tests; full CLI installation and upgrade checks remain release gates.
 
 Do not enable zot-web and terva-ext-web together: they share tool, command,
 configuration, and secret identities. Use `terva ext list` and host-reported
