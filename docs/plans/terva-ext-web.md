@@ -23,8 +23,8 @@ Local setup is tracked in the workspace ledger under
 TKT-01M2NK39WCKXF4JAQV3FTCV887 (Create local terva-ext-web fork and startup directions).
 The root `AGENTS.md` directs the next implementation agent. Everything below
 remains the assessment and proposed implementation sequence; only the local
-clone and document migration portion is complete. Source code, module,
-binary, manifest, and CI still retain their inherited identities.
+clone and document migration portion is complete. The subsequent identity and packaging batch is recorded in
+[identity-packaging.md](identity-packaging.md); SDK migration remains pending.
 
 ## Recommendation and evidence
 

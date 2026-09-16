@@ -1,6 +1,6 @@
-# zot-web
+# terva-ext-web
 
-A [zot](https://github.com/patriceckhart/zot) extension that gives the agent
+A Terva extension that gives the agent
 web access through six LLM-callable tools:
 
 - **`web_search(query, count?, freshness?, include_domains?, exclude_domains?, depth?)`**
@@ -31,122 +31,56 @@ web access through six LLM-callable tools:
   to grep/parse itself — an escape hatch when the structured tools miss
   something. Reuses the same SSRF guard and page cache as `web_fetch`.
 
-Single static Go binary, no external runtime services. It implements the zot
-extension wire protocol directly (no dependency on the zot module).
+Single static Go binary with an offline source launcher. This independent fork
+of zot-web targets Terva. The first new release version is **0.4.0**; publication
+and SDK migration are still pending. The handwritten protocol-2 integration
+remains in place for this identity and packaging batch.
 
-> **Status: v0.** Search (Tavily + SearXNG), the SSRF-guarded fetcher, and
-> article extraction (readability via the maintained
-> `codeberg.org/readeck/go-readability` fork → `html-to-markdown` with GFM
-> tables, image indexing, and a heuristic tag-stripper fallback) are all
-> functional. Design rationale lives in the zot repo at
-> `docs/plans/web-tools-extension-research.md`.
+## Install and try locally
 
-## Quick start (`just`)
-
-With [`just`](https://github.com/casey/just) installed, the whole flow is two
-commands — repeatable on any machine:
+With Go 1.25+ on PATH and [just](https://github.com/casey/just):
 
 ```bash
-just install                 # build, then (re)install into $ZOT_HOME/extensions/
-just configure-searxng       # point it at the default local SearXNG (127.0.0.1:11984)
-# or target a specific instance:
+just build
+terva --ext /path/to/terva-ext-web
+# For a new installation:
+just install
 just configure-searxng https://searx.example/
 ```
 
-`just configure-searxng` writes `config.json` into the installed extension's
-data dir, resolving that dir from `ext list` so it works regardless of OS
-(macOS, Linux) or a custom home. A bare `host:port` is accepted and gets
-an `http://` prefix. The written config allowlists the SearXNG host alongside
-the loopback defaults, so the SSRF guard permits that deliberate backend even
-when it lives on a LAN or VPN address. The default instance is the
-`SEARXNG_URL` variable at the top of the `justfile`.
+No new remote or downloadable release has been published yet. Source installs
+use `run.sh`, which builds `terva-ext-web` offline from the committed vendor
+tree on first launch or after a source change. Build messages go to stderr;
+stdout carries only protocol frames. `just install` delegates to Terva and
+never removes an existing installation or copies credential files. The host
+may omit the ignored local binary when installing; the launcher builds it.
 
-Both recipes target [terva](#host-integration-zot-and-terva) by default; pass
-`zot` (`just install zot`) or override `HOST` to target stock zot.
+Local snapshots (`just release-snapshot`) contain the binary, manifest,
+launcher, license, README, and `skills/web-research/SKILL.md`. Extract an archive
+into a new directory and use `terva --ext /path/to/extracted-directory`.
+Linux and macOS archives need Bash but no Go toolchain. Windows amd64 archives
+include `terva-ext-web.exe`; the launcher requires Git Bash/MSYS. Windows-native
+host launch and non-Linux runtime validation remain release checks.
 
-`just install` removes and recopies the install dir, but **preserves an
-existing `config.json`** across the reinstall — so you only need
-`configure-searxng` once (or to change instances).
+## Terva integration and migration
 
-See `just --list` for the rest (`try`, `lint`, `test`, …).
+Repository, module, binary, and default User-Agent use `terva-ext-web`.
+Manifest and handshake name **web**, all six **web_*** tools, and **/web-cache**
+retain their identities. Stock zot compatibility is no longer a product goal;
+legacy conformance profiles remain until the separate SDK migration establishes
+the supported Terva floor and current-host checks.
 
-## Manual install & the `run.sh` launcher
+Do not enable zot-web and terva-ext-web together: they share tool, command,
+configuration, and secret identities. Use `terva ext list` and host-reported
+installation/data directories to identify existing installations. Preserve the
+old installation and settings, disable it before testing the replacement, and
+only enable the replacement after its smoke test. Rollback disables the new
+installation and re-enables the old one. Do not infer data paths from the new
+repository name. Automated upgrade/migration is a later batch.
 
-```bash
-# From a git URL — zot shallow-clones the repo (it does NOT build Go sources):
-zot ext install https://github.com/terva-sh/zot-web.git
-# From a local checkout:
-zot ext install /path/to/zot-web
-# Or, for one session straight from the working copy:
-zot --ext /path/to/zot-web
-```
-
-`extension.json` points `exec` at **`./run.sh`**, a launcher that compiles the
-binary on first launch (and after any source change) and then execs it. zot
-never builds Go sources itself (`language` is informational), so this is what
-makes a git-URL install work without committing a platform-specific binary — at
-the cost of needing a **Go 1.25+ toolchain on `PATH`** on the host and a
-one-time build before the extension responds. The build is **offline**
-(`go build -mod=vendor` against the committed `vendor/` tree), so the first
-launch needs no network and can't hang on a module fetch — which matters because
-zot blocks its startup until the extension sends its `hello`. Build chatter goes
-to stderr (zot captures it to `$ZOT_HOME/logs/ext-web.log`); the compiled
-`./zot-web` is gitignored.
-
-`just install` still builds locally and copies the binary into the install dir,
-pre-seeding it so the first launch skips the build. The install dir is named
-after the source folder's basename (here, `zot-web`), not the manifest `name`
-(`web`); `zot --ext` runs from the working copy directly.
-
-## terva compatibility
-
-[terva](https://github.com/terva-sh) is a **hard fork of zot**: it started from
-zot's codebase and has grown into its own project — hardening and expanding a
-minimal agentic harness — evolving *alongside* zot, not replacing or renaming
-it. As part of that lineage terva deliberately keeps zot's extension wire
-protocol, so this extension loads and runs on terva unchanged — the same
-`--ext` and `ext install` flows work with `terva` in place of `zot`, and config
-resolves from the host-provided `data_dir` (so `$ZOT_HOME` vs `$TERVA_HOME` is
-invisible here):
-
-```bash
-terva --ext /path/to/zot-web      # one session from the working copy
-terva ext install /path/to/zot-web
-terva ext logs web                # the extension's stderr log
-```
-
-The protocol layer is **host-aware**: `hello_ack` carries a `terva_version`
-field only on a terva host, which `proto.Host.IsTerva()` exposes as the
-zot-vs-terva discriminator (presence, not a version comparison). On terva the
-tools register with `authority: "network-read"` so the host gates them
-correctly (prompted in workspace/auto-edit, refused in plan); upstream zot
-hosts ignore the unknown field and keep treating the tools as prompt-gated.
-The extension's own SSRF guard (below) is unchanged — it stays defense-in-depth
-alongside terva's host egress guard, since the extension fetches in its own
-process.
-
-It speaks **protocol version 2** (`internal/proto` matches terva's
-`extproto.ProtocolVersion`): it subscribes to the `session_start` event and
-tracks the live session identity terva sends — `session_id`, `project_id`, and
-a `cwd` that **follows `/cd`** and session switches. The file-saving tools
-(`web_fetch_raw`, `web_fetch_image`) resolve workspace paths against that live
-cwd (`e.CWD()`) instead of the launch cwd frozen at the handshake, so saves
-land in the directory you're actually in. Protocol 2 is adopted
-*opportunistically*: the extension declares **no `min_protocol`**, so a
-pre-v2 (protocol-1) zot host still loads it and simply never fires
-`session_start` — the cwd then falls back to the handshake value. Nothing here
-requires terva.
-
-This follows terva's **optimistic protocol-adoption** convention — speak the
-newest revision you implement, presence-gate its features, degrade instead of
-demanding, and reserve `min_protocol` for genuine correctness floors. The
-principle is documented for all extension authors in terva's
-`write-terva-extension` skill (*Protocol version negotiation*); zot-web's
-`internal/proto` is the worked reference.
-
-**Naming:** the wire/installed identifiers stay `zot-*` (registers as `web`,
-binary/repo `zot-web`) — they're just strings on the wire, and stability beats
-churn. No `terva-web` rename.
+The existing protocol integration tracks `session_start` and live cwd. The
+known double-read of cwd during downloads is scheduled for the separate SDK
+and correctness batch; this rename does not fix that race.
 
 ### Dependencies are vendored
 
@@ -159,16 +93,11 @@ prebuilt per-platform binaries (goreleaser) beats carrying a big vendor tree.
 
 ## Configure
 
-Settings come from `config.json` in the extension's data dir, with environment
-variables taking precedence. The data dir depends on the host:
-
-- **zot (and older terva) hosts:** the install dir,
-  `$ZOT_HOME/extensions/zot-web/config.json`.
-- **terva hosts that split data from install:** the writable data dir,
-  `$TERVA_HOME/ext-data/zot-web/config.json`. An existing config still in the
-  install dir is read as a fallback, so upgrading doesn't lose your settings —
-  and a config under the data dir now survives a reinstall, since it lives
-  outside the install tree.
+Settings come from `config.json` in the host-provided data directory, with
+existing `ZOT_WEB_*` environment overrides and `TAVILY_API_KEY` unchanged.
+If the data-directory file is absent, the host-provided installation directory
+is read as a fallback. Resolve these directories through Terva rather than
+assuming a basename. No configuration or credential migration occurs here.
 
 `just configure-searxng` (above) writes this file for you; to do it by hand,
 start from the default Tavily backend:
@@ -180,7 +109,7 @@ export TAVILY_API_KEY=tvly-...
 Or switch to a self-hosted SearXNG instance (no key, private):
 
 ```jsonc
-// $ZOT_HOME/extensions/zot-web/config.json
+// config.json in the host-reported extension data directory
 {
   "search_backend": "searxng",
   "searxng_url": "http://127.0.0.1:11984"
@@ -210,12 +139,12 @@ Or switch to a self-hosted SearXNG instance (no key, private):
 | `fetch_cache_ttl_sec` | `ZOT_WEB_FETCH_CACHE_TTL_SEC` | `600` | how long a rendered page stays cached (`0` = no expiry; clamped to max `3600`) |
 | `fetch_cache_max_entries` | `ZOT_WEB_FETCH_CACHE_MAX_ENTRIES` | `32` | max cached pages, LRU-evicted (`0` = caching off; clamped to max `128`) |
 | `fetch_cache_max_bytes` | `ZOT_WEB_FETCH_CACHE_MAX_BYTES` | `67108864` | total bytes the page cache may retain, LRU-evicted (`0` = no byte bound; clamped to max `268435456`) |
-| `user_agent` | `ZOT_WEB_USER_AGENT` | `zot-web/<version>` | User-Agent for every fetch; `browser` expands to a common desktop-browser UA |
+| `user_agent` | `ZOT_WEB_USER_AGENT` | `terva-ext-web/<version>` | User-Agent for every fetch; `browser` expands to a common desktop-browser UA |
 | `allow_local_hosts` | `ZOT_WEB_ALLOW_LOCAL_HOSTS` (comma-sep) | `localhost, 127.0.0.1, ::1` | SSRF escape hatch (see below); the config key replaces the default, the env var appends |
 
 ### User-Agent
 
-Fetches identify themselves honestly as `zot-web/<version>` by default. Some
+Fetches identify themselves honestly as `terva-ext-web/<version>` by default. Some
 sites block or degrade content for non-browser clients; for those, the UA can
 be overridden at three levels (most specific wins):
 
@@ -360,12 +289,12 @@ of large images can't exhaust memory.
 
 ## The `/web-cache` command and status notes
 
-`/web-cache` (a zot slash command, run by you rather than the model) lists the
+`/web-cache` (a Terva slash command, run by you rather than the model) lists the
 cached pages — URL, size, age, title — and `/web-cache clear` empties the
 cache, which is handy when a page changed and you want the model's next fetch
 to see the live version before the TTL expires. The extension also pushes
 one-shot status notes into the TUI (e.g. when a tool's rate limit trips) so
-backoff is visible without digging through `$ZOT_HOME/logs/ext-web.log`.
+backoff is visible without digging through `terva ext logs web`.
 
 ## Security: SSRF protection + the local allowlist
 
@@ -413,17 +342,11 @@ whatever the file produced rather than replacing it.
 This is a precise escape hatch, not an "allow all local" switch: only the
 targets you list are exempted.
 
-## Host integration (zot and terva)
+## Host integration
 
-This extension speaks the plain zot extension protocol, so it runs unchanged on
-both zot and [terva](https://github.com/terva-sh/terva) (a zot-compatible fork).
-On terva it also opts into two newer, additive niceties — both invisible to
-stock zot, which simply ignores the extra fields.
-
-**A bundled research skill.** The repo ships `skills/web-research/SKILL.md`,
-which terva discovers automatically once the extension is installed — a routine
-for chaining search → read → links/images with citations. (zot does not load
-extension-bundled skills; it's a no-op there.)
+The bundled `skills/web-research/SKILL.md` provides a search → read →
+links/images research routine with citations. It ships in source installs and
+release archives for Terva to discover.
 
 **Confirm-before-write, by default (terva).** The manifest ships a small,
 restrict-only permission contribution: `web_fetch_raw` and `web_fetch_image`
@@ -444,8 +367,7 @@ own config can grant), and your config wins: if you trust the writers, add an
 ```
 
 The four reading tools carry no manifest rule; their `network-read` authority
-gates them instead (prompted in `workspace`/`auto-edit`, refused in `plan`). On
-zot the `permissions` key is an unknown manifest field and is simply ignored.
+gates them instead (prompted in `workspace`/`auto-edit`, refused in `plan`).
 
 ## Roadmap
 
@@ -471,13 +393,11 @@ zot the `permissions` key is an unknown manifest field and is simply ignored.
       tables still degrade to spaced blocks today).
 - [ ] More search backends (Brave, Serper, Exa) behind the same interface.
 - [ ] Optional JS rendering fallback (e.g. Jina Reader) — deferred for now.
-- [x] Prebuilt per-platform release archives (goreleaser, Forgejo CI): pushing
-      a `v*` tag publishes linux/darwin/windows builds whose archives unpack
-      into a ready-to-run extension dir (binary + `extension.json` + `run.sh`,
-      no Go toolchain needed). CI runs gofmt/vet/race-tests plus a vendor-sync
-      gate on every push, and a goreleaser snapshot on `main`.
-- [ ] Teach `run.sh` / the install flow to consume those prebuilt archives, so
-      a plain `zot ext install <git-url>` also skips the on-host build.
+- [x] Local per-platform release snapshots with the bundled research skill.
+- [ ] SDK migration, session-switch correctness, and configuration migration.
+- [ ] Verify destination, real-host installation/upgrade/rollback, and publish
+      the first terva-ext-web release (see docs/plans/release-process.md).
+- [ ] Checksum-verified prebuilt fallback for source installs.
 
 ## License
 

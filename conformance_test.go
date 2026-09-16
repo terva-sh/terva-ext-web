@@ -1,6 +1,6 @@
 //go:build conformance
 
-// Protocol conformance harness. It builds the real ./zot-web binary and drives
+// Protocol conformance harness. It builds the real ./terva-ext-web binary and drives
 // it over stdio exactly as a host would — under both an upstream-zot host
 // profile and a terva host profile — asserting the basics that an in-process
 // unit test cannot:
@@ -75,22 +75,22 @@ var (
 	buildErr  error
 )
 
-// zotwebBinary builds ./zot-web once (offline, against vendor/) and returns the
+// webBinary builds ./terva-ext-web once (offline, against vendor/) and returns the
 // path to the temp binary.
-func zotwebBinary(t *testing.T) string {
+func webBinary(t *testing.T) string {
 	t.Helper()
 	buildOnce.Do(func() {
-		dir, err := os.MkdirTemp("", "zotweb-conformance")
+		dir, err := os.MkdirTemp("", "terva-ext-web-conformance")
 		if err != nil {
 			buildErr = err
 			return
 		}
-		binPath = filepath.Join(dir, "zot-web")
+		binPath = filepath.Join(dir, "terva-ext-web")
 		cmd := exec.Command("go", "build", "-mod=vendor", "-o", binPath, ".")
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
 		if err := cmd.Run(); err != nil {
-			buildErr = fmt.Errorf("build zot-web: %v\n%s", err, stderr.String())
+			buildErr = fmt.Errorf("build terva-ext-web: %v\n%s", err, stderr.String())
 		}
 	})
 	if buildErr != nil {
@@ -112,7 +112,7 @@ type driver struct {
 
 func startExtension(t *testing.T) *driver {
 	t.Helper()
-	cmd := exec.Command(zotwebBinary(t))
+	cmd := exec.Command(webBinary(t))
 	// Hermetic env: drop any ZOT_WEB_* so web_search is deterministically
 	// "not configured" (its handler returns an error result without touching
 	// the network), and point both home vars at a throwaway dir.

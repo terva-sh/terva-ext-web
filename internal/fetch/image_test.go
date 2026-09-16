@@ -14,7 +14,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/terva-sh/zot-web/internal/config"
+	"terva-ext-web/internal/config"
 )
 
 // patternImage builds a w×h image whose pixels vary per coordinate, so it does

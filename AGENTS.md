@@ -12,7 +12,8 @@ The machine-wide rules and `/home/sothr/workspace/AGENTS.md` also apply.
    and implementation batches. It is the current direction.
 3. Read `README.md` for existing tool behavior, but treat its permanent zot
    compatibility and no-rename statements as historical policy superseded by
-   the split plan. No implementation rename has happened yet.
+   the split plan. The identity and packaging batch is recorded in
+   `docs/plans/identity-packaging.md`.
 4. Read `go.mod`, `extension.json`, `main.go`, `internal/proto/proto.go`,
    `conformance_test.go`, `justfile`, `run.sh`, and `.goreleaser.yaml`.
 5. Consult the sibling Terva checkout's `docs/extensions.md`,
@@ -24,7 +25,8 @@ The machine-wide rules and `/home/sothr/workspace/AGENTS.md` also apply.
 
 ## First implementation batch
 
-Start a topic branch and implement **identity and packaging** from the plan.
+The **identity and packaging** batch is implemented; see its decision record.
+Continue on a topic branch for subsequent batches.
 Use repository/binary/module name `terva-ext-web`; preserve manifest and
 handshake name `web`, all six `web_*` tools, and `/web-cache`. Update internal
 imports and linker symbols together. Include the bundled research skill in

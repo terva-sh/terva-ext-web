@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/terva-sh/zot-web/internal/config"
+	"terva-ext-web/internal/config"
 )
 
 func TestHTTPStatusErrorHints(t *testing.T) {

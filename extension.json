@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "exec": "./run.sh",
   "language": "go",
   "description": "web_search and web_fetch tools for retrieving information from the web",

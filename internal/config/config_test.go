@@ -433,7 +433,7 @@ func writeJSON(t *testing.T, dir, content string) {
 // TestLoadFallsBackToExtensionDir: when a terva host splits data_dir from
 // the install dir, a config.json that predates the split (still in the
 // install/extension dir) must still be found. data_dir wins when both
-// have one. This keeps zot-web compatible across the host's data-dir
+// have one. This keeps terva-ext-web compatible across the host's data-dir
 // change and with the older zot protocol (where the two dirs coincide).
 func TestLoadFallsBackToExtensionDir(t *testing.T) {
 	dataDir := t.TempDir()

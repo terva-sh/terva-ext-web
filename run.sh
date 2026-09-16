@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
-# zot-web launcher.
+# terva-ext-web launcher.
 #
-# zot installs an extension by cloning the repo and running the `exec` from
+# terva installs an extension by cloning the repo and running the `exec` from
 # extension.json verbatim — it never compiles Go sources. This wrapper bridges
 # that gap: on first launch (and after any source change) it builds the binary,
-# then execs it so zot speaks the extension protocol to the real process. That
-# lets `zot ext install <git-url>` work on any platform with a Go toolchain,
+# then execs it so terva speaks the extension protocol to the real process. That
+# lets `terva ext install <git-url>` work on any platform with a Go toolchain,
 # without committing a platform-specific binary to the repo.
 #
 # IMPORTANT: stdout is the protocol wire. Every byte of build chatter must go to
-# stderr (zot captures it to $ZOT_HOME/logs/ext-web.log); a stray stdout write
+# stderr (terva captures it to $TERVA_HOME/logs/ext-web.log); a stray stdout write
 # would corrupt the JSON stream.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-bin="./zot-web"
+bin="./terva-ext-web"
+# Windows archives can run under Git Bash.
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*) bin="$bin.exe" ;;
+esac
 
 needs_build() {
 	[ -x "$bin" ] || return 0
@@ -31,16 +35,16 @@ needs_build() {
 
 if needs_build; then
 	if ! command -v go >/dev/null 2>&1; then
-		echo "[zot-web] Go toolchain not found on PATH; cannot build the extension." >&2
-		echo "[zot-web] Install Go 1.25+ (https://go.dev/dl/) and relaunch zot." >&2
+		echo "[terva-ext-web] Go toolchain not found on PATH; cannot build the extension." >&2
+		echo "[terva-ext-web] Install Go 1.25+ (https://go.dev/dl/) and relaunch terva." >&2
 		exit 1
 	fi
-	echo "[zot-web] building $bin (first launch or sources changed)…" >&2
+	echo "[terva-ext-web] building $bin (first launch or sources changed)…" >&2
 	# -mod=vendor builds against the committed vendor/ tree: no network, no
 	# module download — so the first launch is a quick offline compile and can't
-	# hang on a stalled module fetch. (zot blocks startup until we send `hello`.)
+	# hang on a stalled module fetch. (terva blocks startup until we send `hello`.)
 	go build -mod=vendor -o "$bin" . >&2
-	echo "[zot-web] build complete." >&2
+	echo "[terva-ext-web] build complete." >&2
 fi
 
 exec "$bin" "$@"
