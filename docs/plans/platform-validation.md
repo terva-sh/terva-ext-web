@@ -75,3 +75,33 @@ candidate's report. Go 1.27+, Bash and a C compiler are needed for source/race
 checks; archives require Bash and the native executable, not Go. Reports must
 distinguish protocol-harness success from actual host launch. Configuration and
 release tickets supply the final migration fixtures and assertions.
+
+## GitHub mirror and executable validation
+
+The user supplied `https://github.com/terva-sh/terva-ext-web` and SSH URL
+`git@github.com:terva-sh/terva-ext-web.git`. Read-only GitHub metadata and
+`git ls-remote` verified a public empty repository with authenticated push
+access on 2026-09-16. Added that URL as local remote `mirror`; origin remains
+Forgejo. No remote settings were changed.
+
+`.github/workflows/release-validation.yml` runs only on GitHub version tags
+or manual dispatch. Linux builds all archives once; five native jobs check
+source and extracted archives. Manual runs use snapshot versions, tag runs
+use the tag version, and both skip publication. Reports bind source commit,
+archive/binary checksums, runner and Go/host versions to completed checks.
+Archive tests verify launch without Go and paths containing spaces, exact
+version and research skill inclusion, subprocess wire and actual host driver.
+No permanent credential or write permission is needed by this workflow.
+
+Local commands (Go 1.27+, Python 3.13, Bash and C compiler):
+
+```sh
+just release-snapshot
+python3 scripts/validate-archive.py --source linux amd64
+python3 scripts/validate-archive.py dist linux amd64
+```
+
+Source tests build a race-instrumented extension; archive tests execute the
+exact static release executable via WEB_CONFORMANCE_BINARY and the extracted
+launcher via WEB_CONFORMANCE_INSTALL. Reports are ignored build artifacts and
+uploaded by CI. Full CLI install/upgrade/rollback remains release validation.

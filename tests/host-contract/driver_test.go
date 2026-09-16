@@ -58,20 +58,25 @@ func TestPublishedHostDriverLaunch(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "go", "build", "-race", "-mod=vendor", "-o", filepath.Join(install, bin), ".")
-	cmd.Dir = "../.."
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v\n%s", err, out)
-	}
-	for _, name := range []string{"run.sh", "extension.json"} {
-		b, err := os.ReadFile(filepath.Join("../..", name))
-		if err != nil {
-			t.Fatal(err)
+	if archiveInstall := os.Getenv("WEB_CONFORMANCE_INSTALL"); archiveInstall != "" {
+		install = archiveInstall
+	} else {
+		cmd := exec.CommandContext(ctx, "go", "build", "-race", "-mod=vendor", "-o", filepath.Join(install, bin), ".")
+		cmd.Dir = "../.."
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("build: %v\n%s", err, out)
 		}
-		if err := os.WriteFile(filepath.Join(install, name), b, 0700); err != nil {
-			t.Fatal(err)
+		for _, name := range []string{"run.sh", "extension.json"} {
+			b, err := os.ReadFile(filepath.Join("../..", name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(install, name), b, 0700); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
+
 	b, err := os.ReadFile(filepath.Join(install, "extension.json"))
 	if err != nil {
 		t.Fatal(err)

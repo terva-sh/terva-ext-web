@@ -36,6 +36,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"terva.sh/terva/packages/agent/extproto"
@@ -81,6 +82,9 @@ var (
 // path to the temp binary.
 func webBinary(t *testing.T) string {
 	t.Helper()
+	if binary := os.Getenv("WEB_CONFORMANCE_BINARY"); binary != "" {
+		return binary
+	}
 	buildOnce.Do(func() {
 		dir, err := os.MkdirTemp("", "terva-ext-web-conformance")
 		if err != nil {
@@ -88,6 +92,9 @@ func webBinary(t *testing.T) string {
 			return
 		}
 		binPath = filepath.Join(dir, "terva-ext-web")
+		if runtime.GOOS == "windows" {
+			binPath += ".exe"
+		}
 		cmd := exec.Command("go", "build", "-race", "-mod=vendor", "-o", binPath, ".")
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
