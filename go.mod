@@ -1,4 +1,4 @@
-module github.com/terva-sh/zot-web
+module terva-ext-web
 
 go 1.25.0
 

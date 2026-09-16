@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/terva-sh/zot-web/internal/config"
 	xhtml "golang.org/x/net/html"
+	"terva-ext-web/internal/config"
 )
 
 func parseHTML(t *testing.T, s string) *xhtml.Node {

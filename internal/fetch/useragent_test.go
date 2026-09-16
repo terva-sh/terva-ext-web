@@ -8,17 +8,17 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/terva-sh/zot-web/internal/config"
-	"github.com/terva-sh/zot-web/internal/version"
+	"terva-ext-web/internal/config"
+	"terva-ext-web/internal/version"
 )
 
 func TestResolveUserAgent(t *testing.T) {
 	cases := []struct{ in, fallback, want string }{
-		{"", "zot-web/x", "zot-web/x"},
-		{"  ", "zot-web/x", "zot-web/x"},
-		{"browser", "zot-web/x", browserUserAgent},
-		{"Browser", "zot-web/x", browserUserAgent},
-		{"my-bot/1.0", "zot-web/x", "my-bot/1.0"},
+		{"", "terva-ext-web/x", "terva-ext-web/x"},
+		{"  ", "terva-ext-web/x", "terva-ext-web/x"},
+		{"browser", "terva-ext-web/x", browserUserAgent},
+		{"Browser", "terva-ext-web/x", browserUserAgent},
+		{"my-bot/1.0", "terva-ext-web/x", "my-bot/1.0"},
 	}
 	for _, c := range cases {
 		if got := resolveUserAgent(c.in, c.fallback); got != c.want {
@@ -51,7 +51,7 @@ func TestUserAgentDefaultConfigAndPerCall(t *testing.T) {
 	srv, agents := uaServer(t)
 	cfg := config.Config{FetchMaxBytes: 1 << 20, FetchTimeoutSec: 5}
 
-	// Default: zot-web/<version>.
+	// Default: terva-ext-web/<version>.
 	c := New(cfg, ParseAllowList([]string{"127.0.0.1"}))
 	if _, err := c.Fetch(context.Background(), srv.URL, 100, 0, ""); err != nil {
 		t.Fatalf("fetch: %v", err)
@@ -71,7 +71,7 @@ func TestUserAgentDefaultConfigAndPerCall(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("server saw %d requests, want 3 (%v)", len(got), got)
 	}
-	if want := "zot-web/" + version.Version; got[0] != want {
+	if want := "terva-ext-web/" + version.Version; got[0] != want {
 		t.Errorf("default UA = %q, want %q", got[0], want)
 	}
 	if got[1] != browserUserAgent || !strings.Contains(got[1], "Mozilla/5.0") {

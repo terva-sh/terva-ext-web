@@ -1,4 +1,4 @@
-# zot-web dev tasks. Run `just` to list.
+# terva-ext-web dev tasks. Run `just` to list.
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 # Maintainer-only release-cut targets (release-cut/-verify/-publish/…).
@@ -9,9 +9,7 @@ import? 'release.just'
 # Default SearXNG instance for `just configure-searxng` (override by passing a URL).
 SEARXNG_URL := "http://127.0.0.1:11984"
 
-# Harness to install into: "terva" (our fork, the default) or "zot" (upstream).
-# Their `ext` CLIs are API-compatible. Pass per-recipe (`just install zot`) or
-# override globally (`just HOST=zot configure-searxng`).
+# Target host. Stock zot support is no longer a product goal.
 HOST := "terva"
 
 default:
@@ -20,14 +18,14 @@ default:
 # Build the extension binary (loaded by run.sh / copied in by `just install`).
 # Offline build against vendor/ — mirrors what run.sh does on first launch.
 build:
-    go build -mod=vendor -o zot-web .
-    @echo "built ./zot-web"
+    go build -mod=vendor -o terva-ext-web .
+    @echo "built ./terva-ext-web"
 
 # Refresh the committed vendor/ tree after changing dependencies.
 #
-# We vendor so run.sh's build-on-first-launch is a fast OFFLINE compile: zot
+# We vendor so run.sh's build-on-first-launch is a fast OFFLINE compile: Terva
 # blocks its whole startup until the extension sends `hello`, and a network
-# module download there would stall (or, if it hangs, freeze zot). Re-evaluate
+# module download there would stall (or, if it hangs, freeze Terva). Re-evaluate
 # this approach if vendor/ grows large (currently ~6 MB / a handful of deps) —
 # at some point committing prebuilt per-platform binaries (goreleaser) becomes
 # the better trade-off than carrying a big vendor tree in the repo.
@@ -36,61 +34,22 @@ vendor:
     go mod vendor
     @echo "vendor/ refreshed — commit it alongside go.mod/go.sum"
 
-# Build, then (re)install into the host's extensions dir ($TERVA_HOME or
-# $ZOT_HOME) so the latest binary is loaded. Preserves an existing config.json.
-# Installs into terva by default; `just install zot` targets upstream.
+# Install through Terva without removing existing installations or credentials.
 install host=HOST: build
-    #!/usr/bin/env bash
-    set -euo pipefail
-    host="{{host}}"
-    # terva (>= v0.109.1) installs under the manifest NAME ("web"); upstream zot
-    # (and older terva) keys the dir off the repo basename ("zot-web"). Handle
-    # both so `just install` and `just install zot` each find the right dir.
-    mname="web"
-    bname="$(basename "$PWD")"
-    # Install dir is the last column of `ext list`; the path can contain
-    # spaces, so take everything from the first '/'.
-    resolve_dir() { local l; l="$("$host" ext list | grep -E "/(${mname}|${bname})\$" | head -1 || true)"; [[ -n "$l" ]] && printf '/%s' "${l#*/}"; }
-
-    # Stash the current config.json (if any) before remove wipes the dir.
-    saved=""
-    olddir="$(resolve_dir || true)"
-    if [[ -n "$olddir" && -f "$olddir/config.json" ]]; then
-      saved="$(mktemp)"; cp "$olddir/config.json" "$saved"
-      echo "preserving existing config.json"
-    fi
-
-    "$host" ext remove "$mname" -y >/dev/null 2>&1 || true   # manifest-named dir (terva >= v0.109.1)
-    "$host" ext remove "$bname" -y >/dev/null 2>&1 || true   # basename dir (upstream zot / older terva)
-    "$host" ext install "$PWD"
-
-    dir="$(resolve_dir || true)"
-    [[ -n "$dir" ]] || { echo "install: could not find installed dir in '$host ext list'" >&2; exit 1; }
-    # `ext install` copies git-aware and skips .gitignore'd files — which
-    # includes the built ./zot-web binary (extension.json's exec target). Copy it
-    # in explicitly so the installed extension can actually run.
-    cp -f zot-web "$dir/zot-web"
-    echo "copied binary -> $dir/zot-web"
-
-    if [[ -n "$saved" ]]; then
-      cp "$saved" "$dir/config.json"; rm -f "$saved"
-      echo "restored config.json"
-    fi
-    "$host" ext list
+    {{host}} ext install "$PWD"
 
 # Point the installed extension at a SearXNG backend (default: SEARXNG_URL).
 configure-searxng url=SEARXNG_URL host=HOST:
     #!/usr/bin/env bash
     set -euo pipefail
     # Resolve the installed data dir from `ext list` — portable across OSes
-    # and a custom $TERVA_HOME/$ZOT_HOME. The dir is the last column; the path
+    # and a custom $TERVA_HOME. The dir is the last column; the path
     # may contain spaces, so take everything from the first '/'. URL defaults to
     # SEARXNG_URL; pass one to override (a bare host:port gets an http:// prefix).
     url="{{url}}"
     [[ "$url" == *://* ]] || url="http://$url"
     host="{{host}}"
-    # See `install`: terva keys the dir off the manifest name ("web"), upstream
-    # zot off the repo basename ("zot-web") — match either.
+    # Match the manifest name or source basename in host-reported paths.
     bname="$(basename "$PWD")"
     line="$("$host" ext list | grep -E "/(web|${bname})\$" | head -1 || true)"
     [[ -n "$line" ]] || { echo "extension not installed in $host; run \`just install\` first" >&2; exit 1; }
@@ -129,7 +88,7 @@ fmt:
 test *ARGS:
     go test ./... {{ARGS}}
 
-# Protocol conformance: build ./zot-web and drive it over stdio as both an
+# Protocol conformance: build ./terva-ext-web and drive it over stdio as both an
 # upstream-zot host and a terva host. Tagged out of the default `test` run
 # because it shells out to `go build`.
 conformance:
@@ -152,4 +111,4 @@ version:
 
 # Remove build output.
 clean:
-    rm -f zot-web
+    rm -f terva-ext-web terva-ext-web.exe

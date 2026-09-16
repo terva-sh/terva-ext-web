@@ -1,4 +1,4 @@
-// Command zot-web is a zot extension that gives the agent web tools:
+// Command terva-ext-web is a Terva extension that gives the agent web tools:
 //
 //	web_search(query, count?)        -> ranked results (title, url, snippet)
 //	web_fetch(url, max_chars?, ...)  -> the page's main content as Markdown
@@ -23,11 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/terva-sh/zot-web/internal/config"
-	"github.com/terva-sh/zot-web/internal/fetch"
-	"github.com/terva-sh/zot-web/internal/proto"
-	"github.com/terva-sh/zot-web/internal/search"
-	"github.com/terva-sh/zot-web/internal/version"
+	"terva-ext-web/internal/config"
+	"terva-ext-web/internal/fetch"
+	"terva-ext-web/internal/proto"
+	"terva-ext-web/internal/search"
+	"terva-ext-web/internal/version"
 )
 
 const searchSchema = `{
@@ -98,7 +98,7 @@ const webFetchImageSchema = `{
 
 func main() {
 	// The normal mode is the stdio extension protocol, which blocks silently
-	// on stdin — so give a bare `zot-web --version` invocation a way to
+	// on stdin — so give a bare `terva-ext-web --version` invocation a way to
 	// identify the installed build instead of appearing to hang.
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -116,7 +116,7 @@ func main() {
 	}
 }
 
-// register wires all of zot-web's tools and the /web-cache command onto e.
+// register wires all of terva-ext-web's tools and the /web-cache command onto e.
 // Split out from main so a test can inspect the registered tool set — e.g. that
 // every network tool declares network-read authority — without running the
 // stdio loop.
@@ -422,7 +422,7 @@ func register(e *proto.Extension) {
 // platform, which is exactly what's needed when debugging a mismatched or
 // stale installed binary.
 func versionString() string {
-	return fmt.Sprintf("zot-web %s (%s, %s/%s)", version.Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	return fmt.Sprintf("terva-ext-web %s (%s, %s/%s)", version.Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 }
 
 // resolveSavePath validates savePath under the workspace cwd and returns the

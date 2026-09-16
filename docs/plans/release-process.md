@@ -1,3 +1,35 @@
+# terva-ext-web release process
+
+The first new release version is 0.4.0. Use `just release-verify` to validate
+GoReleaser configuration and `just release-snapshot` for local five-target
+archives and SHA-256 checksums. Snapshots use 0.4.0-next independently of the
+inherited cut/* tags. Archives carry matching binary/manifest versions, the
+launcher, README, license, and bundled research skill.
+
+The verified Forgejo owner/repository is **terva-sh/terva-ext-web**, created
+public on 2026-09-16 at the user's request. The server advertised
+`ssh://git@git.local.sothr.com:2222/terva-sh/terva-ext-web.git`; both the API
+and `git ls-remote` confirmed the repository was empty before the initial
+push. This URL is now origin. The inherited warricksothr/zot-web destination
+is retired. GoReleaser publication and tag-triggered release CI remain disabled.
+The manual release workflow produces snapshots only and needs no write token.
+
+A later release batch must validate the supported Terva host, new installation,
+settings-preserving upgrade and rollback, and each supported platform's launch.
+Then enable binary release publication deliberately.
+Do not reuse cut/* tags, create an orphan public history, publish to zot-web,
+or archive the old repository as part of this batch.
+
+See [identity and packaging](identity-packaging.md) for decisions and checks.
+
+---
+
+## Historical zot-web release process (superseded)
+
+The following is retained solely as an inherited decision record. Its paths,
+commands, permanent naming policy, and release-cut flow do not apply to this
+fork. The old script has been replaced with local snapshot/verify commands.
+
 # Release process: a curated public history
 
 The engineering record for how zot-web ships publicly. The flow is

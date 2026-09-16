@@ -1,5 +1,6 @@
 # build output (binary name matches extension.json "exec")
-/zot-web
+/terva-ext-web
+/terva-ext-web.exe
 /bin/
 
 # local config / secrets that may sit next to the binary during dev
@@ -9,3 +10,4 @@ config.json
 *.swp
 .DS_Store
 dist/
+/.release-package/

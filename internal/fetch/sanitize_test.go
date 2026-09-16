@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/terva-sh/zot-web/internal/config"
+	"terva-ext-web/internal/config"
 )
 
 // TestTitleLineFlattensUntrustedTitle verifies a page title carrying newlines

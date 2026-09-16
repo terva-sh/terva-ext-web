@@ -28,14 +28,14 @@ import (
 	xhtml "golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
 
-	"github.com/terva-sh/zot-web/internal/config"
-	"github.com/terva-sh/zot-web/internal/version"
+	"terva-ext-web/internal/config"
+	"terva-ext-web/internal/version"
 )
 
 // defaultUserAgent identifies the extension honestly (the robots/etiquette
 // default). The user_agent config setting or a per-call user_agent parameter
 // overrides it; "browser" expands to browserUserAgent.
-var defaultUserAgent = "zot-web/" + version.Version
+var defaultUserAgent = "terva-ext-web/" + version.Version
 
 // browserUserAgent is what the "browser" alias expands to: a common desktop
 // Chrome UA, for sites that refuse or degrade content for non-browser clients.

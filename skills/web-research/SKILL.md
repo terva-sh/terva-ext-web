@@ -1,12 +1,12 @@
 ---
 name: web-research
-description: Research a question on the web with the zot-web tools — search, read, follow links and images, cite sources.
+description: Research a question on the web with the terva-ext-web tools — search, read, follow links and images, cite sources.
 ---
 
 # Web research
 
 When the user asks you to research something online (or you need
-current information you don't have), drive the zot-web tools in a
+current information you don't have), drive the terva-ext-web tools in a
 deliberate loop instead of one-shotting a single search.
 
 ## 1. Search broadly, then narrow

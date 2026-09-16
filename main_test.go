@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/terva-sh/zot-web/internal/proto"
-	"github.com/terva-sh/zot-web/internal/version"
+	"terva-ext-web/internal/proto"
+	"terva-ext-web/internal/version"
 )
 
 // TestManifestVersionMatchesCode pins extension.json's version (what the host
@@ -32,7 +32,7 @@ func TestManifestVersionMatchesCode(t *testing.T) {
 	}
 }
 
-// TestNetworkToolsDeclareAuthority guards that every tool zot-web registers
+// TestNetworkToolsDeclareAuthority guards that every tool terva-ext-web registers
 // declares network-read authority. They all reach the network, so terva must
 // gate them; a tool added without proto.NetworkRead() would silently be treated
 // as side-effecting/auto-allowable. This catches that the moment a new tool is
@@ -220,8 +220,8 @@ func TestCheckSavePathRejectsSymlinks(t *testing.T) {
 
 func TestVersionString(t *testing.T) {
 	got := versionString()
-	if !strings.HasPrefix(got, "zot-web "+version.Version) {
-		t.Errorf("versionString() = %q, want prefix %q", got, "zot-web "+version.Version)
+	if !strings.HasPrefix(got, "terva-ext-web "+version.Version) {
+		t.Errorf("versionString() = %q, want prefix %q", got, "terva-ext-web "+version.Version)
 	}
 	if !strings.Contains(got, runtime.GOOS+"/"+runtime.GOARCH) {
 		t.Errorf("versionString() = %q, missing platform", got)

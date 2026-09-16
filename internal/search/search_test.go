@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/terva-sh/zot-web/internal/config"
+	"terva-ext-web/internal/config"
 )
 
 // ---------------------------------------------------------------------------

@@ -74,7 +74,7 @@ type Config struct {
 	FetchCacheMaxBytes int64 `json:"fetch_cache_max_bytes"`
 
 	// UserAgent overrides the User-Agent sent on every fetch. Empty means the
-	// default "zot-web/<version>". The special value "browser" expands to a
+	// default "terva-ext-web/<version>". The special value "browser" expands to a
 	// common desktop-browser UA, for sites that block non-browser clients.
 	// A per-call user_agent tool parameter takes precedence over this.
 	UserAgent string `json:"user_agent"`

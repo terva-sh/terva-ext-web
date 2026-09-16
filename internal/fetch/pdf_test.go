@@ -36,13 +36,13 @@ func minimalPDF(text string) []byte {
 }
 
 func TestRenderPDFExtractsText(t *testing.T) {
-	body := minimalPDF("Hello from the zot-web PDF extractor")
+	body := minimalPDF("Hello from the terva-ext-web PDF extractor")
 	u, _ := url.Parse("https://example.com/doc.pdf")
 	p := testClient().render(u, "application/pdf", body)
 	if !strings.Contains(p.Markdown, "PDF document, 1 pages") {
 		t.Errorf("missing PDF header:\n%.300s", p.Markdown)
 	}
-	if !strings.Contains(p.Markdown, "Hello from the zot-web PDF extractor") {
+	if !strings.Contains(p.Markdown, "Hello from the terva-ext-web PDF extractor") {
 		t.Errorf("extracted text missing:\n%.500s", p.Markdown)
 	}
 }

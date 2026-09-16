@@ -1,7 +1,12 @@
 # Proposed split: zot-web → terva-ext-web
 
-Status: local fork created, 2026-09-16. No fork has been published and no
-repository has been archived. This document was moved from the zot-web
+Status: remote repository created for the fork, 2026-09-16, at the user's
+request. Origin is the server-verified
+`ssh://git@git.local.sothr.com:2222/terva-sh/terva-ext-web.git` (public).
+The API and `git ls-remote` confirmed it was empty before the initial push.
+[Cutover PR #1](https://git.local.sothr.com/terva-sh/terva-ext-web/pulls/1) targets main at `b6efdecbd7439543a7d39dc8a77e609f887002f9`
+and includes identity implementation commit `6e1d43c`. No binary release has
+been published and no repository has been archived. This document was moved from the zot-web
 worktree after cloning the exact fork point; it is not part of that tree.
 
 ## Local setup completed
@@ -14,17 +19,17 @@ alternates or shallow history). `git fsck --full` passed before adding
 orientation documents. Historical tags `cut/1` through `cut/6` are retained;
 these are inherited zot-web release records, not new terva-ext-web releases.
 
-No remote is configured. The temporary local clone source was removed to
-prevent accidental publication back to zot-web. A Forgejo repository has
-not been created. Configure a new remote only after verifying its actual
-server-advertised clone URL and ownership. The source checkout is unchanged.
+At initial local setup, no remote was configured. The temporary clone source was removed to
+prevent accidental publication back to zot-web. The Forgejo repository was subsequently
+created and its server-advertised clone URL and ownership verified as recorded
+above. The source checkout is unchanged.
 
 Local setup is tracked in the workspace ledger under
 TKT-01M2NK39WCKXF4JAQV3FTCV887 (Create local terva-ext-web fork and startup directions).
 The root `AGENTS.md` directs the next implementation agent. Everything below
 remains the assessment and proposed implementation sequence; only the local
-clone and document migration portion is complete. Source code, module,
-binary, manifest, and CI still retain their inherited identities.
+clone and document migration portion is complete. The subsequent identity and packaging batch is recorded in
+[identity-packaging.md](identity-packaging.md); SDK migration remains pending.
 
 ## Recommendation and evidence
 
