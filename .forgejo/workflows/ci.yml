@@ -62,6 +62,9 @@ jobs:
         # the default unit run above; this is its dedicated gate.
         run: go test -tags conformance -run Conformance -v .
 
+      - name: Published host permission contract
+        run: cd tests/host-contract && go test -race -count=1 ./...
+
       - name: vendor in sync
         # Rebuild vendor/ from go.mod and fail on any diff, so a dependency
         # change that forgot `just vendor` can't land and break the offline

@@ -98,6 +98,7 @@ conformance:
 ci: lint
     go test -race ./...
     just conformance
+    just host-contract
     go mod vendor
     git diff --exit-code -- go.mod go.sum vendor/
 
@@ -116,3 +117,8 @@ clean:
 # Validate ticket content and detect pending repairs without changing files.
 ticket-check:
     git ticket check --fix --dry-run --strict
+
+# Test published host policy separately from the extension's offline module.
+# Requires network/module cache on first run; never reads installed credentials.
+host-contract:
+    cd tests/host-contract && go test -race -count=1 ./...
