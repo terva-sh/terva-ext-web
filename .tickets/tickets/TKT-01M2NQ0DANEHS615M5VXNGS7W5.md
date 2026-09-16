@@ -47,7 +47,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:39:18Z
+updated_at: 2026-09-16T19:41:58Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -98,3 +98,7 @@ Readiness/coordination: The existing harness strips ZOT_WEB_* but inherits TAVIL
 **agent:codex/modernization-run** at 2026-09-16T19:17:32Z
 
 The cwd-save fix pulled forward subprocess environment isolation (drop TAVILY_API_KEY, ZOT_WEB_* and TERVA_EXT_WEB_*) and enabled race instrumentation for the real extension subprocess. Preserve these and the deterministic raw/image session-switch regressions when migrating the harness to SDK/current-host conformance. This does not complete the broader conformance ticket.
+
+**agent:codex/modernization-run** at 2026-09-16T19:41:58Z
+
+Expanded real subprocess suite passes under race: all six tools with successful synthetic local responses and exact image bytes, malformed JSON and >4 MiB frame recovery, concurrent downloads, both session-switch saves and shutdown during blocked fetch. Actual published v0.137.0 extdriver launch also passes via isolated host-contract module: launcher, ready, six tools, command, ordered session/save, stdout monitor and shutdown. Floor/current coincide at verified v0.137.0. docs/plans/sdk-conformance.md distinguishes host-driver evidence from full CLI installation/upgrade smoke, which remains a release gate. No per-call cancellation claim.
