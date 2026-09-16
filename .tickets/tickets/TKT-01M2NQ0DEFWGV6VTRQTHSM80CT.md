@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0DEFWGV6VTRQTHSM80CT
 title: Add validated host configuration and legacy precedence
 type: task
-status: draft
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -39,10 +39,17 @@ references:
     path: docs/plans/modernization-critical-path.md
   - ref: file:docs/plans/config-provenance.md
     path: docs/plans/config-provenance.md
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: feat/host-config
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: b36f628ceaf55d41827fb4977d9217f62317b246
+  session: null
+  claimed_at: 2026-09-16T19:42:48Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:34:37Z
+updated_at: 2026-09-16T19:42:48Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -72,6 +79,10 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Implementation plan
+
+Implement config.Resolve with application defaults, absent-default manifest fields, explicit host/legacy mode, new/old environment precedence and sanitized validation. Retain Load for historical caller compatibility while production uses validated resolution. Add a mutex-protected immutable runtime snapshot per call and replace fetcher/provider/cache on valid updates; rejected updates retain prior runtime and notify without values. Test full precedence, initial errors for every network handler, concurrent updates and blocked old fetch cache isolation. Host Tavily secret field follows in its separate ticket.
 
 ## Notes
 
