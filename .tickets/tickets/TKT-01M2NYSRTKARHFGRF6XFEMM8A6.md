@@ -30,7 +30,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T20:33:43Z
-updated_at: 2026-09-16T20:35:09Z
+updated_at: 2026-09-16T20:39:19Z
 created_by:
   id: agent:codex/modernization-run
   name: ""
@@ -59,3 +59,7 @@ Use filepath.IsLocal for native lexical containment and reject case-insensitive/
 **agent:codex/modernization-run** at 2026-09-16T20:35:09Z
 
 Implemented native locality checks plus Git metadata spelling protection and lock-ordered cache LRU sequence. Existing entry/byte eviction tests exercise the production bug; added preflight/write Windows path and Git alias regressions. Local just ci passed, including race, subprocess conformance, published host driver and vendor checks. Native rerun remains required.
+
+**agent:codex/modernization-run** at 2026-09-16T20:39:19Z
+
+Second rehearsal 35147435097 passed the original Windows path and LRU tests but exposed an incorrect new test expectation: COM1.txt is a regular filename on modern Windows. Verified Go 1.27 internal/filepathlite/path_windows.go uses RtlIsDosDeviceName_U for names with extensions because Windows 11 permits them. Corrected the fixture to bare COM1, which remains reserved. Keep native IsLocal semantics rather than inventing a broader filename restriction.

@@ -251,7 +251,7 @@ func TestSavePathRejectsWindowsNonlocalPaths(t *testing.T) {
 		t.Skip("native Windows path semantics")
 	}
 	cwd := t.TempDir()
-	for _, name := range []string{`\rooted.txt`, `C:relative.txt`, `C:\absolute.txt`, `\\server\share\file`, "NUL", "COM1.txt", "file:stream"} {
+	for _, name := range []string{`\rooted.txt`, `C:relative.txt`, `C:\absolute.txt`, `\\server\share\file`, "NUL", "COM1", "file:stream"} {
 		if err := checkSavePath(cwd, name, true); err == nil {
 			t.Errorf("preflight accepted %q", name)
 		}
