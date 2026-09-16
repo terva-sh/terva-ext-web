@@ -29,7 +29,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T19:26:49Z
-updated_at: 2026-09-16T20:05:13Z
+updated_at: 2026-09-16T20:29:38Z
 created_by:
   id: agent:codex/modernization-run
   name: ""
@@ -66,3 +66,7 @@ User supplied https://github.com/terva-sh/terva-ext-web and git@github.com:terva
 **agent:codex/modernization-run** at 2026-09-16T20:05:13Z
 
 Implemented GitHub-only tag/manual native workflow with read-only permissions, Linux packaging and five native runner targets. Added candidate checksum/version/skill/no-Go launcher validation and reusable source/archive host-driver checks with JSON reports. Local Linux archive rehearsal passes, including installation path with spaces; native GitHub execution remains pending. Added .exe suffix for Windows subprocess test builds. Manual workflow never publishes; tag builds also skip publication until the separate approved release path.
+
+**agent:codex/modernization-run** at 2026-09-16T20:29:38Z
+
+Merged Forgejo PRs #14 and #15 after passing CI. Pushed reviewed commit 87ebe9610f0053bbe5caeaaba1b2c54e07fcfebb to the previously empty GitHub mirror main using an ordinary push, without tags or settings changes. Dispatched read-only manual rehearsal https://github.com/terva-sh/terva-ext-web/actions/runs/35146845707; native outcomes pending. Manual snapshot was chosen to test runner availability and archives without publishing a release.
