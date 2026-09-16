@@ -29,7 +29,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T20:57:31Z
-updated_at: 2026-09-16T21:10:17Z
+updated_at: 2026-09-16T21:11:32Z
 created_by:
   id: agent:codex/terva-cleanup
   name: ""
@@ -67,3 +67,7 @@ User explicitly selected removal of active legacy configuration support, superse
 **agent:codex/terva-cleanup** at 2026-09-16T21:10:17Z
 
 Post-change just ci passed: vet/format, race tests, six-tool subprocess conformance including ignored old-file fixtures, published host-driver/policy checks and clean vendor regeneration. All 18 maintained Markdown files have valid local links; generated AGENTS ticket workflow is byte-identical to its previous version. Unslop pass removed stale dual-host and release-cut instructions, corrected yolo/cache/image-limit claims, and rewrote current setup, migration, direction and critical-path documentation. Native rerun will bind this changed manifest/source/skill archive to fresh evidence.
+
+**agent:codex/terva-cleanup** at 2026-09-16T21:11:32Z
+
+Final review tightened the retired-file regression fixture: it selects an unconfigured SearXNG backend as well as a synthetic key, so even a regression that restores file loading cannot send a request to the real Tavily service. The focused subprocess regression passes. Restart native validation for this final test revision.

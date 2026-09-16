@@ -750,7 +750,7 @@ func TestConformanceSecretDiagnostics(t *testing.T) {
 }
 
 func TestConformanceIgnoresLegacyFiles(t *testing.T) {
-	for _, content := range []string{`{"tavily_api_key":"synthetic-retired-key","allow_local_hosts":[]}`, `{"invalid-json":`} {
+	for _, content := range []string{`{"search_backend":"searxng","tavily_api_key":"synthetic-retired-key","allow_local_hosts":[]}`, `{"invalid-json":`} {
 		t.Run(content[:10], func(t *testing.T) {
 			data, install := t.TempDir(), t.TempDir()
 			for _, dir := range []string{data, install} {
