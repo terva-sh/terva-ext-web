@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NYSRTKARHFGRF6XFEMM8A6
 title: Fix native Windows save paths and cache eviction ordering
 type: bug
-status: in-progress
+status: done
 status_reason: null
 priority: high
 due_on: null
@@ -20,17 +20,10 @@ origin: null
 dependencies: []
 blocks_on: none
 references: []
-claim:
-  actor: agent:codex/modernization-run
-  branch: ci/native-validation-evidence
-  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
-  commit: 15c243063aa137165ff0c9f927053fd3a004db8f
-  session: null
-  claimed_at: 2026-09-16T20:33:55Z
-  expires_at: null
+claim: null
 archive: null
 created_at: 2026-09-16T20:33:43Z
-updated_at: 2026-09-16T20:39:19Z
+updated_at: 2026-09-16T20:51:31Z
 created_by:
   id: agent:codex/modernization-run
   name: ""
@@ -46,9 +39,9 @@ Native rehearsal https://github.com/terva-sh/terva-ext-web/actions/runs/35146845
 
 ## Acceptance criteria
 
-- [ ] Reject nonlocal save paths before filesystem changes and protect Git metadata aliases
-- [ ] Preserve deterministic LRU order independently of clock resolution
-- [ ] Pass native Windows source and archive validation and Linux regression checks
+- [x] Reject nonlocal save paths before filesystem changes and protect Git metadata aliases
+- [x] Preserve deterministic LRU order independently of clock resolution
+- [x] Pass native Windows source and archive validation and Linux regression checks
 
 ## Implementation plan
 
@@ -63,3 +56,7 @@ Implemented native locality checks plus Git metadata spelling protection and loc
 **agent:codex/modernization-run** at 2026-09-16T20:39:19Z
 
 Second rehearsal 35147435097 passed the original Windows path and LRU tests but exposed an incorrect new test expectation: COM1.txt is a regular filename on modern Windows. Verified Go 1.27 internal/filepathlite/path_windows.go uses RtlIsDosDeviceName_U for names with extensions because Windows 11 permits them. Corrected the fixture to bare COM1, which remains reserved. Keep native IsLocal semantics rather than inventing a broader filename restriction.
+
+## Summary
+
+Fixed native save locality/Git metadata aliases and deterministic LRU ordering. Local just ci and all five source/archive native targets pass at 7fde307 in run 35148398553. Reports and rationale: docs/validation/native-2026-09-16.json and docs/plans/platform-validation.md. PR #16 carries the changes.

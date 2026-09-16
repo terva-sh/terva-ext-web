@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NZD0DP9MTFSJ62F8BZV96V
 title: Invoke Bash explicitly for native Windows host launch
 type: bug
-status: in-progress
+status: done
 status_reason: null
 priority: high
 due_on: null
@@ -19,17 +19,10 @@ origin: null
 dependencies: []
 blocks_on: none
 references: []
-claim:
-  actor: agent:codex/modernization-run
-  branch: ci/native-validation-evidence
-  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
-  commit: f6d8d5b80584b11aa3a137fd827090b6c63eceaa
-  session: null
-  claimed_at: 2026-09-16T20:44:28Z
-  expires_at: null
+claim: null
 archive: null
 created_at: 2026-09-16T20:44:14Z
-updated_at: 2026-09-16T20:44:47Z
+updated_at: 2026-09-16T20:51:32Z
 created_by:
   id: agent:codex/modernization-run
   name: ""
@@ -45,8 +38,8 @@ Native Windows rehearsal 35147849983 passes extension tests but the published Te
 
 ## Acceptance criteria
 
-- [ ] Source and archive manifests launch through the actual Terva driver on all five targets
-- [ ] Retain no-Go archive launch, path-with-spaces support and offline source build behavior
+- [x] Source and archive manifests launch through the actual Terva driver on all five targets
+- [x] Retain no-Go archive launch, path-with-spaces support and offline source build behavior
 
 ## Implementation plan
 
@@ -57,3 +50,7 @@ Use the published host manifest Exec/Args contract to invoke Bash explicitly. Th
 **agent:codex/modernization-run** at 2026-09-16T20:44:47Z
 
 Changed the source manifest to exec bash with ./run.sh as an argument; archive packaging carries the same manifest. Actual published host-driver Linux test passes without fixture substitutions. Native validation rerun required to prove Windows behavior.
+
+## Summary
+
+Manifest explicitly invokes Bash with ./run.sh. Actual published Terva driver passes source and archive launch on all five targets, including Windows Git Bash and paths with spaces; archive launch without Go passes. Candidate 7fde307, run 35148398553, reports in docs/validation/native-2026-09-16.json. No test-only manifest substitution.
