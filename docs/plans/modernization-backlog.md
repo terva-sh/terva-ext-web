@@ -2,9 +2,12 @@
 
 This index translates the outstanding work in [the split plan](terva-ext-web.md)
 into repository tickets. The tickets own status, acceptance criteria, dependencies,
-decisions and validation; this page is a navigation and coverage map. All 20 new
-tickets (two epics and 18 scoped tasks/investigations) are draft, not promoted work.
+decisions and validation; this page is a navigation and coverage map. All 22
+tickets (two epics and 20 scoped tasks/investigations) are draft, not promoted work.
 Implementation plans are intentionally left for the agent who claims each task.
+
+See [the critical-path grooming review](modernization-critical-path.md) for
+recommended first selections, evidence, decision gates, and outstanding inputs.
 
 ## Filtering the backlog
 
@@ -25,6 +28,9 @@ JSON filtering (repeated `--label` options use OR).
 
 [TKT-01M2NQ0CRC76K1R0PKTGDZSYQ5 (Complete Terva modernization and replacement release)](../../.tickets/draft/TKT-01M2NQ0CRC76K1R0PKTGDZSYQ5.md)
 
+SDK verification, the save fix and platform-access planning can begin independently
+once selected. Configuration also waits for the provenance/import decision.
+
 | Work | Prerequisites |
 | --- | --- |
 | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/draft/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) | None |
@@ -32,27 +38,20 @@ JSON filtering (repeated `--label` options use OR).
 | [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/draft/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md) | None |
 | [TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8 (Preserve network and write authority during SDK adoption)](../../.tickets/draft/TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8.md) | [TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R (Migrate protocol integration to the verified Terva SDK)](../../.tickets/draft/TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R.md) |
 | [TKT-01M2NQ0DANEHS615M5VXNGS7W5 (Validate SDK conformance against supported Terva hosts)](../../.tickets/draft/TKT-01M2NQ0DANEHS615M5VXNGS7W5.md) | [TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R (Migrate protocol integration to the verified Terva SDK)](../../.tickets/draft/TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R.md), [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/draft/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md), [TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8 (Preserve network and write authority during SDK adoption)](../../.tickets/draft/TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8.md) |
-| [TKT-01M2NQ0DEFWGV6VTRQTHSM80CT (Add validated host configuration and legacy precedence)](../../.tickets/draft/TKT-01M2NQ0DEFWGV6VTRQTHSM80CT.md) | [TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R (Migrate protocol integration to the verified Terva SDK)](../../.tickets/draft/TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R.md) |
+| [TKT-01M2NQT535ETD2WACPHJ93PA48 (Resolve configuration provenance and legacy import semantics)](../../.tickets/draft/TKT-01M2NQT535ETD2WACPHJ93PA48.md) | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/draft/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) |
+| [TKT-01M2NQ0DEFWGV6VTRQTHSM80CT (Add validated host configuration and legacy precedence)](../../.tickets/draft/TKT-01M2NQ0DEFWGV6VTRQTHSM80CT.md) | [TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R (Migrate protocol integration to the verified Terva SDK)](../../.tickets/draft/TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R.md), [TKT-01M2NQT535ETD2WACPHJ93PA48 (Resolve configuration provenance and legacy import semantics)](../../.tickets/draft/TKT-01M2NQT535ETD2WACPHJ93PA48.md) |
 | [TKT-01M2NQ0DK05JAWQRF7TBGF1CY7 (Migrate Tavily configuration secrets without losing legacy settings)](../../.tickets/draft/TKT-01M2NQ0DK05JAWQRF7TBGF1CY7.md) | [TKT-01M2NQ0DEFWGV6VTRQTHSM80CT (Add validated host configuration and legacy precedence)](../../.tickets/draft/TKT-01M2NQ0DEFWGV6VTRQTHSM80CT.md) |
-| [TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A (Validate replacement installation, upgrades and release platforms)](../../.tickets/draft/TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A.md) | [TKT-01M2NQ0DANEHS615M5VXNGS7W5 (Validate SDK conformance against supported Terva hosts)](../../.tickets/draft/TKT-01M2NQ0DANEHS615M5VXNGS7W5.md), [TKT-01M2NQ0DEFWGV6VTRQTHSM80CT (Add validated host configuration and legacy precedence)](../../.tickets/draft/TKT-01M2NQ0DEFWGV6VTRQTHSM80CT.md), [TKT-01M2NQ0DK05JAWQRF7TBGF1CY7 (Migrate Tavily configuration secrets without losing legacy settings)](../../.tickets/draft/TKT-01M2NQ0DK05JAWQRF7TBGF1CY7.md) |
+| [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/draft/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md) | None |
+| [TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A (Validate replacement installation, upgrades and release platforms)](../../.tickets/draft/TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A.md) | [TKT-01M2NQ0DANEHS615M5VXNGS7W5 (Validate SDK conformance against supported Terva hosts)](../../.tickets/draft/TKT-01M2NQ0DANEHS615M5VXNGS7W5.md), [TKT-01M2NQ0DEFWGV6VTRQTHSM80CT (Add validated host configuration and legacy precedence)](../../.tickets/draft/TKT-01M2NQ0DEFWGV6VTRQTHSM80CT.md), [TKT-01M2NQ0DK05JAWQRF7TBGF1CY7 (Migrate Tavily configuration secrets without losing legacy settings)](../../.tickets/draft/TKT-01M2NQ0DK05JAWQRF7TBGF1CY7.md), [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/draft/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md) |
 | [TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7 (Publish and smoke-test the first terva-ext-web release)](../../.tickets/draft/TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7.md) | [TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A (Validate replacement installation, upgrades and release platforms)](../../.tickets/draft/TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A.md) |
 | [TKT-01M2NQ0DZR9RMP1PRT1VDA7GQP (Coordinate legacy migration notice and authorized zot-web archival)](../../.tickets/draft/TKT-01M2NQ0DZR9RMP1PRT1VDA7GQP.md) | [TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7 (Publish and smoke-test the first terva-ext-web release)](../../.tickets/draft/TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7.md) |
-
-SDK verification and the session-switch save fix can begin independently once
-selected. The save fix is an application bug, not a benefit supplied by adopting
-the SDK. Configuration can proceed after SDK integration while the expanded
-security/conformance work runs separately. Release validation joins both paths.
-Publication precedes the legacy migration notice; archival still needs explicit
-authorization in the implementing ticket. No future release or remote settings
-action is authorized merely by filing this backlog.
 
 ## Follow-up features and investigations
 
 [TKT-01M2NQ0CTGYDCTP37XTS4BQ0BG (Improve Terva web tool discovery and presentation)](../../.tickets/draft/TKT-01M2NQ0CTGYDCTP37XTS4BQ0BG.md)
 
-These preserve the plan's Next, Optional, and Investigate assessments and do not
-block the first replacement release. Spikes may conclude with a documented
-decision to defer or reject; implementation is a separate outcome.
+Recommended next features and optional investigations do not block the first
+replacement release. Spikes may conclude with an evidence-backed defer/reject decision.
 
 | Work | Prerequisites |
 | --- | --- |

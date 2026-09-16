@@ -35,7 +35,7 @@ from the parent epic. Epics carry their broad primary areas.
 | `area:launcher` | Source builds, startup, and prebuilt fallback |
 | `area:workflow` | Ticket-store maintenance and agent workflow, outside the product backlog |
 
-The initial backlog has 20 modernization tickets: 11 core and 9 follow-up,
+After critical-path grooming, the backlog has 22 modernization tickets: 13 core and 9 follow-up,
 including one epic in each scope. All remain draft. Labels do not promote or
 claim work, and grouping legacy archival under release does not authorize it.
 

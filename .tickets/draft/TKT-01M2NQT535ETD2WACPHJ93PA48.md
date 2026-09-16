@@ -29,10 +29,12 @@ references:
     path: extension.json
   - ref: file:docs/plans/terva-ext-web.md
     path: docs/plans/terva-ext-web.md
+  - ref: file:docs/plans/modernization-critical-path.md
+    path: docs/plans/modernization-critical-path.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:31:36Z
-updated_at: 2026-09-16T18:31:36Z
+updated_at: 2026-09-16T18:34:37Z
 created_by:
   id: agent:codex/critical-path
   name: ""
@@ -57,3 +59,9 @@ The inspected Terva SDK exposes Config as resolved raw JSON values: manifest def
 ## Definition of done
 
 - [ ] Record reviewed decisions, reusable validation inputs and outstanding external requirements in the ticket; pass strict ticket validation
+
+## Notes
+
+**agent:codex/critical-path** at 2026-09-16T18:33:36Z
+
+Entry inputs: verified published SDK/host capability report and the existing config loader behavior. Deliverable: a deterministic import/precedence decision and synthetic fixture table for both nonsecret and secret migration. Validation: cover absent, explicit-default, zero/false/empty, legacy/file/env, allowlist append/replace and retry/rollback cases. This decision runs alongside SDK integration and gates config implementation; local SDK presence alone is not evidence of explicit setting provenance.

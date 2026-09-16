@@ -31,10 +31,12 @@ references:
     path: .goreleaser.yaml
   - ref: file:docs/plans/release-process.md
     path: docs/plans/release-process.md
+  - ref: file:docs/plans/modernization-critical-path.md
+    path: docs/plans/modernization-critical-path.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:34Z
-updated_at: 2026-09-16T18:31:38Z
+updated_at: 2026-09-16T18:34:37Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
