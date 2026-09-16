@@ -56,8 +56,9 @@ workflow before writing to it; the workspace ledger tracks clone setup only.
   tree: `6c368f89b3e622c7d4515ac4e02d47caed3a95c7`.
 - The initial docs commit follows that point. Do not rewrite the inherited
   history or reuse the inherited `cut/*` tags for new releases.
-- No remote exists yet. The source repository is `../zot-web`; do not set it
-  as a push destination. Remote publication remains a later batch.
+- Origin is `ssh://git@git.local.sothr.com:2222/terva-sh/terva-ext-web.git`.
+  The source repository is `../zot-web`; never use it as a push destination.
+  Binary release publication remains a later batch.
 - Do not archive zot-web during modernization. Validate the replacement
   release and migration first; remote archival needs ticket authorization.
 - Do not enable both old and new installations together: they share `web`

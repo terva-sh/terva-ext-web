@@ -6,15 +6,17 @@ archives and SHA-256 checksums. Snapshots use 0.4.0-next independently of the
 inherited cut/* tags. Archives carry matching binary/manifest versions, the
 launcher, README, license, and bundled research skill.
 
-The planned Forgejo owner/repository is **terva-sh/terva-ext-web**. The inherited
-warricksothr/zot-web destination is retired. No remote exists yet; verify the
-actual server-advertised clone URL, owner, and empty destination before any
-publication. GoReleaser publication and tag-triggered release CI are disabled.
+The verified Forgejo owner/repository is **terva-sh/terva-ext-web**, created
+public on 2026-09-16 at the user's request. The server advertised
+`ssh://git@git.local.sothr.com:2222/terva-sh/terva-ext-web.git`; both the API
+and `git ls-remote` confirmed the repository was empty before the initial
+push. This URL is now origin. The inherited warricksothr/zot-web destination
+is retired. GoReleaser publication and tag-triggered release CI remain disabled.
 The manual release workflow produces snapshots only and needs no write token.
 
 A later release batch must validate the supported Terva host, new installation,
 settings-preserving upgrade and rollback, and each supported platform's launch.
-Then configure the verified new remote and enable publication deliberately.
+Then enable binary release publication deliberately.
 Do not reuse cut/* tags, create an orphan public history, publish to zot-web,
 or archive the old repository as part of this batch.
 
