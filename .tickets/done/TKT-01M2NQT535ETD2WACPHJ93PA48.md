@@ -34,7 +34,7 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:31:36Z
-updated_at: 2026-09-16T19:34:37Z
+updated_at: 2026-09-16T19:35:02Z
 created_by:
   id: agent:codex/critical-path
   name: ""
@@ -73,6 +73,10 @@ Entry inputs: verified published SDK/host capability report and the existing con
 **agent:codex/modernization-run** at 2026-09-16T19:33:41Z
 
 Published resolver proves Config.Has has no provenance when manifest defaults exist. Decision: omit schema defaults and keep application defaults, use explicit configuration_source host mode for opt-in credential migration and disabling legacy reads. Host drops undecryptable secrets, so legacy mode deliberately retains legacy credential ownership until opt-in; host mode never resurrects a legacy key. Host form blank means unset for nonsecrets and keep for secrets. docs/plans/config-provenance.md records full field precedence, allowlist exception, validation, immutable runtime/cache semantics, rollback and synthetic cases. Manual host-form import wins over automatic file/credential rewriting; no new host API needed.
+
+**agent:codex/modernization-run** at 2026-09-16T19:35:02Z
+
+Merging SDK completion caused a ticket-directory rename conflict and overlapping backlog links. The spike is now correctly in done; repaired backlog links retain both completion states. Ticket validation passed; additionally checked Markdown for conflict markers because store validation does not inspect prose documents.
 
 ## Summary
 
