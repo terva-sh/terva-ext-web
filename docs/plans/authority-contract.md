@@ -46,7 +46,8 @@ per-call, writes use exclusive creation unless overwrite is explicitly true,
 and concurrent network reads are useful. Cache operations already synchronize
 internally. /web-cache clear is a best-effort cache eviction, not cancellation
 of an active fetch; adding serial command dispatch would not make it one.
-A separate conformance batch adds full actual-host launch and frame recovery.
+The [conformance suite](sdk-conformance.md) also checks actual host launch and
+frame recovery.
 
 Validation recorded 2026-09-16: all 15 mode/override policy combinations and
 uncached race/conformance application suites passed locally; Forgejo PR #10

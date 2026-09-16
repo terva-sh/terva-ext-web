@@ -1,98 +1,81 @@
 # terva-ext-web
 
-This is an independent local fork of zot-web. The target is the Terva
-extension ecosystem; stock zot compatibility is no longer a product goal.
-The machine-wide rules and `/home/sothr/workspace/AGENTS.md` also apply.
+Terva web tools, forked from zot-web with its history intact. Stock zot is not
+supported. Machine-wide rules and `/home/sothr/workspace/AGENTS.md` also apply.
 
 ## Start here
 
-1. Inspect `git status`, the branch, and `git remote -v` before editing.
-2. Read `docs/plans/terva-ext-web.md`. It records the exact fork point,
-   inspected Terva revision, decisions, feature assessment, migration risks,
-   and implementation batches. It is the current direction;
-   `docs/plans/modernization-backlog.md` maps outstanding work to tickets.
-3. Read `README.md` for existing tool behavior, but treat its permanent zot
-   compatibility and no-rename statements as historical policy superseded by
-   the split plan. The identity and packaging batch is recorded in
-   `docs/plans/identity-packaging.md`.
-4. Read `go.mod`, `extension.json`, `main.go`, the vendored `packages/agent/ext` SDK,
-   `conformance_test.go`, `justfile`, `run.sh`, and `.goreleaser.yaml`.
-5. Consult the sibling Terva checkout's `docs/extensions.md`,
-   `packages/agent/ext/ext.go`, and `packages/agent/extproto/extproto.go` for
-   actual SDK contracts. It is at `../terva`; inspect its status and revision
-   first and leave its unrelated work untouched. `../terva-ext-caldav` is a
-   useful naming/configuration example. Do not blindly copy the older SDK
-   pin from `../terva-extension-template`.
+1. Inspect `git status`, the branch and `git remote -v` before editing.
+2. Read `docs/plans/terva-ext-web.md` for direction and
+   `docs/plans/modernization-critical-path.md` for remaining release work.
+3. Read `README.md` for current behavior, setup and configuration.
+4. Read `go.mod`, `extension.json`, `main.go`, `runtime.go`, `conformance_test.go`,
+   `justfile`, `run.sh` and `.goreleaser.yaml` before changing integration.
+5. Check actual contracts in the pinned `terva.sh/terva v0.137.0` SDK and host
+   source. `docs/plans/sdk-verification.md` records the verified version.
+   Inspect any sibling checkout's status and revision before using it. Do not
+   copy another extension's SDK pin without verifying the published version.
 
-## First implementation batch
+## Implementation rules
 
-The **identity and packaging** batch is implemented; see its decision record.
-Continue on a topic branch for subsequent batches.
-Use repository/binary/module name `terva-ext-web`; preserve manifest and
-handshake name `web`, all six `web_*` tools, and `/web-cache`. Update internal
-imports and linker symbols together. Include the bundled research skill in
-release archives. Resolve the inherited release-owner discrepancy before any
-publication. Preserve existing configuration; do not rename or delete users'
-installed extensions or credential files as part of source changes.
+Use a topic branch. Repository, module and binary are `terva-ext-web`.
+Manifest and handshake name are `web`. Preserve all six `web_*` tools and
+`/web-cache`, and include the research skill in release archives.
 
-Keep the SDK migration as a separate reviewable batch after identity and
-packaging pass their checks. The protocol now uses published Terva SDK v0.137.0; see
-`docs/plans/sdk-verification.md` for the verified pin and host policy. Carry forward
-SSRF, resource-limit, path, and output-sanitization defenses. Preserve the
-single workspace snapshot and deterministic session-switch save regression.
-Do not promise per-call cancellation or trust metadata that the SDK does not
-provide. Verify a published SDK version before pinning and vendoring it.
+Configuration comes from Terva host settings, `TERVA_EXT_WEB_*` overrides and
+`TAVILY_API_KEY`. Do not restore standalone configuration files, `ZOT_WEB_*`
+aliases or `configuration_source`. Their removal was user-approved; see
+`docs/plans/config-provenance.md`. Existing installation and credential files
+must remain untouched by source changes.
 
-Use the repository's `just` recipes and CI definitions for checks. The identity
-batch passed unchanged-source and post-change baseline checks; see its evidence
-record. Recheck the toolchain and relevant baseline in each implementation
-session; current-host SDK and cross-platform runtime validation remain open.
-Commit coherent changes and record implementation rationale in source control.
+Preserve SSRF, resource-limit, path and output-sanitization checks. Each save
+captures one workspace before fetching. Keep the session-switch regression.
+The SDK has no per-call cancellation context or dedicated result trust metadata;
+do not claim either. Keep SDK, configuration and release changes reviewable.
 
-## Project ticket workflow
+Run checks appropriate to the change through `just`. `just ci` covers vet,
+formatting, race tests, subprocess conformance, the published host driver and
+vendor consistency. Recheck the toolchain and establish a baseline before code
+changes. Native validation covers five targets on GitHub; its reports certify
+specific commits and archives. Source, dependency, manifest, launcher or
+packaging changes need new native evidence before release.
 
-Track codebase work in this repository's `.tickets/` store. The workspace
-ledger is for workspace infrastructure and clone setup, not this project's
-implementation. Read the generated Tickets block below before writing tickets;
-run `git ticket instructions` for the full rationale.
+## Tickets
 
-- At session start, inspect `git ticket ready`, `git ticket list --status draft`,
-  and `git ticket list --status in-progress`. Read the selected ticket before
-  editing, and use `git ticket files PATH` to find recorded work on a file.
-- Keep `docs/plans/terva-ext-web.md` as the modernization direction. Link the
-  relevant plan and source paths from implementation tickets; record decisions,
-  alternatives, progress, and validation in the ticket as the work happens.
-  Keep SDK/correctness, configuration/credentials, and release work separate.
-- Commit ticket changes as you go. Include the ticket ID and title in commits
-  primarily concerning one ticket. Before handing off or ending a session,
-  run `git ticket check` (or the stricter `just ticket-check`), commit all
-  intended ticket changes, and leave unrelated changes untouched.
-- Follow `docs/ticket-labels.md` when labeling tickets. The vocabulary is in
-  `.tickets/config.yml`; use initiative/scope/area labels and native fields
-  for status, type and priority. Repeated `--label` filters match any label.
-- Regenerate the block below with `git ticket instructions --write`; do not
-  hand-edit it. Keep repository-specific additions in this section so they
-  survive regeneration.
-- After cloning, run `git ticket install-merge-driver` to configure the local
-  driver used by the committed `.gitattributes`. Git configuration is local to
-  each clone and is not installed by checking out the attributes file.
+Track project work in `.tickets/`. The workspace ledger covers infrastructure
+and clone setup. Read the generated workflow below before writing tickets.
 
-`just ticket-check` requires the installed `git-ticket` tool. It is a local
-handoff gate; the Go CI pipeline does not yet provision or run git-ticket.
+- At session start, inspect `git ticket ready`, draft tickets and in-progress
+  tickets. Read the selected ticket and check `git ticket files PATH` for prior
+  decisions about files you will change.
+- Record the approach, alternatives, progress and validation in the ticket.
+  Commit ticket changes as work proceeds. Include the ID and title in commits
+  primarily concerning one ticket.
+- Follow `docs/ticket-labels.md` and the vocabulary in `.tickets/config.yml`.
+  Status, type, priority and dependencies belong in native fields.
+- Before handoff, run `git ticket check` and `just ticket-check`, commit intended
+  changes and leave unrelated work untouched.
+- Regenerate the block with `git ticket instructions --write`; do not hand-edit
+  it. Keep project-specific instructions above it.
+- After cloning, run `git ticket install-merge-driver`. The committed
+  `.gitattributes` does not install local Git configuration.
 
-## Repository boundaries
+`just ticket-check` requires git-ticket locally. Go CI does not provision it.
 
-- Exact fork point: `c50d773c60250a7315c37c2aedbeb891cb12f6a4`;
-  tree: `6c368f89b3e622c7d4515ac4e02d47caed3a95c7`.
-- The initial docs commit follows that point. Do not rewrite the inherited
-  history or reuse the inherited `cut/*` tags for new releases.
-- Origin is `ssh://git@git.local.sothr.com:2222/terva-sh/terva-ext-web.git`.
-  The source repository is `../zot-web`; never use it as a push destination.
-  Binary release publication remains a later batch.
-- Do not archive zot-web during modernization. Validate the replacement
-  release and migration first; remote archival needs ticket authorization.
-- Do not enable both old and new installations together: they share `web`
-  identity, tool names, command names, configuration scope, and secret scope.
+## Repository and release boundaries
+
+The fork point is `c50d773c60250a7315c37c2aedbeb891cb12f6a4`, tree
+`6c368f89b3e622c7d4515ac4e02d47caed3a95c7`. Preserve inherited history and
+leave the old `cut/*` tags as historical records.
+
+Origin is `ssh://git@git.local.sothr.com:2222/terva-sh/terva-ext-web.git`.
+The GitHub mirror is `git@github.com:terva-sh/terva-ext-web.git`.
+Never push this fork to zot-web. Binary publication remains disabled pending
+installation, migration and rollback validation and release approval.
+
+Do not archive zot-web without ticket authorization. Do not enable old and new
+installations together: they share tool, command, configuration and secret
+identities. Resolve paths through the host rather than repository basenames.
 
 <!-- git-ticket:begin -->
 

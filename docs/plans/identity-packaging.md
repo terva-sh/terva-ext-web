@@ -1,4 +1,7 @@
-# Identity and packaging — 2026-09-16
+# Identity and packaging, 2026-09-16
+
+This historical record describes the identity batch. Later SDK, configuration
+and validation decisions are linked from [the direction](terva-ext-web.md).
 
 This batch follows fork `c50d773c60250a7315c37c2aedbeb891cb12f6a4` and its
 recorded tree `6c368f89b3e622c7d4515ac4e02d47caed3a95c7`, on topic branch
@@ -28,8 +31,8 @@ claim testing with Go 1.25 or a current Terva host.
   releases and GoReleaser otherwise derives 0.0.1-next.
 - Retire the inherited orphan-history release-cut script rather than merely
   rename it: it could publish to zot-web, guess local mirror paths, and reuse
-  inherited cut/* tags. Local verify/snapshot commands replace it. Historical
-  release decisions remain in the release-process document as history.
+  inherited cut/* tags. Local verify/snapshot commands replace it. The repository history retains
+  the original release-cut instructions.
 - The planned release owner is `terva-sh`, not the inherited GoReleaser owner
   `warricksothr`; the repository is `terva-ext-web`. Publication is disabled in
   GoReleaser and CI pending actual destination verification in the later batch.

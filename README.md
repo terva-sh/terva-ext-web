@@ -1,190 +1,123 @@
 # terva-ext-web
 
-A Terva extension that gives the agent
-web access through six LLM-callable tools:
+Web search, page retrieval and image downloads for Terva. The extension uses
+the published Terva v0.137.0 SDK and keeps the `web` identity, six `web_*` tools
+and `/web-cache` command. Stock zot is not supported.
 
-- **`web_search(query, count?, freshness?, include_domains?, exclude_domains?, depth?)`**
-  — ranked results (title, URL, snippet, publication date when the backend
-  reports one). `freshness` (`day`/`week`/`month`/`year`) windows results by
-  publication date; `include_domains`/`exclude_domains` filter by site
-  (Tavily natively; SearXNG via a `site:` hint plus post-filtering);
-  `depth: "advanced"` requests Tavily's deeper search tier.
-- **`web_fetch(url, max_chars?, offset?, user_agent?)`** — a page's main content as Markdown,
-  led by a metadata block. Image URLs are replaced with compact `[image:N]`
-  placeholders to save tokens; `offset` pages through long documents. The
-  rendered page is cached, so paging with `offset` (or re-fetching) within the
-  cache window reads the same snapshot and won't drift mid-read.
-- **`web_images(url)`** — resolve the `[image:N]` placeholders from a fetched
-  page back to their URLs (plus dimensions, caption, and source page). Served
-  from cache when warm; fetches on a cold cache, so it also works standalone.
-  Discovery covers lazy-load attributes (`data-src`, `srcset`, `data-bg`/`data-background-image`), `<noscript>` fallbacks, `<picture>`
-  sources, `<a>` links straight to an image, and `og:image`/`twitter:image`,
-  and falls back to a whole-page scan on pages readability can't article-ify.
-- **`web_links(url)`** — every hyperlink on a page (absolute URL + anchor text),
-  de-duplicated. Lets the model enumerate a page's links without scraping the
-  fetched text. Cache-backed like `web_images`.
-- **`web_fetch_image(url, max_dimension?, save_path?, overwrite?, inject?, user_agent?)`** —
-  fetch an image and return it for native multimodal viewing and/or save it into
-  the workspace. `max_dimension` downscales oversized images.
-- **`web_fetch_raw(url, save_path, overwrite?, user_agent?)`** — save a page's *unrendered*
-  source (HTML/JSON/text, exactly as served) to a workspace file for the model
-  to grep/parse itself — an escape hatch when the structured tools miss
-  something. Reuses the same SSRF guard and page cache as `web_fetch`.
+Terva v0.137.0 is the tested host version. Source builds require Go 1.27+ and
+Bash. Archives require Bash, or Git Bash on Windows, and no Go toolchain.
+Native source and archive tests pass on Linux amd64/arm64, macOS amd64/arm64
+and Windows amd64. See the [validation evidence](docs/plans/platform-validation.md).
+The planned first release is 0.4.0. No binary release has been published.
 
-Single static Go binary with an offline source launcher. This independent fork
-of zot-web targets Terva. The first new release version is **0.4.0**; publication
-is pending. Protocol integration uses the published Terva SDK v0.137.0.
-The supported host baseline is Terva v0.137.0; older hosts are unvalidated.
+## Install
 
-## Install and try locally
+The source repository is [terva-sh/terva-ext-web](https://git.local.sothr.com/terva-sh/terva-ext-web).
+[GitHub](https://github.com/terva-sh/terva-ext-web) mirrors its history and runs
+native release validation.
 
-With Go 1.27+ on PATH and [just](https://github.com/casey/just):
+With Go and Bash on PATH, use Terva to install a local checkout:
 
-```bash
-just build
-terva --ext /path/to/terva-ext-web
-# For a new installation:
-just install
-just configure-searxng https://searx.example/
+```sh
+terva ext install /path/to/terva-ext-web
 ```
 
-Source repository: [terva-sh/terva-ext-web](https://git.local.sothr.com/terva-sh/terva-ext-web).
-The identity cutover is recorded in [PR #1](https://git.local.sothr.com/terva-sh/terva-ext-web/pulls/1).
-No downloadable binary release has been published yet. Source installs
-use `run.sh`, which builds `terva-ext-web` offline from the committed vendor
-tree on first launch or after a source change. Build messages go to stderr;
-stdout carries only protocol frames. `just install` delegates to Terva and
-never removes an existing installation or copies credential files. The host
-may omit the ignored local binary when installing; the launcher builds it.
+For development, [just](https://github.com/casey/just) provides these commands:
 
-Local snapshots (`just release-snapshot`) contain the binary, manifest,
-launcher, license, README, and `skills/web-research/SKILL.md`. Extract an archive
-into a new directory and use `terva --ext /path/to/extracted-directory`.
-Linux and macOS archives need Bash but no Go toolchain. Windows amd64 archives
-include `terva-ext-web.exe`; the launcher requires Git Bash/MSYS. Windows-native
-host launch and non-Linux runtime validation remain release checks.
+```sh
+just build
+terva --ext /path/to/terva-ext-web
+just install
+```
 
-## Terva integration and migration
+The manifest runs `bash ./run.sh`. On a source installation, the launcher builds
+from `vendor/` on first use and after source changes. It needs no module downloads.
+Build messages go to stderr; stdout carries the extension protocol.
 
-Repository, module, binary, and default User-Agent use `terva-ext-web`.
-Manifest and handshake name **web**, all six **web_*** tools, and **/web-cache**
-retain their identities. Stock zot compatibility is no longer a product goal;
-the protocol harness covers the v0.137.0 wire contract (protocol 6). The
-extension requires protocol 2 for ordered session identity. The published v0.137.0 host driver also passes launcher/tool/session smoke
-tests; full CLI installation and upgrade checks remain release gates.
+`just release-snapshot` builds archives containing the executable, manifest,
+launcher, README, license and research skill. Extract one into a new directory
+and try it with `terva --ext /path/to/extracted-directory`. Full CLI installation,
+upgrade and rollback validation remains open before publication.
 
-Do not enable zot-web and terva-ext-web together: they share tool, command,
-configuration, and secret identities. Use `terva ext list` and host-reported
-installation/data directories to identify existing installations. Preserve the
-old installation and settings, disable it before testing the replacement, and
-only enable the replacement after its smoke test. Rollback disables the new
-installation and re-enables the old one. Do not infer data paths from the new
-repository name. Automated upgrade/migration is a later batch.
+## Tools
 
-The SDK supplies no per-call cancellation context or dedicated result trust
-metadata. Existing timeouts, SSRF/resource limits and sanitization still apply.
+| Tool | Use |
+| --- | --- |
+| `web_search` | Search with Tavily or SearXNG. Returns titles, URLs, snippets and publication dates when available. |
+| `web_fetch` | Read a page as Markdown. Use `offset` to continue through long pages. |
+| `web_images` | List image URLs, captions and dimensions. Resolves the `[image:N]` handles in fetched pages. |
+| `web_links` | List deduplicated hyperlinks with absolute URLs and anchor text. |
+| `web_fetch_image` | View an image, resize it, or save it to the workspace. |
+| `web_fetch_raw` | Save the original response bytes to a workspace file. |
 
-The SDK integration tracks `session_start` and live cwd. Each
-download captures its workspace when the handler starts, so a session switch
-during the fetch cannot redirect its eventual save into a different workspace.
-
-### Dependencies are vendored
-
-`vendor/` is committed so the first-launch build is fast and offline (see
-above). After changing dependencies, refresh it with `just vendor` (runs
-`go mod tidy` + `go mod vendor`) and commit the result alongside
-`go.mod`/`go.sum`. **Re-evaluate this approach if `vendor/` grows large**
-(currently ~8.4 MiB including the SDK): past some point, shipping
-prebuilt per-platform binaries (goreleaser) beats carrying a big vendor tree.
+Search accepts `query`, `count`, `freshness`, `include_domains`,
+`exclude_domains` and `depth`. Freshness is `day`, `week`, `month` or `year`.
+Tavily supports domain filters and advanced depth directly. SearXNG uses a
+`site:` query hint and post-filtering for domains.
 
 ## Configure
 
-Configure nonsecret settings in Terva's extension configuration form. Fields
-have application defaults, so an explicitly saved value—even false or zero—
-overrides a legacy value. Precedence is `TERVA_EXT_WEB_*`, then `ZOT_WEB_*`,
-then explicit host values, then legacy file values, then application defaults.
-`TAVILY_API_KEY` remains the credential override.
+Use Terva's extension configuration form or `terva ext config web`. For a
+local SearXNG instance:
 
-`configuration_source` defaults to `legacy`: read `config.json` in the
-host-reported data directory, falling back to the installation directory only
-if absent. Existing values remain available while you enter host settings.
-Choose `host` to ignore legacy files; this is opt-in and never changes or deletes
-a file. In host mode, enter `tavily_api_key` in the secret field or supply
-`TAVILY_API_KEY`. Rollback selects `legacy` or restores the old installation.
-Legacy mode remains supported throughout 0.4.x; removing it needs a later
-migration decision.
-
-Valid live updates take effect for later calls and start a fresh cache. Calls
-already running finish with their original settings and private cache. Rejected
-updates retain working settings and report the invalid field without its value.
-On initial invalid settings, all network tools fail closed. Missing search
-credentials block search only. Invalid/out-of-range settings now fail visibly
-instead of the legacy loader's silent coercion/clamping. File edits and process
-environment changes require restart; host settings update live.
-
-The host allowlist field accepts JSON array text, such as `["localhost"]` or
-`[]`. It replaces the lower-priority list. Environment allowlists are the
-exception to scalar precedence: the selected namespace appends its comma list;
-if both namespaces exist, only the new one appends. Empty optional strings clear
-a value; empty/invalid numeric settings reject. Blank nonsecret form input means
-unset on the host; use host mode to remove fallback to legacy values.
-
-`just configure-searxng` (above) writes this file for you; to do it by hand,
-start from the default Tavily backend:
-
-```bash
-export TAVILY_API_KEY=tvly-...
+```sh
+terva ext config web set search_backend=searxng searxng_url=http://127.0.0.1:11984
 ```
 
-Or switch to a self-hosted SearXNG instance (no key, private):
+`just configure-searxng URL` runs that host command. It updates only the backend
+and URL. For a LAN or VPN instance, also add the destination to
+`allow_local_hosts`. SearXNG must enable `json` under `search.formats` in its
+`settings.yml`, or it returns HTTP 403.
 
-```jsonc
-// config.json in the host-reported extension data directory
-{
-  "search_backend": "searxng",
-  "searxng_url": "http://127.0.0.1:11984"
-}
-```
+For Tavily, set `search_backend` to `tavily` and enter `tavily_api_key` in the
+host's secret field. You can instead
+supply `TAVILY_API_KEY` in the process environment.
 
-> SearXNG must have `json` listed under `search.formats` in its `settings.yml`,
-> otherwise its API returns `403`.
->
-> SearXNG queries run through the **same SSRF guard** as `web_fetch`. Loopback
-> is allowed out of the box, so the example above just works — but an instance
-> on a LAN/VPN address must be in `allow_local_hosts` or every search is
-> blocked (see [the allowlist](#security-ssrf-protection--the-local-allowlist)).
-> `just configure-searxng` writes that entry for you.
+### Configuration precedence
 
-### Tavily credentials
+Settings come from `TERVA_EXT_WEB_*` environment variables, then explicit Terva
+host values, then application defaults. `TAVILY_API_KEY` overrides the Tavily
+secret field. The extension no longer reads standalone `config.json` files,
+`ZOT_WEB_*` variables or `configuration_source`.
 
-To migrate, enter your settings and Tavily key in the host form, then select
-`configuration_source: host` and smoke-test search. In legacy mode the old
-file/env key remains active even if a host key is saved. Host mode uses only
-the host key or `TAVILY_API_KEY`; an absent or undecryptable host key never
-falls back to an old file. An explicitly empty provider environment variable
-disables the credential. Blank secret form input keeps the saved host key;
-use Terva's documented secret/config clear operation to remove it.
+The manifest omits defaults so explicit `false`, `0` and empty values reach the
+application. Blank nonsecret form input means unset. Empty optional strings
+clear a value; empty numeric values fail validation.
 
-The extension never rewrites/deletes legacy files or rotates credentials.
-Duplicates remain until you deliberately retire them; rollback can still use
-the preserved legacy installation. The manifest declares `data_secrets: true`
-because an old data-directory config may still contain a key.
+The host's `allow_local_hosts` field accepts JSON array text, for example
+`["localhost", "127.0.0.1", "::1", "search.internal"]`. It replaces the default
+list. `TERVA_EXT_WEB_ALLOW_LOCAL_HOSTS` appends comma-separated entries. Use
+`[]` in the host field, with no environment additions, to block loopback too.
 
-A masked field alone does not encrypt storage. Terva documents `terva secret
-init` for at-rest encryption; follow the host's backup/recovery instructions
-before configuring it. Encryption setup is an operator action, not an extension
-migration side effect. The extension receives the resolved config secret; it
-does not use the protocol-6 runtime secret broker or require a new host floor.
-Provider errors report status and guidance without raw response bodies, and
-configured key echoes are redacted from search results and errors.
+Valid host updates apply to later calls and create a fresh cache. In-flight
+calls finish with their captured settings and cache. Invalid updates report the
+field name without its value and retain the last working configuration. Invalid
+startup settings block every network tool; missing search credentials block
+search only. Environment changes require a restart.
 
-### All settings
+### Credentials
+
+The Tavily key comes from the host secret field or `TAVILY_API_KEY`. A missing
+or undecryptable host key stays unconfigured. An explicitly empty
+`TAVILY_API_KEY` clears the effective credential.
+
+Blank secret form input keeps the saved key. Use Terva's secret/config clear
+operation to remove it. A masked input does not establish encryption at rest;
+follow Terva's `terva secret init` and backup instructions for that setup.
+This extension uses resolved configuration secrets, not the runtime secret broker.
+
+The extension does not rotate credentials or delete old copies. Its manifest
+keeps `data_secrets: true` because a preserved data directory may contain a key.
+Provider errors omit raw response bodies, and configured key echoes are redacted
+from search results and errors.
+
+### Settings
 
 | setting key | preferred env override | default | meaning |
 |---|---|---|---|
 | `search_backend` | `TERVA_EXT_WEB_SEARCH_BACKEND` | `tavily` | `tavily` or `searxng` |
-| `tavily_api_key` | `TAVILY_API_KEY` | — | Tavily bearer token |
-| `searxng_url` | `TERVA_EXT_WEB_SEARXNG_URL` | — | SearXNG base URL |
+| `tavily_api_key` | `TAVILY_API_KEY` | unset | Tavily bearer token |
+| `searxng_url` | `TERVA_EXT_WEB_SEARXNG_URL` | unset | SearXNG base URL |
 | `fetch_max_bytes` | `TERVA_EXT_WEB_FETCH_MAX_BYTES` | `2097152` | response body cap (maximum `33554432`) |
 | `fetch_image_max_bytes` | `TERVA_EXT_WEB_FETCH_IMAGE_MAX_BYTES` | `5242880` | max encoded size of a `web_fetch_image` result after resize (maximum `20971520`) |
 | `fetch_timeout_sec` | `TERVA_EXT_WEB_FETCH_TIMEOUT_SEC` | `25` | per-fetch timeout (maximum `60`) |
@@ -193,270 +126,152 @@ configured key echoes are redacted from search results and errors.
 | `fetch_cache_max_entries` | `TERVA_EXT_WEB_FETCH_CACHE_MAX_ENTRIES` | `32` | max cached pages, LRU-evicted (`0` = caching off; maximum `128`) |
 | `fetch_cache_max_bytes` | `TERVA_EXT_WEB_FETCH_CACHE_MAX_BYTES` | `67108864` | total bytes the page cache may retain, LRU-evicted (`0` = no byte bound; maximum `268435456`) |
 | `user_agent` | `TERVA_EXT_WEB_USER_AGENT` | `terva-ext-web/<version>` | User-Agent for every fetch; `browser` expands to a common desktop-browser UA |
-| `allow_local_hosts` | `TERVA_EXT_WEB_ALLOW_LOCAL_HOSTS` (comma-sep) | `localhost, 127.0.0.1, ::1` | SSRF escape hatch (see below); the config key replaces the default, the env var appends |
+| `allow_local_hosts` | `TERVA_EXT_WEB_ALLOW_LOCAL_HOSTS` (comma-separated) | `localhost, 127.0.0.1, ::1` | private-address exceptions; the host field replaces the default, the env var appends |
 
 ### User-Agent
 
-Fetches identify themselves honestly as `terva-ext-web/<version>` by default. Some
-sites block or degrade content for non-browser clients; for those, the UA can
-be overridden at three levels (most specific wins):
+The default is `terva-ext-web/<version>`. `user_agent` or
+`TERVA_EXT_WEB_USER_AGENT` overrides it. The per-call `user_agent` on
+`web_fetch`, `web_fetch_raw` or `web_fetch_image` takes precedence and forces a
+fresh request instead of using the cached page. The value `browser`, in any
+case, expands to the bundled desktop Chrome User-Agent string.
 
-1. a per-call `user_agent` parameter on `web_fetch`, `web_fetch_raw`, and
-   `web_fetch_image` — the model can retry a blocked page with
-   `user_agent: "browser"`. An explicit per-call UA always forces a fresh
-   fetch (bypassing the cached snapshot) so the retry actually hits the site;
-2. the `user_agent` config setting / `TERVA_EXT_WEB_USER_AGENT` env var;
-3. the built-in default.
+The extension does not consult `robots.txt` for individual on-demand requests.
+A future bulk crawler would need a separate policy and implementation.
 
-The value `browser` (any case) expands to a current desktop-Chrome UA string;
-anything else is sent literally.
+## Page output and caching
 
-**robots.txt policy.** Every fetch this extension makes is a single,
-user-/model-initiated page retrieval — the moral equivalent of a person
-opening the URL — so `robots.txt` is deliberately not consulted, and the
-default UA identifies the client honestly instead. If a bulk/multi-page
-crawl path is ever added, it must check `robots.txt` before fetching.
-(This resolves the open question in the design doc: lenient for single
-on-demand fetches, compliant for anything crawl-shaped.)
+`web_fetch` returns a title, URL, content type and character window before the
+page body. Redirected requests also include `Final-URL`. The continuation hint
+gives the next `offset`; while the page remains cached, each window uses the
+same snapshot. Relative links resolve against the final URL.
 
-### `web_fetch` output
+HTML article text uses readability and Markdown conversion, with a text
+fallback for pages without an extractable article. Data tables omitted by
+readability appear under `Tables`, capped at 50 rows per table. Dropped rows
+are unavailable through `offset`.
 
-The output leads with a small metadata block so the model can tell a short page
-from a truncated dense one:
+RSS and Atom feeds render up to 100 entries with title, date, link and summary.
+Text encodings use the response charset, HTML metadata or content sniffing.
+PDFs use their text layer and page markers. There is no OCR. Unreadable PDFs
+and other binary bodies return a summary suggesting a raw download.
+`web_fetch_raw` preserves the received bytes, subject to download limits.
 
-```text
-# Artificial intelligence
-https://en.wikipedia.org/wiki/Artificial_intelligence
-Content-Type: text/html; charset=UTF-8
-Chars: 0-500 of 397898
-Images: 17 (shown as [image:N]; resolve with web_images)
+Image URLs become `[image:N]` handles by default. `web_images` returns the
+matching URLs, dimensions, captions and source-page links. IDs remain stable
+within a cached page and identical URLs share an ID. Discovery covers lazy-load
+attributes, `srcset`, picture sources, image links, social metadata and a
+whole-page fallback. Set `fetch_inline_images: true` to retain inline URLs
+instead of indexed handles.
 
-**Artificial intelligence** (AI) is the capability of …
+`web_images`, `web_links` and `web_fetch_raw` use the page cache when possible
+and fetch on a miss. The cache retains Markdown, gzip-compressed raw bodies,
+links and images. It limits entries and retained bytes with LRU eviction. A
+single page larger than the byte budget remains as the only entry. A page holds
+at most 5,000 links and 2,000 images.
 
-…[397398 more chars; continue with offset=500]
+The cache belongs to the extension process and can serve multiple sessions.
+It is not isolated by project. `/web-cache` lists entries; `/web-cache clear`
+evicts them but does not cancel an in-flight fetch, which can populate the
+cache after the clear. Project isolation remains a tracked follow-up.
+
+## Image viewing and workspace saves
+
+`web_fetch_image` accepts PNG, JPEG, GIF and WebP. `max_dimension` resizes the
+longest edge without upscaling. PNG, JPEG and GIF retain their format; resized
+WebP becomes PNG. Set `save_path` for a workspace file and `inject: false` for
+a save without an image content block.
+
+Saves reject nonlocal paths, escapes, symlinks and Git metadata paths. Parent
+directories are created as needed. Existing files require `overwrite: true`.
+Each call captures its workspace before the request, so a session switch cannot
+redirect the save. Raw downloads use the same path policy.
+
+Encoded image output is limited by `fetch_image_max_bytes`. Images are checked
+against a 40-million-pixel limit before full decoding, and at most three
+images decode or resize concurrently. The original download may exceed the
+encoded output limit so it can be resized.
+
+All tool responses must also fit the host's 4 MiB message limit, including JSON
+escaping and base64. Use a smaller `max_dimension` or a save-only request when
+an image exceeds that limit. Oversized image injection fails before a file is
+written. Save-only requests retain their configured download limits.
+
+## Network and content safety
+
+Fetches allow HTTP and HTTPS only. The fetcher rejects private and special-use
+addresses unless allowlisted, dials the validated IP to prevent DNS rebinding,
+and repeats the checks on redirects. It limits redirects, time and response
+size, and blocks known non-web service ports even on public hosts.
+
+The default allowlist is `localhost`, `127.0.0.1` and `::1`. Other private,
+link-local, documentation, benchmarking, CGNAT and multicast ranges remain
+blocked. This includes cloud metadata at `169.254.169.254`.
+
+Allowlist entries can be hostnames, IPs or CIDRs. A hostname entry trusts that
+name's DNS results, including otherwise blocked addresses. Choose narrow
+entries for private services. These checks also apply to SearXNG queries.
+
+Fetched text remains untrusted input. Titles, snippets and image attributes
+are flattened where they appear in generated metadata, but this cannot prevent
+a model from following malicious page instructions. See the
+[content-safety decision](docs/plans/untrusted-web-content.md).
+
+## Terva permissions and research skill
+
+All six tools declare `network-read`. The manifest requests `ask` for
+`web_fetch_raw` and `web_fetch_image`, including image calls without a save.
+The tested host policy is:
+
+| Approval mode | Default behavior |
+| --- | --- |
+| `plan` | Denies the tools. |
+| `ask`, `auto-edit`, `workspace` | Prompts for approval. |
+| `yolo` | Allows them, including the manifest's writer `ask` rules. |
+
+Explicit user allow/deny rules apply outside plan mode. A user deny also applies
+in yolo. The extension cannot enforce a prompt against the selected host mode.
+Its SSRF, file-path and resource checks still apply after host approval. See the
+[host policy tests and decision](docs/plans/authority-contract.md).
+
+The bundled [web research skill](skills/web-research/SKILL.md) describes how to
+search, read pages and cite sources. It ships with source installs and archives.
+The SDK has no per-call cancellation context or dedicated result trust metadata.
+
+## Migrating an existing installation
+
+Do not enable zot-web and terva-ext-web together. They share tool, command,
+configuration and secret identities. Use `terva ext list` and host-reported
+paths to identify them. Preserve the old installation and settings, disable it,
+then test the replacement. To roll back, disable the replacement before enabling
+the old installation. Do not infer data paths from the repository name.
+
+This cleanup removes the previously planned 0.4.x legacy configuration period.
+Before using the replacement, enter your settings in Terva and rename
+`ZOT_WEB_*` overrides to `TERVA_EXT_WEB_*`. Keep `TAVILY_API_KEY` unchanged.
+The `configuration_source` field is retired. Old standalone files are ignored
+and preserved; there is no automatic import. Rollback uses the old installation,
+not a legacy mode in this one. See [credential migration](docs/plans/credential-migration.md).
+
+## Development and release
+
+```sh
+just ci
+just ticket-check
+just release-verify
+just release-snapshot
 ```
 
-- A `Final-URL:` line appears only when redirects landed somewhere other than
-  the requested URL.
-- `Chars: start-end of total` reports the returned window against the full
-  rendered length. When `end < total`, the trailing hint gives the exact
-  `offset` to pass to the next `web_fetch` call to keep reading — the page is
-  already cached, so continuation costs no extra network request.
-- Relative links and image sources are resolved against the **final** URL after
-  redirects, so an `http→https` redirect doesn't leave stale links in the body.
+`just ci` runs vet, formatting, race tests, subprocess conformance, the published
+host driver and vendor consistency checks. `tests/host-contract` is a separate
+module and downloads its dependencies on first use. After dependency changes,
+run `just vendor` and commit `go.mod`, `go.sum` and `vendor/` together.
 
-RSS and Atom feeds (detected by content type or XML root element) render as a
-per-entry list — title, date, link, summary — instead of raw XML, capped at
-100 entries.
-
-Pages in legacy encodings (windows-1252, Shift_JIS, GBK, …) are transcoded to
-UTF-8 before rendering, using the `Content-Type` charset, the page's
-`<meta charset>`, or content sniffing — in that order. `web_fetch_raw` still
-returns the bytes exactly as served.
-
-PDFs (by content type or `%PDF-` magic bytes) get their text layer extracted
-and rendered with per-page markers through the normal paging pipeline. There
-is no OCR: encrypted, malformed, or scanned image-only PDFs fall back to a
-summary that suggests `web_fetch_raw` to save the file instead.
-
-Other binary responses (images, octet-streams) are not dumped as raw bytes —
-`web_fetch` returns a one-line summary like
-`[image/png content, 40075 bytes — not rendered as text]` instead. Textual
-types (`text/*`, JSON, XML, SVG) pass through normally.
-
-readability drops `<table>` elements from article content, so data tables
-(e.g. large sortable Wikipedia tables) are recovered separately and appended
-under a `## Tables` heading, rendered leniently (cell text flattened, images
-dropped, ragged rows padded). Each table is capped at 50 rows with a
-truncation note; the dropped rows are not stored, so they are not reachable via
-`offset`.
-
-### Images and the page cache
-
-By default `web_fetch` strips image URLs out of its Markdown, leaving a short
-`[image:N: alt]` handle where each image was. This keeps long CDN URLs out of
-the model's context. To get the actual links, the model calls `web_images(url)`,
-which returns each handle's URL plus dimensions, the nearest `<figcaption>`
-caption, and the enclosing source-page link (e.g. a Wikimedia `File:` page).
-
-**The placeholder contract:** `[image:N]` in `web_fetch` maps to `[image:N]` in
-`web_images` for the same URL. Ids are assigned in document order and are stable
-for a cached page; identical image URLs are de-duplicated to a single id.
-
-Every fetched page is cached (in memory, per the TTL/size settings above), so
-`web_images`, `web_links`, and `web_fetch_raw` normally cost no network request.
-If called for a URL that was never fetched (or whose cache entry expired), they
-transparently fetch and render the page first — they do **not** error, so they
-are safe to call directly. Set `fetch_inline_images: true` to restore inline
-image URLs and disable the indexing (and the `web_images` workflow).
-
-On pages readability can't reduce to an article (boards, forums, JS-heavy
-SPAs), `web_fetch` falls back to a tag-stripper for the text, but `web_images`
-still harvests image URLs from the whole document — so it returns results even
-when no `[image:N]` placeholders appear inline (the `web_fetch` header notes
-this with `not inlined; list URLs with web_images`). The cache also retains each
-page's unrendered body (gzip-compressed) so `web_fetch_raw` can hand it back for
-manual grepping without a second fetch.
-
-The cache is bounded by **both** entry count (`fetch_cache_max_entries`) and
-total retained bytes (`fetch_cache_max_bytes`), evicting least-recently-used
-pages once either is exceeded — so a handful of large pages can't grow memory
-without limit. Per page, the harvested link and image lists are themselves
-capped (5000 links, 2000 images) so a link-farm page can't bloat one entry. The
-cache is process-global: a page fetched once is served from cache to every
-subsequent tool call in that extension process (it is single-user, so this is a
-warm-cache win, not a cross-tenant concern).
-
-## Fetching images for viewing (`web_fetch_image`)
-
-`web_fetch`/`web_images` deal in image *URLs*; `web_fetch_image` retrieves the
-image *bytes* and hands them to the model as a **native image content block** — the
-model sees the picture, not a base64 blob. It accepts PNG, JPEG, GIF, and WebP
-(detected by content-type, falling back to byte sniffing) and runs through the
-same SSRF guard as `web_fetch`.
-
-```text
-web_fetch_image(url, max_dimension?, save_path?, overwrite?, inject?)
-```
-
-- **`max_dimension`** — downscale so the longest edge is at most this many
-  pixels, preserving aspect ratio and never upscaling (CatmullRom resample).
-  PNG/JPEG/GIF keep their format; WebP transcodes to PNG on resize (Go has no
-  WebP encoder).
-- **`save_path`** — write the (possibly resized) image into the workspace at
-  this relative path. Writes are confined under the workspace: absolute paths
-  and `..` escapes are refused, parent directories are created as needed, and an
-  existing file is **not** overwritten unless **`overwrite: true`**.
-- **`inject`** — defaults `true` (return the image for viewing). Set `false` for
-  a token-free download when you only want the file on disk.
-
-**Size limit and the resize loop.** An image whose encoded size exceeds
-`fetch_image_max_bytes` (default 5 MiB, ≈ provider limits) is rejected with its
-dimensions and a recommended `max_dimension` — the model then resubmits with
-that value to bring it under the cap. The original is allowed to download past
-the cap so it can be decoded and resized down. Decoded images are also capped at
-40 million pixels before any full decode/resize to reject image decompression
-bombs (a 25 MiB file can otherwise unpack into a multi-hundred-MiB pixel
-buffer), and no more than three decode/resize operations run at once so a burst
-of large images can't exhaust memory.
-
-## The `/web-cache` command and status notes
-
-`/web-cache` (a Terva slash command, run by you rather than the model) lists the
-cached pages — URL, size, age, title — and `/web-cache clear` empties the
-cache, which is handy when a page changed and you want the model's next fetch
-to see the live version before the TTL expires. The extension also pushes
-one-shot status notes into the TUI (e.g. when a tool's rate limit trips) so
-backoff is visible without digging through `terva ext logs web`.
-
-## Security: SSRF protection + the local allowlist
-
-Because the model chooses the URL, `web_fetch` is the main attack surface
-(prompt-injected pages can try to make it hit internal services). By default it:
-
-- allows `http`/`https` only;
-- resolves the host and **refuses private/reserved/loopback/link-local,
-  documentation, benchmarking, CGNAT, multicast, and other special-use
-  addresses** — including the cloud metadata address `169.254.169.254`
-  (loopback is exempted by the default allowlist below);
-- dials the validated IP directly (closing the DNS-rebinding gap) and re-checks
-  on every redirect; caps redirects, time, and response size;
-- refuses a short list of well-known non-web service ports (SSH, SMTP, MySQL,
-  Redis, RDP, …) outright, so the fetcher can't be steered into poking those
-  services even on a public host.
-
-The escape hatch is **`allow_local_hosts`**. It ships with loopback already
-allowed — `["localhost", "127.0.0.1", "::1"]` — so locally hosted services (a
-dev server, a local SearXNG) work without ceremony. To reach anything beyond
-loopback, set the key in `config.json`; it **replaces** the default, so restate
-the loopback entries alongside your additions:
-
-```jsonc
-"allow_local_hosts": [
-  "localhost", "127.0.0.1", "::1",   // the shipped default
-  "grafana.internal",                // a hostname on your LAN
-  "192.168.1.0/24",                  // a home subnet
-  "100.64.0.0/10"                    // e.g. a tailnet (CGNAT range)
-]
-```
-
-Each entry is one of:
-
-- a **hostname** — matched against the request host (e.g. `localhost`,
-  `grafana.internal`). Hostname entries trust that name's DNS: any blocked-range
-  IP the name resolves to is permitted;
-- an **IP** — matched against the resolved address (e.g. `127.0.0.1`);
-- a **CIDR** — matched against the resolved address (e.g. `192.168.1.0/24`).
-
-An explicit `"allow_local_hosts": []` locks loopback back down for hardened
-setups. The `TERVA_EXT_WEB_ALLOW_LOCAL_HOSTS` env var (comma-separated) *appends* to
-whatever the file produced rather than replacing it.
-
-This is a precise escape hatch, not an "allow all local" switch: only the
-targets you list are exempted.
-
-## Host integration
-
-The bundled `skills/web-research/SKILL.md` provides a search → read →
-links/images research routine with citations. It ships in source installs and
-release archives for Terva to discover.
-
-**Confirm-before-write, by default (terva).** The manifest ships a small,
-restrict-only permission contribution: `web_fetch_raw` and `web_fetch_image`
-default to **ask** before they run, because they write files into your
-workspace. terva honors that even in `--approval yolo`, so installing the
-extension can't quietly start writing files. An extension may only ever
-*tighten* the policy this way (it can never `allow` itself a tool — only your
-own config can grant), and your config wins: if you trust the writers, add an
-`allow` to `$TERVA_HOME/config.json` and it overrides the manifest default —
-
-```json
-{
-  "permissions": [
-    { "tool": "web_fetch_raw",   "decision": "allow" },
-    { "tool": "web_fetch_image", "decision": "allow" }
-  ]
-}
-```
-
-The four reading tools carry no manifest rule; their `network-read` authority
-gates them instead (prompted in `workspace`/`auto-edit`, refused in `plan`).
-
-## Roadmap
-
-- [x] Replace the heuristic HTML extractor with readability +
-      `JohannesKaufmann/html-to-markdown` (heuristic kept as a fallback).
-      _(Uses the maintained `codeberg.org/readeck/go-readability/v2` fork —
-      `go-shiori/go-readability` is now deprecated.)_
-- [x] GFM table rendering + image indexing (`[image:N]` + `web_images`) with an
-      in-memory page cache.
-- [x] Broaden image discovery (lazy-load attrs, `<picture>`, `<a>`→image,
-      `og:image`) + whole-page fallback for non-article pages; `web_links` for
-      link enumeration; `web_fetch_raw` to dump unrendered source for manual
-      grepping (raw body cached gzip-compressed).
-- [x] Recover data tables that readability strips, rendered leniently under a
-      `## Tables` section (row-capped). Tables land at the end, not inline.
-- [x] Legacy-charset transcoding; PDF text-layer extraction; RSS/Atom feeds as
-      structured entry lists; per-class HTTP error guidance with one transient
-      retry; truncation caps surfaced in tool output.
-- [x] Search filters (freshness, include/exclude domains, depth) + published
-      dates; configurable User-Agent with `browser` alias and per-call
-      override; `/web-cache` command and TUI status notes.
-- [ ] Infobox / vertical key-value tables → cleaner key/value lists (irregular
-      tables still degrade to spaced blocks today).
-- [ ] More search backends (Brave, Serper, Exa) behind the same interface.
-- [ ] Optional JS rendering fallback (e.g. Jina Reader) — deferred for now.
-- [x] Local per-platform release snapshots with the bundled research skill.
-- [ ] SDK migration, session-switch correctness, and configuration migration.
-- [ ] Verify destination, real-host installation/upgrade/rollback, and publish
-      the first terva-ext-web release (see docs/plans/release-process.md).
-- [ ] Checksum-verified prebuilt fallback for source installs.
+Work is tracked with `git ticket`. The [backlog](docs/plans/modernization-backlog.md)
+and [release process](docs/plans/release-process.md) link the remaining work.
+SDK migration, session-safe saves, host configuration and native platform tests
+are complete. Installation, upgrade, rollback and first publication remain.
 
 ## License
 
-[MIT](LICENSE) © 2026 Drew Short
-
-Tool responses must fit the supported host's 4 MiB message limit, including
-JSON escaping and base64. Large images may need `max_dimension`, or
-`inject: false` with `save_path` to retain full bytes. Oversized image injection
-is rejected before saving; download byte limits remain separately configurable.
+[MIT](LICENSE). Copyright 2026 Drew Short.

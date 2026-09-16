@@ -1,15 +1,9 @@
 # Modernization backlog
 
-This index translates the outstanding work in [the split plan](terva-ext-web.md)
-into repository tickets. The tickets own status, acceptance criteria, dependencies,
-decisions and validation; this page is a navigation and coverage map. All 22
-tickets comprise two epics and 20 scoped tasks/investigations. The three
-independent starting tickets were promoted by user approval; the save fix is now
-complete. Ticket status is authoritative for subsequent progress.
-Implementation plans are intentionally left for the agent who claims each task.
-
-See [the critical-path grooming review](modernization-critical-path.md) for
-recommended first selections, evidence, decision gates, and outstanding inputs.
+This index links modernization work to its tickets. Status, dependencies,
+decisions and validation live in the store. See [the critical path](modernization-critical-path.md)
+for the current release order. SDK, host configuration and native validation
+have landed; installation, migration, rollback and publication remain.
 
 ## Filtering the backlog
 
@@ -30,8 +24,9 @@ JSON filtering (repeated `--label` options use OR).
 
 [TKT-01M2NQ0CRC76K1R0PKTGDZSYQ5 (Complete Terva modernization and replacement release)](../../.tickets/draft/TKT-01M2NQ0CRC76K1R0PKTGDZSYQ5.md)
 
-SDK verification, the save fix and platform-access planning can begin independently
-once selected. Configuration also waits for the provenance/import decision.
+The table preserves the implementation sequence. Completed configuration
+tickets describe the earlier migration policy; [the current decision](config-provenance.md)
+removes that compatibility at the user's request.
 
 | Work | Prerequisites |
 | --- | --- |
@@ -47,6 +42,14 @@ once selected. Configuration also waits for the provenance/import decision.
 | [TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A (Validate replacement installation, upgrades and release platforms)](../../.tickets/draft/TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A.md) | [TKT-01M2NQ0DANEHS615M5VXNGS7W5 (Validate SDK conformance against supported Terva hosts)](../../.tickets/done/TKT-01M2NQ0DANEHS615M5VXNGS7W5.md), [TKT-01M2NQ0DEFWGV6VTRQTHSM80CT (Add validated host configuration and legacy precedence)](../../.tickets/done/TKT-01M2NQ0DEFWGV6VTRQTHSM80CT.md), [TKT-01M2NQ0DK05JAWQRF7TBGF1CY7 (Migrate Tavily configuration secrets without losing legacy settings)](../../.tickets/done/TKT-01M2NQ0DK05JAWQRF7TBGF1CY7.md), [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/done/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md) |
 | [TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7 (Publish and smoke-test the first terva-ext-web release)](../../.tickets/draft/TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7.md) | [TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A (Validate replacement installation, upgrades and release platforms)](../../.tickets/draft/TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A.md) |
 | [TKT-01M2NQ0DZR9RMP1PRT1VDA7GQP (Coordinate legacy migration notice and authorized zot-web archival)](../../.tickets/draft/TKT-01M2NQ0DZR9RMP1PRT1VDA7GQP.md) | [TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7 (Publish and smoke-test the first terva-ext-web release)](../../.tickets/draft/TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7.md) |
+
+Additional release work and findings:
+
+- [Native release validation](../../.tickets/done/TKT-01M2NTZ8KJ9CXBV1RTMZVXRP77.md).
+- [Host result frame limits](../../.tickets/done/TKT-01M2NWQSBVHEYHFW8C1FD5ZTVX.md).
+- [Windows paths and cache ordering](../../.tickets/done/TKT-01M2NYSRTKARHFGRF6XFEMM8A6.md).
+- [Explicit Bash launch](../../.tickets/done/TKT-01M2NZD0DP9MTFSJ62F8BZV96V.md).
+- TKT-01M2P05BFER2BYNEAVRMBNQN5Y (Remove obsolete zot support and refresh Terva documentation).
 
 ## Follow-up features and investigations
 
@@ -65,6 +68,10 @@ replacement release. Spikes may conclude with an evidence-backed defer/reject de
 | [TKT-01M2NQ0EGSJJMK5CESDRDQV7MM (Decide whether private page caches need project isolation)](../../.tickets/draft/TKT-01M2NQ0EGSJJMK5CESDRDQV7MM.md) | [TKT-01M2NQ0DEFWGV6VTRQTHSM80CT (Add validated host configuration and legacy precedence)](../../.tickets/done/TKT-01M2NQ0DEFWGV6VTRQTHSM80CT.md) |
 | [TKT-01M2NQ0EKTNJX636M9X5JK6J0W (Report supported startup progress during source builds)](../../.tickets/draft/TKT-01M2NQ0EKTNJX636M9X5JK6J0W.md) | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/done/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) |
 | [TKT-01M2NQ0EPWH96WEK8BDQ2HB6Y7 (Evaluate checksum-verified prebuilt fallback for source installs)](../../.tickets/draft/TKT-01M2NQ0EPWH96WEK8BDQ2HB6Y7.md) | [TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7 (Publish and smoke-test the first terva-ext-web release)](../../.tickets/draft/TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7.md) |
+
+The [ddgr DuckDuckGo investigation](../../.tickets/draft/TKT-01M2NWNKZJV7YEPW9WZC6AQ53E.md)
+considers search without provider credentials when ddgr is installed. It remains
+outside the release path.
 
 ## Scope decisions retained from the assessment
 

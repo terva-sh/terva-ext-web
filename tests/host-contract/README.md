@@ -1,11 +1,19 @@
 # Published host contract tests
 
-Run `just host-contract` from the repository root with Go 1.27+ and a C
-compiler. This separate module pins the supported Terva host v0.137.0 and
-uses its actual permission resolver against our real manifest in temporary
-homes. It needs module downloads on first run; production still vendors only
-the extension SDK. Do not copy installed host config or credentials into tests.
+Run `just host-contract` with Go 1.27+, Bash and a C compiler. Windows requires
+Git Bash. This separate module pins Terva v0.137.0 and downloads its dependencies
+on first use. Production builds use the vendored extension SDK.
 
-These tests verify host policy, not an interactive approval UI or a complete
-Terva CLI launch. The subprocess conformance suite independently checks actual
-SDK registrations. Keep both pins aligned when changing the supported host.
+The tests run the published permission resolver against the real manifest in
+all five approval modes, with explicit user allow and deny rules. They also
+launch the extension through the published `extdriver`, using the manifest's
+Bash command. They check registration, command dispatch, session changes,
+network saves, oversized-image errors and shutdown.
+
+`WEB_CONFORMANCE_INSTALL` selects an extracted archive for driver tests;
+otherwise the test builds a temporary installation. Fixtures use temporary
+homes and synthetic settings. Do not copy installed credentials into them.
+
+These tests do not cover the interactive approval UI or the full CLI install,
+upgrade and rollback process. The root subprocess conformance suite separately
+checks SDK wire behavior. Keep the module pin aligned with the supported host.

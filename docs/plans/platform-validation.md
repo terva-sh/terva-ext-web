@@ -73,7 +73,7 @@ Never read installed user credentials or enable old/new installations together.
 Checksums bind evidence to the exact candidate; changing source invalidates that
 candidate's report. Go 1.27+, Bash and a C compiler are needed for source/race
 checks; archives require Bash and the native executable, not Go. Reports must
-distinguish protocol-harness success from actual host launch. Configuration and
+distinguish subprocess protocol checks from actual host launch. Configuration and
 release tickets supply the final migration fixtures and assertions.
 
 ## GitHub mirror and executable validation
@@ -133,7 +133,7 @@ These findings are tracked in TKT-01M2NYSRTKARHFGRF6XFEMM8A6 (Fix native Windows
 save paths and cache eviction ordering) and TKT-01M2NZD0DP9MTFSJ62F8BZV96V
 (Invoke Bash explicitly for native Windows host launch).
 
-## Passing native evidence — 2026-09-16
+## Passing native evidence, 2026-09-16
 
 [Manual run 35148398553](https://github.com/terva-sh/terva-ext-web/actions/runs/35148398553)
 passed packaging and all five native jobs at candidate
