@@ -85,3 +85,48 @@ func TestResolveLegacyFileFailuresAndHostMode(t *testing.T) {
 		t.Fatalf("host mode read legacy: %v", err)
 	}
 }
+
+func TestSecretImportPrecedenceRollbackAndMissingHost(t *testing.T) {
+	isolateResolveEnv(t)
+	dir := t.TempDir()
+	// Fictional values are generated per test; no installed credential is read.
+	legacyKey := "synthetic-legacy-" + filepath.Base(dir)
+	hostKey := "synthetic-host-" + filepath.Base(dir)
+	envKey := "synthetic-env-" + filepath.Base(dir)
+	original, _ := json.Marshal(map[string]string{"tavily_api_key": legacyKey})
+	path := filepath.Join(dir, "config.json")
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(hostKey)
+	values := map[string]json.RawMessage{"tavily_api_key": raw}
+	check := func(want string) {
+		t.Helper()
+		c, err := Resolve(dir, "", values)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.TavilyAPIKey != want {
+			t.Fatal("credential source mismatch")
+		}
+		b, err := os.ReadFile(path)
+		if err != nil || string(b) != string(original) {
+			t.Fatal("legacy fixture changed")
+		}
+	}
+	check(legacyKey)
+	values["configuration_source"] = json.RawMessage(`"host"`)
+	check(hostKey)
+	check(hostKey) // opt-in/retry is idempotent
+	t.Setenv("TAVILY_API_KEY", envKey)
+	check(envKey)
+	t.Setenv("TAVILY_API_KEY", "")
+	check("")
+	if err := os.Unsetenv("TAVILY_API_KEY"); err != nil {
+		t.Fatal(err)
+	}
+	delete(values, "tavily_api_key")
+	check("") // absent/undecryptable never resurrects legacy
+	values["configuration_source"] = json.RawMessage(`"legacy"`)
+	check(legacyKey)
+}

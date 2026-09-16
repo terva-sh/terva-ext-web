@@ -712,3 +712,35 @@ func TestConformanceHostConfigUpdates(t *testing.T) {
 	d.readUntil("shutdown_ack")
 	d.expectCleanExit()
 }
+
+func TestConformanceSecretDiagnostics(t *testing.T) {
+	for _, malformed := range []bool{false, true} {
+		t.Run(fmt.Sprint(malformed), func(t *testing.T) {
+			key := "synthetic-" + filepath.Base(t.TempDir())
+			d := startExtension(t)
+			defer func() { _ = d.cmd.Process.Kill() }()
+			assertStartup(t, d.readUntil("ready"))
+			ack := hostProfiles[0].helloAck(t.TempDir())
+			var value any = key
+			if malformed {
+				value = map[string]string{"invalid": key}
+			}
+			ack["config"] = map[string]any{"configuration_source": "host", "tavily_api_key": value}
+			d.send(ack)
+			// Empty query fails before any provider request, even with a configured key.
+			d.send(map[string]any{"type": "tool_call", "id": "secret-check", "name": "web_search", "args": map[string]any{"query": ""}})
+			for _, f := range d.readUntil("tool_result") {
+				b, _ := json.Marshal(f)
+				if bytes.Contains(b, []byte(key)) {
+					t.Fatal("credential reached protocol output")
+				}
+			}
+			d.send(map[string]any{"type": "shutdown"})
+			d.readUntil("shutdown_ack")
+			d.expectCleanExit()
+			if strings.Contains(d.stderr.String(), key) {
+				t.Fatal("credential reached stderr")
+			}
+		})
+	}
+}

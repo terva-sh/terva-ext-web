@@ -67,8 +67,8 @@ func Resolve(dataDir, extensionDir string, host map[string]json.RawMessage) (Con
 		}
 	}
 	for _, key := range keys {
-		// Host secret migration is a separate batch; legacy/env owns it for now.
-		if key == "tavily_api_key" {
+		// Legacy credential ownership changes only after explicit host opt-in.
+		if key == "tavily_api_key" && source != "host" {
 			continue
 		}
 		if raw, ok := host[key]; ok {

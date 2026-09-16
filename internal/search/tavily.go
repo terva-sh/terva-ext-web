@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"strings"
 )
 
 // tavily calls the Tavily Search API (https://docs.tavily.com). Auth is a
@@ -16,7 +16,24 @@ type tavily struct {
 	client *http.Client
 }
 
-func (t *tavily) Search(ctx context.Context, q Query) ([]Result, error) {
+func (t *tavily) Search(ctx context.Context, q Query) (results []Result, resultErr error) {
+	// A provider response or transport error can echo its authorization input.
+	// Redact the configured key before anything reaches tools or diagnostics.
+	defer func() {
+		if t.key == "" {
+			return
+		}
+		redact := func(s string) string { return strings.ReplaceAll(s, t.key, "[redacted]") }
+		if resultErr != nil {
+			resultErr = credentialSafeError{cause: resultErr, message: redact(resultErr.Error())}
+		}
+		for i := range results {
+			results[i].Title = redact(results[i].Title)
+			results[i].URL = redact(results[i].URL)
+			results[i].Snippet = redact(results[i].Snippet)
+			results[i].Published = redact(results[i].Published)
+		}
+	}()
 	payload := map[string]any{
 		"query":        q.Text,
 		"max_results":  clampCount(q.Count),
@@ -48,7 +65,6 @@ func (t *tavily) Search(ctx context.Context, q Query) ([]Result, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		hint := ""
 		switch resp.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden:
@@ -56,7 +72,7 @@ func (t *tavily) Search(ctx context.Context, q Query) ([]Result, error) {
 		case http.StatusTooManyRequests:
 			hint = " (Tavily rate or credit limit — wait before retrying)"
 		}
-		return nil, fmt.Errorf("tavily: HTTP %d%s: %s", resp.StatusCode, hint, bytes.TrimSpace(snippet))
+		return nil, fmt.Errorf("tavily: HTTP %d%s", resp.StatusCode, hint)
 	}
 
 	var out struct {
@@ -68,7 +84,7 @@ func (t *tavily) Search(ctx context.Context, q Query) ([]Result, error) {
 		} `json:"results"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("tavily: decode: %w", err)
+		return nil, fmt.Errorf("tavily: decode: invalid search response")
 	}
 	res := make([]Result, 0, len(out.Results))
 	for _, r := range out.Results {
@@ -76,3 +92,12 @@ func (t *tavily) Search(ctx context.Context, q Query) ([]Result, error) {
 	}
 	return res, nil
 }
+
+// Keep error identity (timeouts/SSRF) while keeping the printable form safe.
+type credentialSafeError struct {
+	cause   error
+	message string
+}
+
+func (e credentialSafeError) Error() string { return e.message }
+func (e credentialSafeError) Unwrap() error { return e.cause }

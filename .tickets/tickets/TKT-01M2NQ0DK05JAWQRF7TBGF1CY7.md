@@ -46,7 +46,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T19:52:10Z
+updated_at: 2026-09-16T19:55:31Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -92,3 +92,7 @@ Expected deliverable: Secret-field migration, truthful data_secrets policy, reco
 Validation: Synthetic import/retry/unset/rollback cases and no-secret-output assertions.
 
 Readiness/coordination: No runtime broker needed merely to read a user-supplied Tavily key; no credential rotation or source-file deletion is implied.
+
+**agent:codex/modernization-run** at 2026-09-16T19:55:31Z
+
+Added default-free Tavily secret config field gated by explicit host mode, provider env precedence and truthful data_secrets=true. Legacy files are unchanged and rollback remains possible. Synthetic precedence/import/retry/unset/rollback tests pass. Provider-error snippets could echo credentials, so removed them while retaining HTTP guidance; configured-key echoes are redacted from result fields and printable errors with error identity preserved. Added subprocess stdout/stderr secret-diagnostic tests and manifest invariants. No real credentials read or changed. README documents optional host encryption and broker distinction.
