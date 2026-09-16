@@ -217,3 +217,29 @@ func TestManifestConfigHasNoDefaults(t *testing.T) {
 		}
 	}
 }
+
+func TestManifestSecretContract(t *testing.T) {
+	b, err := os.ReadFile("extension.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct {
+		DataSecrets *bool                        `json:"data_secrets"`
+		Config      []struct{ Key, Type string } `json:"config"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.DataSecrets == nil || !*m.DataSecrets {
+		t.Fatal("legacy credential files require data_secrets true")
+	}
+	found := false
+	for _, field := range m.Config {
+		if field.Key == "tavily_api_key" {
+			found = field.Type == "secret"
+		}
+	}
+	if !found {
+		t.Fatal("Tavily key must use a secret field")
+	}
+}

@@ -109,7 +109,7 @@ then explicit host values, then legacy file values, then application defaults.
 host-reported data directory, falling back to the installation directory only
 if absent. Existing values remain available while you enter host settings.
 Choose `host` to ignore legacy files; this is opt-in and never changes or deletes
-a file. Until the separate host-secret migration, Tavily in host mode requires
+a file. In host mode, enter `tavily_api_key` in the secret field or supply
 `TAVILY_API_KEY`. Rollback selects `legacy` or restores the old installation.
 Legacy mode remains supported throughout 0.4.x; removing it needs a later
 migration decision.
@@ -154,6 +154,29 @@ Or switch to a self-hosted SearXNG instance (no key, private):
 > on a LAN/VPN address must be in `allow_local_hosts` or every search is
 > blocked (see [the allowlist](#security-ssrf-protection--the-local-allowlist)).
 > `just configure-searxng` writes that entry for you.
+
+### Tavily credentials
+
+To migrate, enter your settings and Tavily key in the host form, then select
+`configuration_source: host` and smoke-test search. In legacy mode the old
+file/env key remains active even if a host key is saved. Host mode uses only
+the host key or `TAVILY_API_KEY`; an absent or undecryptable host key never
+falls back to an old file. An explicitly empty provider environment variable
+disables the credential. Blank secret form input keeps the saved host key;
+use Terva's documented secret/config clear operation to remove it.
+
+The extension never rewrites/deletes legacy files or rotates credentials.
+Duplicates remain until you deliberately retire them; rollback can still use
+the preserved legacy installation. The manifest declares `data_secrets: true`
+because an old data-directory config may still contain a key.
+
+A masked field alone does not encrypt storage. Terva documents `terva secret
+init` for at-rest encryption; follow the host's backup/recovery instructions
+before configuring it. Encryption setup is an operator action, not an extension
+migration side effect. The extension receives the resolved config secret; it
+does not use the protocol-6 runtime secret broker or require a new host floor.
+Provider errors report status and guidance without raw response bodies, and
+configured key echoes are redacted from search results and errors.
 
 ### All settings
 

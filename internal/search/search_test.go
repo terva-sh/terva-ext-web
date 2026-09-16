@@ -2,9 +2,11 @@ package search
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -436,9 +438,8 @@ func TestTavily_HTTPErrors(t *testing.T) {
 			if !strings.Contains(errStr, fmt.Sprintf("HTTP %d", tt.code)) {
 				t.Errorf("error should contain HTTP %d, got: %v", tt.code, err)
 			}
-			wantSnippet := strings.TrimSpace(tt.body)
-			if !strings.Contains(errStr, wantSnippet) {
-				t.Errorf("error should contain body snippet %q, got: %v", wantSnippet, err)
+			if strings.Contains(errStr, tt.body) {
+				t.Error("provider error body should not be exposed")
 			}
 		})
 	}
@@ -459,5 +460,34 @@ func TestTavily_BadJSON(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "tavily: decode:") {
 		t.Errorf("error should contain 'tavily: decode:', got: %v", err)
+	}
+}
+
+func TestTavilyNeverEchoesCredential(t *testing.T) {
+	key := "synthetic-" + filepath.Base(t.TempDir())
+	for _, status := range []int{http.StatusUnauthorized, http.StatusOK} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Authorization") != "Bearer "+key {
+					t.Error("missing fixture authorization")
+				}
+				w.WriteHeader(status)
+				if status == http.StatusOK {
+					_ = json.NewEncoder(w).Encode(map[string]any{"results": []map[string]string{{"title": key, "url": "https://example.invalid/" + key, "content": key, "published_date": key}}})
+				} else {
+					_, _ = w.Write([]byte(key))
+				}
+			}))
+			defer srv.Close()
+			tv := tavily{key: key, client: &http.Client{Transport: &tavilyTransport{srv: srv}}}
+			results, err := tv.Search(context.Background(), Query{Text: "fixture"})
+			if err != nil && strings.Contains(err.Error(), key) {
+				t.Fatal("credential in provider error")
+			}
+			b, _ := json.Marshal(results)
+			if strings.Contains(string(b), key) {
+				t.Fatal("credential in tool result")
+			}
+		})
 	}
 }

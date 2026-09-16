@@ -85,6 +85,12 @@
       "key": "fetch_cache_max_bytes",
       "type": "int",
       "description": "Cache bytes, default 67108864, maximum 268435456; 0 removes byte cap."
+    },
+    {
+      "key": "tavily_api_key",
+      "type": "secret",
+      "description": "Tavily key used in host configuration mode; TAVILY_API_KEY overrides. Blank form input keeps the saved key."
     }
-  ]
+  ],
+  "data_secrets": true
 }
