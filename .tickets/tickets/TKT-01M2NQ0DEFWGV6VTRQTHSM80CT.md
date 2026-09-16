@@ -49,7 +49,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:42:48Z
+updated_at: 2026-09-16T19:46:28Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -97,3 +97,7 @@ Expected deliverable: Immutable validated runtime configuration and explicit cac
 Validation: Full precedence table, invalid-update retention, blocked-request updates and stale cache completion tests.
 
 Readiness/coordination: Config.Has cannot distinguish explicit settings from default values in the inspected SDK; do not infer provenance from presence.
+
+**agent:codex/modernization-run** at 2026-09-16T19:46:28Z
+
+Implemented strict host/legacy/env resolution and immutable per-call runtimes with fresh clients/caches on updates. Unit/race tests pass for explicit defaults, zero/false/empty, namespace precedence, safe invalid settings, legacy failure/host bypass, rejected-update retention and old-fetch cache isolation after backend/allowlist/UA changes. Production now gates all six handlers on initial config errors. Host secret field remains a separate batch. Pausing edits briefly to resolve conformance CI failure before stacking more work.

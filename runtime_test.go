@@ -1,0 +1,93 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"terva.sh/terva/packages/agent/ext"
+)
+
+func TestRuntimeUpdateKeepsInflightCacheSeparate(t *testing.T) {
+	for _, change := range []string{"allow_local_hosts", "user_agent", "search_backend"} {
+		t.Run(change, func(t *testing.T) {
+			started := make(chan struct{})
+			release := make(chan struct{})
+			var once sync.Once
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				close(started)
+				<-release
+				_, _ = w.Write([]byte("old content"))
+			}))
+			defer server.Close()
+			defer once.Do(func() { close(release) })
+			values := ext.Config{"configuration_source": json.RawMessage(`"host"`)}
+			var mu sync.Mutex
+			state := runtimeStore{read: func() (ext.HostInfo, ext.Config) { mu.Lock(); defer mu.Unlock(); return ext.HostInfo{}, values }, notify: func(s string) { t.Errorf("unexpected notification %s", s) }}
+			old := state.snapshot()
+			done := make(chan error, 1)
+			go func() { _, err := old.fetcher.Raw(context.Background(), server.URL, ""); done <- err }()
+			select {
+			case <-started:
+			case <-time.After(frameTimeoutForRuntime):
+				t.Fatal("old fetch did not start")
+			}
+			mu.Lock()
+			values = ext.Config{"configuration_source": json.RawMessage(`"host"`)}
+			switch change {
+			case "allow_local_hosts":
+				values[change] = json.RawMessage(`"[]"`)
+			case "user_agent":
+				values[change] = json.RawMessage(`"new-agent"`)
+			case "search_backend":
+				values[change] = json.RawMessage(`"searxng"`)
+			}
+			mu.Unlock()
+			next := state.snapshot()
+			if next == old || next.fetcher == old.fetcher {
+				t.Fatal("runtime/cache reused")
+			}
+			once.Do(func() { close(release) })
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Fatal(err)
+				}
+			case <-time.After(frameTimeoutForRuntime):
+				t.Fatal("old fetch stalled")
+			}
+			if len(next.fetcher.CacheList()) != 0 {
+				t.Fatal("old fetch populated new cache")
+			}
+			if change == "allow_local_hosts" {
+				if _, err := next.fetcher.Raw(context.Background(), server.URL, ""); err == nil {
+					t.Fatal("tightened allowlist reused old cached result")
+				}
+			}
+		})
+	}
+}
+
+const frameTimeoutForRuntime = 5 * time.Second
+
+func TestRuntimeRejectsUpdateWithoutLosingWorkingSettings(t *testing.T) {
+	values := ext.Config{"configuration_source": json.RawMessage(`"host"`)}
+	var notices []string
+	state := runtimeStore{read: func() (ext.HostInfo, ext.Config) { return ext.HostInfo{}, values }, notify: func(s string) { notices = append(notices, s) }}
+	old := state.snapshot()
+	values = ext.Config{"fetch_max_bytes": json.RawMessage(`"private-marker"`)}
+	if state.snapshot() != old {
+		t.Fatal("rejected update discarded working runtime")
+	}
+	if len(notices) != 1 || strings.Contains(notices[0], "private-marker") {
+		t.Fatal("diagnostic leaked values or missing")
+	}
+	if state.snapshot() != old || len(notices) != 1 {
+		t.Fatal("repeated rejection changed state")
+	}
+}
