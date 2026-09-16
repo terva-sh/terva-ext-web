@@ -1,7 +1,8 @@
 {
   "name": "web",
   "version": "0.4.0",
-  "exec": "./run.sh",
+  "exec": "bash",
+  "args": ["./run.sh"],
   "language": "go",
   "description": "web_search and web_fetch tools for retrieving information from the web",
   "enabled": true,

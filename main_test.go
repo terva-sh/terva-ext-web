@@ -243,3 +243,36 @@ func TestManifestSecretContract(t *testing.T) {
 		t.Fatal("Tavily key must use a secret field")
 	}
 }
+
+// Windows accepts root-relative, drive-relative and reserved-device paths that
+// IsAbs alone cannot reject. Both preflight and write must reject them.
+func TestSavePathRejectsWindowsNonlocalPaths(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("native Windows path semantics")
+	}
+	cwd := t.TempDir()
+	for _, name := range []string{`\rooted.txt`, `C:relative.txt`, `C:\absolute.txt`, `\\server\share\file`, "NUL", "COM1", "file:stream"} {
+		if err := checkSavePath(cwd, name, true); err == nil {
+			t.Errorf("preflight accepted %q", name)
+		}
+		if _, err := saveToWorkspace(cwd, name, []byte("x"), true); err == nil {
+			t.Errorf("save accepted %q", name)
+		}
+	}
+}
+
+func TestSavePathRejectsGitMetadataAliases(t *testing.T) {
+	cwd := t.TempDir()
+	for _, name := range []string{".GIT/config", ".Git/hooks/pre-commit", ".git./config", ".git /config"} {
+		if err := checkSavePath(cwd, name, true); err == nil {
+			t.Errorf("preflight accepted %q", name)
+		}
+		if _, err := saveToWorkspace(cwd, name, []byte("x"), true); err == nil {
+			t.Errorf("save accepted %q", name)
+		}
+	}
+	entries, err := os.ReadDir(cwd)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("rejected paths changed workspace: %v, %v", entries, err)
+	}
+}
