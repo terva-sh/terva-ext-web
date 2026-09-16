@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K
 title: Verify a published Terva SDK and supported host floor
 type: spike
-status: ready
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -29,15 +29,22 @@ references:
     path: docs/plans/terva-host-features-2026-06.md
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: spike/sdk-verification
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: 25ec03fbcf32fbfca545b07f32ff822416d2e986
+  session: null
+  claimed_at: 2026-09-16T19:18:01Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:44:48Z
+updated_at: 2026-09-16T19:18:01Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/critical-path
+  id: agent:codex/modernization-run
   name: ""
 extensions: {}
 ---
@@ -59,6 +66,10 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Implementation plan
+
+Verify v0.137.0 through the public Go module proxy first using an isolated module cache and explicit proxy/sumdb settings, without editing repository dependencies. If unavailable, inspect the authoritative public repository/module metadata for other published versions and document a viable alternative or an actual publication blocker. For a verified version, inspect SDK/host APIs, Go requirements, version/capability negotiation, bootstrap behavior and checksums; record reproducible commands and an honest supported-host floor. Do not substitute a local tag or replace directive for a published release.
 
 ## Notes
 
