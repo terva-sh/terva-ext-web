@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0D3RZAMV83QH6AAX3466
 title: Keep download saves in the workspace captured at call start
 type: bug
-status: ready
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -29,15 +29,22 @@ references:
     path: internal/proto/proto.go
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: fix/session-switch-saves
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: 25ec03fbcf32fbfca545b07f32ff822416d2e986
+  session: null
+  claimed_at: 2026-09-16T19:14:29Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:44:48Z
+updated_at: 2026-09-16T19:15:53Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/critical-path
+  id: agent:codex/modernization-run
   name: ""
 extensions: {}
 ---
@@ -60,6 +67,10 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
 
+## Implementation plan
+
+Capture cwd once in each download handler before preflight and retain it through save. Add real-subprocess conformance regressions for raw and image downloads: a local HTTP server signals request entry and blocks on a channel; send a new session event and a subsequent command as a processing barrier before releasing the response; verify exact bytes only under the original cwd and no directory in the new cwd. Build the conformance subprocess with the race detector so the regression exercises instrumented production code. First prove the tests fail on unchanged handlers, then apply the narrow fix and run just CI plus tagged race conformance. Keep SDK migration separate.
+
 ## Notes
 
 **agent:codex/critical-path** at 2026-09-16T18:31:37Z
@@ -77,3 +88,7 @@ Readiness/coordination: Startable when selected. Existing main_test.go covers pa
 **agent:codex/critical-path** at 2026-09-16T18:44:48Z
 
 Promoted to ready at the user's explicit request before merging PR #4. Grooming confirmed no unfinished prerequisite dependencies and concrete entry inputs/acceptance criteria. This ticket is available to claim; no implementation work has started.
+
+**agent:codex/modernization-run** at 2026-09-16T19:15:53Z
+
+Unchanged-source just ci passed with installed mise Go 1.27.1 (Go remains absent from default PATH). The existing protocol owns unexported handler/session state, so a real subprocess test avoids adding test-only protocol setters and survives the later SDK migration. The user authorized autonomous execution of the agreed order; record deviations and stop on an external blocker.
