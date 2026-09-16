@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8
 title: Preserve network and write authority during SDK adoption
 type: task
-status: draft
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -35,15 +35,22 @@ references:
     path: docs/plans/untrusted-web-content.md
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: test/authority-contract
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: 9febbe9894f01f5cdb331ee38ad7b300d6da3214
+  session: null
+  claimed_at: 2026-09-16T19:35:27Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:34:36Z
+updated_at: 2026-09-16T19:36:04Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/critical-path
+  id: agent:codex/modernization-run
   name: ""
 extensions: {}
 ---
@@ -65,6 +72,10 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Implementation plan
+
+Verify published host authority classification and permission ladder with a separate host-contract test module so production offline vendor does not absorb the whole host. Exercise actual manifest suggestions across approval modes and user allow/deny overrides. Preserve network-read for all tools, writer ask defaults, concurrent calls and application SSRF/path/resource guards; record ordering rationale and test evidence.
 
 ## Notes
 
