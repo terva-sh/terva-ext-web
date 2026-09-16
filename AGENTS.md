@@ -9,7 +9,8 @@ The machine-wide rules and `/home/sothr/workspace/AGENTS.md` also apply.
 1. Inspect `git status`, the branch, and `git remote -v` before editing.
 2. Read `docs/plans/terva-ext-web.md`. It records the exact fork point,
    inspected Terva revision, decisions, feature assessment, migration risks,
-   and implementation batches. It is the current direction.
+   and implementation batches. It is the current direction;
+   `docs/plans/modernization-backlog.md` maps outstanding work to tickets.
 3. Read `README.md` for existing tool behavior, but treat its permanent zot
    compatibility and no-rename statements as historical policy superseded by
    the split plan. The identity and packaging batch is recorded in
@@ -42,11 +43,12 @@ double-read of cwd around downloads with a meaningful session-switch test.
 Do not promise per-call cancellation or trust metadata that the SDK does not
 provide. Verify a published SDK version before pinning and vendoring it.
 
-Use the repository's `just` recipes and CI definitions for checks. Establish
-the unchanged-source baseline before code changes. The setup session could
-not run Go tests because `go` was absent from PATH; this is a validation gap,
-not a passed baseline. Check the environment again in the new session.
+Use the repository's `just` recipes and CI definitions for checks. The identity
+batch passed unchanged-source and post-change baseline checks; see its evidence
+record. Recheck the toolchain and relevant baseline in each implementation
+session; current-host SDK and cross-platform runtime validation remain open.
 Commit coherent changes and record implementation rationale in source control.
+
 ## Project ticket workflow
 
 Track codebase work in this repository's `.tickets/` store. The workspace
