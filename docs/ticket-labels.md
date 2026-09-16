@@ -63,18 +63,23 @@ this returns core work plus security work from either scope:
 git ticket list --label scope:core --label area:security
 ```
 
-For an intersection, filter the structured JSON labels with `jq`:
+For an intersection, filter the structured JSON labels with Python 3:
 
 ```sh
 git ticket list --label initiative:terva-modernization --json |
-  jq -r '.tickets[] | select(.labels | contains(["scope:core", "area:security"])) | [.id, .title] | @tsv'
+  python3 -c 'import json,sys
+for t in json.load(sys.stdin)["tickets"]:
+    if {"scope:core", "area:security"} <= set(t["labels"]):
+        print(t["id"], t["title"], sep="\t")'
 ```
 
 For a compact grouping export, keep the stable ID, title and label array:
 
 ```sh
 git ticket list --all --label initiative:terva-modernization --json |
-  jq '[.tickets[] | {id, title, status, type, priority, labels}]'
+  python3 -c 'import json,sys
+keys = ("id", "title", "status", "type", "priority", "labels")
+print(json.dumps([{k: t[k] for k in keys} for t in json.load(sys.stdin)["tickets"]], indent=2))'
 ```
 
 Run `git ticket ready` to find startable work. A label filter reports a grouping;
