@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQT58ZQPSE95M1WEXPN8SF
 title: Define release test matrix and secure platform test access
 type: spike
-status: in-progress
+status: done
 status_reason: null
 priority: high
 due_on: null
@@ -32,17 +32,10 @@ references:
     path: docs/plans/terva-ext-web.md
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim:
-  actor: agent:codex/modernization-run
-  branch: spike/release-test-access
-  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
-  commit: 99f68ba27385b730c3cff28080407aa18f6ad660
-  session: null
-  claimed_at: 2026-09-16T19:23:13Z
-  expires_at: null
+claim: null
 archive: null
 created_at: 2026-09-16T18:31:36Z
-updated_at: 2026-09-16T19:23:13Z
+updated_at: 2026-09-16T19:27:03Z
 created_by:
   id: agent:codex/critical-path
   name: ""
@@ -58,16 +51,16 @@ The build matrix advertises linux amd64/arm64, darwin amd64/arm64 and windows am
 
 ## Acceptance criteria
 
-- [ ] Map each advertised OS/architecture to a real runtime test environment and operator or record missing access explicitly; cross-compilation alone is not runtime evidence
-- [ ] Define which tests can use emulation and which need native host integration, with an explicit support decision for Windows Bash/MSYS launch
-- [ ] Specify a reproducible test report recording candidate commit, binary checksums, host version, platform, source/archive mode and pass/fail evidence
-- [ ] Inventory release automation, secret names/availability, and permissions without reading or recording secret values; link any missing access/provisioning prerequisite
-- [ ] Do not mark the spike complete while required platform access or an explicit support-scope decision is missing
-- [ ] Define toolchain requirements and isolated source/archive/legacy fixture slots; final floor/current Terva versions come from SDK verification at release validation, so access preparation can proceed independently
+- [x] Map each advertised OS/architecture to a real runtime test environment and operator or record missing access explicitly; cross-compilation alone is not runtime evidence
+- [x] Define which tests can use emulation and which need native host integration, with an explicit support decision for Windows Bash/MSYS launch
+- [x] Specify a reproducible test report recording candidate commit, binary checksums, host version, platform, source/archive mode and pass/fail evidence
+- [x] Inventory release automation, secret names/availability, and permissions without reading or recording secret values; link any missing access/provisioning prerequisite
+- [x] Do not mark the spike complete while required platform access or an explicit support-scope decision is missing
+- [x] Define toolchain requirements and isolated source/archive/legacy fixture slots; final floor/current Terva versions come from SDK verification at release validation, so access preparation can proceed independently
 
 ## Definition of done
 
-- [ ] Record reviewed decisions, reusable validation inputs and outstanding external requirements in the ticket; pass strict ticket validation
+- [x] Record reviewed decisions, reusable validation inputs and outstanding external requirements in the ticket; pass strict ticket validation
 
 ## Implementation plan
 
@@ -82,3 +75,11 @@ Entry inputs: current five-target build matrix, Linux docker CI and documented L
 **agent:codex/critical-path** at 2026-09-16T18:44:48Z
 
 Promoted to ready at the user's explicit request before merging PR #4. Grooming confirmed no unfinished prerequisite dependencies and concrete entry inputs/acceptance criteria. This ticket is available to claim; no implementation work has started.
+
+**agent:codex/modernization-run** at 2026-09-16T19:26:49Z
+
+User resolved access policy: Linux amd64 is primary; release mirror GitHub runners test other platforms preferably on tags. docs/plans/platform-validation.md records native matrix, tag/manual rehearsal gates, report and fixture requirements, sibling references and missing mirror verification. This explicit scope/timing decision unblocks development; no non-Linux runtime pass is claimed. Go 1.27 is approved. Existing Forgejo secret-name inventory is empty; no values read.
+
+## Summary
+
+Defined platform policy and reproducible report in docs/plans/platform-validation.md. User selected Linux amd64 development and GitHub tag-time cross-platform testing. TKT-01M2NTZ8KJ9CXBV1RTMZVXRP77 (Wire GitHub tag-time native release validation) carries mirror verification and execution prerequisites; release validation depends on it. No runtime evidence claimed for other platforms.

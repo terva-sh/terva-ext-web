@@ -53,12 +53,12 @@ platform provisioning remain separate actions within their recorded boundaries.
 | --- | --- | --- |
 | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/done/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) | Requirements and local reference contracts exist | Published version, host floor, API/capability matrix and toolchain constraints |
 | [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/done/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md) | Bug and both handlers are identified; existing path guards provide a baseline | Deterministic blocked-fetch regressions and captured workspace identity |
-| [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/tickets/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md) | Build targets, CI and current runtime evidence are known | Runtime access/support matrix, fixture slots and candidate-report template |
+| [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/done/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md) | Build targets, CI and current runtime evidence are known | Runtime access/support matrix, fixture slots and candidate-report template |
 
 ## Added decision gates
 
 - [TKT-01M2NQT535ETD2WACPHJ93PA48 (Resolve configuration provenance and legacy import semantics)](../../.tickets/draft/TKT-01M2NQT535ETD2WACPHJ93PA48.md) follows SDK verification and gates configuration. The host supplies resolved values, so presence does not distinguish a default from an explicit setting.
-- [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/tickets/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md) gates release validation. It starts early to reveal unavailable machines or runners instead of discovering them at publication time. It does not require SDK integration or final host versions to plan access.
+- [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/done/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md) gates release validation. It starts early to reveal unavailable machines or runners instead of discovering them at publication time. It does not require SDK integration or final host versions to plan access.
 
 ## Evidence and corrections
 
@@ -91,7 +91,7 @@ carry the same detail. Implementation plans remain empty until work is claimed.
 | --- | --- |
 | Published SDK availability, host floor/current test versions, Go requirements | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/done/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) |
 | Host config provenance or a safe import alternative | [TKT-01M2NQT535ETD2WACPHJ93PA48 (Resolve configuration provenance and legacy import semantics)](../../.tickets/draft/TKT-01M2NQT535ETD2WACPHJ93PA48.md) |
-| Runtime access for linux arm64, both macOS targets, Windows/Bash and supported host fixtures | [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/tickets/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md); user decides any reduction of the five-target release support matrix |
+| Runtime access for linux arm64, both macOS targets, Windows/Bash and supported host fixtures | [TKT-01M2NQT58ZQPSE95M1WEXPN8SF (Define release test matrix and secure platform test access)](../../.tickets/done/TKT-01M2NQT58ZQPSE95M1WEXPN8SF.md); user decides any reduction of the five-target release support matrix |
 | Candidate-specific installation/upgrade/rollback evidence | [TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A (Validate replacement installation, upgrades and release platforms)](../../.tickets/draft/TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A.md) |
 | Actual permission to publish and any required remote setting changes | [TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7 (Publish and smoke-test the first terva-ext-web release)](../../.tickets/draft/TKT-01M2NQ0DVK4ZKJ8QCET28XNTV7.md); obtain approval for the concrete candidate/action |
 | Legacy-repository ownership, migration notice and archival authorization | [TKT-01M2NQ0DZR9RMP1PRT1VDA7GQP (Coordinate legacy migration notice and authorized zot-web archival)](../../.tickets/draft/TKT-01M2NQ0DZR9RMP1PRT1VDA7GQP.md); coordinate in that repository before changing it |
