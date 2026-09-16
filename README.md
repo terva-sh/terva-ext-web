@@ -80,9 +80,9 @@ only enable the replacement after its smoke test. Rollback disables the new
 installation and re-enables the old one. Do not infer data paths from the new
 repository name. Automated upgrade/migration is a later batch.
 
-The existing protocol integration tracks `session_start` and live cwd. The
-known double-read of cwd during downloads is scheduled for the separate SDK
-and correctness batch; this rename does not fix that race.
+The existing protocol integration tracks `session_start` and live cwd. Each
+download captures its workspace when the handler starts, so a session switch
+during the fetch cannot redirect its eventual save into a different workspace.
 
 ### Dependencies are vendored
 

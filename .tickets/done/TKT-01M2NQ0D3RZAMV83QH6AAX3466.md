@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0D3RZAMV83QH6AAX3466
 title: Keep download saves in the workspace captured at call start
 type: bug
-status: in-progress
+status: done
 status_reason: null
 priority: high
 due_on: null
@@ -29,17 +29,10 @@ references:
     path: internal/proto/proto.go
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
-claim:
-  actor: agent:codex/modernization-run
-  branch: fix/session-switch-saves
-  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
-  commit: 25ec03fbcf32fbfca545b07f32ff822416d2e986
-  session: null
-  claimed_at: 2026-09-16T19:14:29Z
-  expires_at: null
+claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:15:53Z
+updated_at: 2026-09-16T19:17:33Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -57,15 +50,15 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 
 ## Acceptance criteria
 
-- [ ] Capture one workspace identity per save invocation and use it for both preflight and final write
-- [ ] For both raw and image saves, block the fetch, switch the session cwd, resume it, and prove only the original workspace receives the file
-- [ ] Keep overwrite, symlink, .git, path traversal and resource-limit protections intact
-- [ ] Run meaningful session-switch regressions under the race detector
-- [ ] Make each blocked-fetch test fail against the original double-read implementation; synchronize via channels/barriers rather than timing sleeps, and assert no file or parent directory is created in the new workspace
+- [x] Capture one workspace identity per save invocation and use it for both preflight and final write
+- [x] For both raw and image saves, block the fetch, switch the session cwd, resume it, and prove only the original workspace receives the file
+- [x] Keep overwrite, symlink, .git, path traversal and resource-limit protections intact
+- [x] Run meaningful session-switch regressions under the race detector
+- [x] Make each blocked-fetch test fail against the original double-read implementation; synchronize via channels/barriers rather than timing sleeps, and assert no file or parent directory is created in the new workspace
 
 ## Definition of done
 
-- [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+- [x] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
 
 ## Implementation plan
 
@@ -92,3 +85,17 @@ Promoted to ready at the user's explicit request before merging PR #4. Grooming 
 **agent:codex/modernization-run** at 2026-09-16T19:15:53Z
 
 Unchanged-source just ci passed with installed mise Go 1.27.1 (Go remains absent from default PATH). The existing protocol owns unexported handler/session state, so a real subprocess test avoids adding test-only protocol setters and survives the later SDK migration. The user authorized autonomous execution of the agreed order; record deviations and stop on an external blocker.
+
+**agent:codex/modernization-run** at 2026-09-16T19:17:32Z
+
+Implemented one cwd capture at entry to each raw/image download handler, used for preflight and final write. Existing save helpers, resource limits, permission declarations and SSRF defenses are unchanged.
+
+Added a real-subprocess regression for both tools with a local HTTP server and channel barriers. The request reaching the server proves preflight occurred in the original workspace; a command response following session_start proves the new session was processed before HTTP was released. Tests compare saved bytes in the old workspace and require that no download directory exists in the new workspace. No sleeps are used for ordering.
+
+The new tests failed against the original handlers for both tools: no output existed under the original workspace and the new workspace contained the download directory. After the fix, both pass under go test -race -tags conformance -run TestConformanceSessionSwitchSaves -count=1. Full just ci passes, including vet/format, race tests, old conformance profiles, new regressions and vendor synchronization. Go 1.27.1 was used from the documented mise installation.
+
+Small scope deviation: pulled forward subprocess environment isolation from the conformance ticket (remove TAVILY_API_KEY and both legacy/new override namespaces) because these network tests must be hermetic. Also enabled -race on the subprocess build: -race on the parent test alone would not instrument the actual extension. Existing CI already installs the required C toolchain. Conformance coverage in the later SDK ticket remains outstanding.
+
+## Summary
+
+Both download handlers retain the cwd captured at handler entry. Deterministic real-subprocess raw/image regressions fail on the original implementation and pass on the fix with race instrumentation. Full just ci passes; all existing path/resource/security defenses remain intact. SDK migration is unchanged.

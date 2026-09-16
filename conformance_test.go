@@ -15,9 +15,9 @@
 //     and a buffer-capturing in-process test can't catch it).
 //
 // One driver impersonates either host via hostProfile, so the zot and terva
-// wires are exercised by the same code path. Deeper behavior (that the live
-// session cwd is actually *used*) stays in the in-process unit tests; this
-// harness proves the extension speaks both protocols without breaking.
+// wires are exercised by the same code path. The blocked-download regression
+// also proves that session switches cannot redirect an in-flight save. The
+// subprocess is race-instrumented, so these checks require cgo and a C compiler.
 //
 // Tagged `conformance` so it stays out of the default unit run (it shells out
 // to `go build`). Run with `just conformance` or
@@ -29,6 +29,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -86,7 +90,7 @@ func webBinary(t *testing.T) string {
 			return
 		}
 		binPath = filepath.Join(dir, "terva-ext-web")
-		cmd := exec.Command("go", "build", "-mod=vendor", "-o", binPath, ".")
+		cmd := exec.Command("go", "build", "-race", "-mod=vendor", "-o", binPath, ".")
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
 		if err := cmd.Run(); err != nil {
@@ -113,13 +117,13 @@ type driver struct {
 func startExtension(t *testing.T) *driver {
 	t.Helper()
 	cmd := exec.Command(webBinary(t))
-	// Hermetic env: drop any ZOT_WEB_* so web_search is deterministically
+	// Hermetic env: drop provider/config overrides so web_search is deterministically
 	// "not configured" (its handler returns an error result without touching
 	// the network), and point both home vars at a throwaway dir.
 	home := t.TempDir()
 	var env []string
 	for _, kv := range os.Environ() {
-		if strings.HasPrefix(kv, "ZOT_WEB_") {
+		if strings.HasPrefix(kv, "ZOT_WEB_") || strings.HasPrefix(kv, "TERVA_EXT_WEB_") || strings.HasPrefix(kv, "TAVILY_API_KEY=") {
 			continue
 		}
 		env = append(env, kv)
@@ -348,4 +352,84 @@ func toStringSet(v any) map[string]bool {
 		}
 	}
 	return out
+}
+
+// TestConformanceSessionSwitchSaves exercises the production handlers while a
+// download is blocked. No timing sleeps: the HTTP request and command response
+// establish that preflight ran in A and session B was processed before saving.
+func TestConformanceSessionSwitchSaves(t *testing.T) {
+	var encoded bytes.Buffer
+	if err := png.Encode(&encoded, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		tool, contentType string
+		body              []byte
+	}{
+		{"web_fetch_raw", "text/plain", []byte("original raw bytes\n")},
+		{"web_fetch_image", "image/png", encoded.Bytes()},
+	} {
+		t.Run(tc.tool, func(t *testing.T) {
+			started, release := make(chan struct{}), make(chan struct{})
+			var startOnce, releaseOnce sync.Once
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				startOnce.Do(func() { close(started) })
+				select {
+				case <-release:
+				case <-r.Context().Done():
+					return
+				}
+				w.Header().Set("Content-Type", tc.contentType)
+				_, _ = w.Write(tc.body)
+			}))
+			t.Cleanup(func() {
+				releaseOnce.Do(func() { close(release) })
+				server.Close()
+			})
+			d := startExtension(t)
+			defer func() { _ = d.cmd.Process.Kill() }()
+			assertStartup(t, d.readUntil("ready"))
+			first, second := t.TempDir(), t.TempDir()
+			profile := hostProfile{protocolVersion: 2, tervaVersion: "0.104.0"}
+			d.send(profile.helloAck(t.TempDir()))
+			d.send(map[string]any{"type": "event", "event": "session_start", "session_id": "first", "cwd": first})
+			d.send(map[string]any{
+				"type": "tool_call", "id": "download", "name": tc.tool,
+				"args": map[string]any{"url": server.URL, "save_path": "downloads/result", "inject": false},
+			})
+			select {
+			case <-started:
+			case <-time.After(frameTimeout):
+				t.Fatal("download did not reach the HTTP server")
+			}
+			for _, cwd := range []string{first, second} {
+				if _, err := os.Stat(filepath.Join(cwd, "downloads")); !os.IsNotExist(err) {
+					t.Fatalf("preflight created downloads in %s: %v", cwd, err)
+				}
+			}
+			d.send(map[string]any{"type": "event", "event": "session_start", "session_id": "second", "cwd": second})
+			// Frames are read in order. A response to the next command proves
+			// the preceding session event was handled before we release HTTP.
+			d.send(map[string]any{"type": "command_invoked", "id": "barrier", "name": "web-cache", "args": ""})
+			frames := d.readUntil("command_response")
+			if frames[len(frames)-1]["id"] != "barrier" {
+				t.Fatal("unexpected command response")
+			}
+			releaseOnce.Do(func() { close(release) })
+			result := d.awaitToolResult("download")
+			if result["is_error"] == true {
+				t.Errorf("download failed: %v", result)
+			}
+			got, err := os.ReadFile(filepath.Join(first, "downloads", "result"))
+			if err != nil || !bytes.Equal(got, tc.body) {
+				t.Errorf("original workspace bytes = %q, err = %v; want %q", got, err, tc.body)
+			}
+			if _, err := os.Stat(filepath.Join(second, "downloads")); !os.IsNotExist(err) {
+				t.Errorf("session switch created a download directory in the new workspace: %v", err)
+			}
+			d.send(map[string]any{"type": "shutdown"})
+			d.readUntil("shutdown_ack")
+			d.expectCleanExit()
+		})
+	}
 }

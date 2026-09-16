@@ -4,7 +4,8 @@ This index translates the outstanding work in [the split plan](terva-ext-web.md)
 into repository tickets. The tickets own status, acceptance criteria, dependencies,
 decisions and validation; this page is a navigation and coverage map. All 22
 tickets comprise two epics and 20 scoped tasks/investigations. The three
-independent starting tickets are ready by user approval; the other 19 remain draft.
+independent starting tickets were promoted by user approval; the save fix is now
+complete. Ticket status is authoritative for subsequent progress.
 Implementation plans are intentionally left for the agent who claims each task.
 
 See [the critical-path grooming review](modernization-critical-path.md) for
@@ -36,9 +37,9 @@ once selected. Configuration also waits for the provenance/import decision.
 | --- | --- |
 | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/tickets/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) | None |
 | [TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R (Migrate protocol integration to the verified Terva SDK)](../../.tickets/draft/TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R.md) | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/tickets/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) |
-| [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/tickets/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md) | None |
+| [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/done/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md) | None |
 | [TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8 (Preserve network and write authority during SDK adoption)](../../.tickets/draft/TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8.md) | [TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R (Migrate protocol integration to the verified Terva SDK)](../../.tickets/draft/TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R.md) |
-| [TKT-01M2NQ0DANEHS615M5VXNGS7W5 (Validate SDK conformance against supported Terva hosts)](../../.tickets/draft/TKT-01M2NQ0DANEHS615M5VXNGS7W5.md) | [TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R (Migrate protocol integration to the verified Terva SDK)](../../.tickets/draft/TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R.md), [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/tickets/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md), [TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8 (Preserve network and write authority during SDK adoption)](../../.tickets/draft/TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8.md) |
+| [TKT-01M2NQ0DANEHS615M5VXNGS7W5 (Validate SDK conformance against supported Terva hosts)](../../.tickets/draft/TKT-01M2NQ0DANEHS615M5VXNGS7W5.md) | [TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R (Migrate protocol integration to the verified Terva SDK)](../../.tickets/draft/TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R.md), [TKT-01M2NQ0D3RZAMV83QH6AAX3466 (Keep download saves in the workspace captured at call start)](../../.tickets/done/TKT-01M2NQ0D3RZAMV83QH6AAX3466.md), [TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8 (Preserve network and write authority during SDK adoption)](../../.tickets/draft/TKT-01M2NQ0D6MHKE0QQ49C6TPKVP8.md) |
 | [TKT-01M2NQT535ETD2WACPHJ93PA48 (Resolve configuration provenance and legacy import semantics)](../../.tickets/draft/TKT-01M2NQT535ETD2WACPHJ93PA48.md) | [TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K (Verify a published Terva SDK and supported host floor)](../../.tickets/tickets/TKT-01M2NQ0CW9Y7T06NN29JJ0PW1K.md) |
 | [TKT-01M2NQ0DEFWGV6VTRQTHSM80CT (Add validated host configuration and legacy precedence)](../../.tickets/draft/TKT-01M2NQ0DEFWGV6VTRQTHSM80CT.md) | [TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R (Migrate protocol integration to the verified Terva SDK)](../../.tickets/draft/TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R.md), [TKT-01M2NQT535ETD2WACPHJ93PA48 (Resolve configuration provenance and legacy import semantics)](../../.tickets/draft/TKT-01M2NQT535ETD2WACPHJ93PA48.md) |
 | [TKT-01M2NQ0DK05JAWQRF7TBGF1CY7 (Migrate Tavily configuration secrets without losing legacy settings)](../../.tickets/draft/TKT-01M2NQ0DK05JAWQRF7TBGF1CY7.md) | [TKT-01M2NQ0DEFWGV6VTRQTHSM80CT (Add validated host configuration and legacy precedence)](../../.tickets/draft/TKT-01M2NQ0DEFWGV6VTRQTHSM80CT.md) |
