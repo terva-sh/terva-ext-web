@@ -1,12 +1,18 @@
 # Proposed split: zot-web → terva-ext-web
 
-Status: remote repository created for the fork, 2026-09-16, at the user's
-request. Origin is the server-verified
-`ssh://git@git.local.sothr.com:2222/terva-sh/terva-ext-web.git` (public).
+Status: identity/packaging merged in [PR #1](https://git.local.sothr.com/terva-sh/terva-ext-web/pulls/1)
+as `2ac463c` (implementation `6e1d43c`); ticket workflow merged in
+[PR #2](https://git.local.sothr.com/terva-sh/terva-ext-web/pulls/2) as `80d3ec6`.
+The outstanding work is tracked in [the modernization backlog](modernization-backlog.md)
+and `.tickets/`. Those tickets own current work status and dependencies; the
+assessment below preserves direction and original evidence.
+
+Origin is the server-verified public repository
+`ssh://git@git.local.sothr.com:2222/terva-sh/terva-ext-web.git`.
 The API and `git ls-remote` confirmed it was empty before the initial push.
-[Cutover PR #1](https://git.local.sothr.com/terva-sh/terva-ext-web/pulls/1) targets main at `b6efdecbd7439543a7d39dc8a77e609f887002f9`
-and includes identity implementation commit `6e1d43c`. No binary release has
-been published and no repository has been archived. This document was moved from the zot-web
+Remote main began at `b6efdecbd7439543a7d39dc8a77e609f887002f9`, before
+identity implementation. No binary release has been published and no
+repository has been archived. This document was moved from the zot-web
 worktree after cloning the exact fork point; it is not part of that tree.
 
 ## Local setup completed
@@ -26,10 +32,10 @@ above. The source checkout is unchanged.
 
 Local setup is tracked in the workspace ledger under
 TKT-01M2NK39WCKXF4JAQV3FTCV887 (Create local terva-ext-web fork and startup directions).
-The root `AGENTS.md` directs the next implementation agent. Everything below
-remains the assessment and proposed implementation sequence; only the local
-clone and document migration portion is complete. The subsequent identity and packaging batch is recorded in
-[identity-packaging.md](identity-packaging.md); SDK migration remains pending.
+The root `AGENTS.md` directs implementation agents. Local setup, identity and
+packaging, remote creation, and ticket workflow are complete. The identity
+batch and passing baseline are recorded in [identity-packaging.md](identity-packaging.md).
+SDK migration and the remaining batches are draft work in the backlog index.
 
 ## Recommendation and evidence
 
@@ -120,10 +126,10 @@ whether data is keyed by `web` or `zot-web`; the host's resolved path wins.
 Preserve old settings and installation until the new install passes a smoke
 test. Rollback disables the new install and re-enables the old one.
 
-The current GoReleaser destination says `warricksothr/zot-web`, while origin
-says `terva-sh/zot-web`. Resolve that discrepancy before any new release.
-The archive file list also omits `skills/`; source installs and release
-archives should both carry the research skill.
+At assessment time, GoReleaser named `warricksothr/zot-web` and archives
+omitted `skills/`. The identity batch resolved both: the destination is
+`terva-sh/terva-ext-web` and archives include the research skill. Binary
+publication stays disabled pending the release-validation tickets.
 
 ## Feature assessment
 
@@ -216,11 +222,12 @@ older Terva host.
 6. **Release and archive:** new-install and upgrade smoke tests, rollback proof,
    migration notice, then ticket-authorized archival.
 
-For the current baseline, the existing gates are race tests, tagged conformance,
-vet/format checks, vendor synchronization and release snapshots. During this
-assessment `go test -mod=vendor -race ./...` and tagged conformance were
-attempted but could not start because `go` was not on PATH. No runtime
-validation or current-host compatibility is claimed by this proposal.
+The existing gates are race tests, tagged conformance, vet/format checks,
+vendor synchronization and release snapshots. The initial assessment could
+not run Go tests because Go was absent from PATH. The identity batch later
+located the installed toolchain and passed unchanged-source and post-change
+checks; see its evidence record. Current-host SDK compatibility and all-target
+runtime validation remain outstanding tickets.
 
 Alternatives considered: renaming zot-web in place obscures the stable legacy
 endpoint; retaining dual-host compatibility keeps the maintenance constraint
