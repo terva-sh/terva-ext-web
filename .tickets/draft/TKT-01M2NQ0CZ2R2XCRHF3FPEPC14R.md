@@ -37,15 +37,17 @@ references:
     path: conformance_test.go
   - ref: file:docs/plans/modernization-critical-path.md
     path: docs/plans/modernization-critical-path.md
+  - ref: file:docs/plans/sdk-verification.md
+    path: docs/plans/sdk-verification.md
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T18:34:36Z
+updated_at: 2026-09-16T19:22:29Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/critical-path
+  id: agent:codex/modernization-run
   name: ""
 extensions: {}
 ---
@@ -65,6 +67,7 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Run applicable just CI, race, vendor-sync and snapshot checks; document unsupported cancellation/trust features honestly
 - [ ] Carry the session-switch save regression through SDK migration if it has landed; coordinate overlapping main.go edits and preserve legacy config until its own migration batch
 - [ ] Update typed ticket references to retired protocol files when deleting them so git ticket check stays valid
+- [ ] Upgrade go.mod, source-build documentation/launcher requirements and CI to Go 1.27+ together; verify the CI image and inspect combined transitive/vendor changes before accepting the published SDK pin
 
 ## Definition of done
 
