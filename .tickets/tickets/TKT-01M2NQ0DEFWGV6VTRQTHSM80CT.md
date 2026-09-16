@@ -49,7 +49,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:49:05Z
+updated_at: 2026-09-16T19:50:35Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -105,3 +105,7 @@ Implemented strict host/legacy/env resolution and immutable per-call runtimes wi
 **agent:codex/modernization-run** at 2026-09-16T19:49:05Z
 
 Uncached full race+conformance passes after adding initial-invalid-config checks for all six tools and parallel runtime-update coverage. Corrected a provenance-plan wording error: existing cache TTL 0 means no expiry, not cache disabled; preserve that established behavior (entry cap 0 disables caching). Added manifest no-default invariant and documented stricter out-of-range rejection versus old silent clamping, per-field precedence, host opt-in, cache/in-flight semantics and legacy support through 0.4.x.
+
+**agent:codex/modernization-run** at 2026-09-16T19:50:35Z
+
+Local just ci passes with validated config and published host-contract tests. Added a real SDK config_update subprocess test: UA changes return fresh content at the same URL, and subsequent allowlist tightening blocks the previously cached endpoint without writing. Test passes under race instrumentation. Accepted in-flight requests intentionally retain old settings; new calls use new policy, with no cancellation promise.
