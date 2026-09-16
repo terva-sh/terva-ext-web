@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0DEFWGV6VTRQTHSM80CT
 title: Add validated host configuration and legacy precedence
 type: task
-status: in-progress
+status: done
 status_reason: null
 priority: high
 due_on: null
@@ -39,17 +39,10 @@ references:
     path: docs/plans/modernization-critical-path.md
   - ref: file:docs/plans/config-provenance.md
     path: docs/plans/config-provenance.md
-claim:
-  actor: agent:codex/modernization-run
-  branch: feat/host-config
-  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
-  commit: b36f628ceaf55d41827fb4977d9217f62317b246
-  session: null
-  claimed_at: 2026-09-16T19:42:48Z
-  expires_at: null
+claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:50:35Z
+updated_at: 2026-09-16T19:51:52Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -67,18 +60,18 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 
 ## Acceptance criteria
 
-- [ ] Document and test precedence, preserving existing legacy choices and TAVILY_API_KEY behavior without introducing unsafe secret defaults
-- [ ] Expose supported nonsecret settings with validation and distinguish explicit host values from resolved defaults or record a tested alternative import mechanism
-- [ ] Apply config updates atomically; in-flight operations keep a coherent snapshot and rejected updates remain visible while working settings survive
-- [ ] Define and test cache invalidation for backend, allowlist and User-Agent changes so stale entries cannot bypass tightened policy
-- [ ] Cover first setup, malformed settings, missing backend credentials, legacy files and concurrent updates with synthetic fixtures only
-- [ ] Consume the approved configuration-provenance decision and fixtures before implementing host/legacy precedence
-- [ ] Test a blocked old-config fetch finishing after a backend/allowlist/User-Agent change; it must not repopulate or become visible through the new-config cache
-- [ ] Define and test whether a tightening update affects already accepted requests versus later requests; do not claim cancellation of accepted calls without a supported mechanism
+- [x] Document and test precedence, preserving existing legacy choices and TAVILY_API_KEY behavior without introducing unsafe secret defaults
+- [x] Expose supported nonsecret settings with validation and distinguish explicit host values from resolved defaults or record a tested alternative import mechanism
+- [x] Apply config updates atomically; in-flight operations keep a coherent snapshot and rejected updates remain visible while working settings survive
+- [x] Define and test cache invalidation for backend, allowlist and User-Agent changes so stale entries cannot bypass tightened policy
+- [x] Cover first setup, malformed settings, missing backend credentials, legacy files and concurrent updates with synthetic fixtures only
+- [x] Consume the approved configuration-provenance decision and fixtures before implementing host/legacy precedence
+- [x] Test a blocked old-config fetch finishing after a backend/allowlist/User-Agent change; it must not repopulate or become visible through the new-config cache
+- [x] Define and test whether a tightening update affects already accepted requests versus later requests; do not claim cancellation of accepted calls without a supported mechanism
 
 ## Definition of done
 
-- [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+- [x] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
 
 ## Implementation plan
 
@@ -109,3 +102,11 @@ Uncached full race+conformance passes after adding initial-invalid-config checks
 **agent:codex/modernization-run** at 2026-09-16T19:50:35Z
 
 Local just ci passes with validated config and published host-contract tests. Added a real SDK config_update subprocess test: UA changes return fresh content at the same URL, and subsequent allowlist tightening blocks the previously cached endpoint without writing. Test passes under race instrumentation. Accepted in-flight requests intentionally retain old settings; new calls use new policy, with no cancellation promise.
+
+**agent:codex/modernization-run** at 2026-09-16T19:51:52Z
+
+Implementation and local gates complete: strict resolution/manifest no-default invariant, legacy/host/env precedence, all-handler initial errors, atomic snapshots, rejected-update retention, live SDK updates, concurrent updates and blocked-fetch old-cache isolation. Full just ci passes including actual published host-driver launch. Credentials remain legacy/env-owned until the separate secret batch. Remote PR #12 gate is running; do not merge unless it passes.
+
+## Summary
+
+Validated host nonsecret config implemented with explicit host mode and deterministic legacy/env precedence. All calls use coherent immutable runtime snapshots; valid updates replace caches and invalid updates preserve working settings. Full local CI and synthetic/live-update regressions pass. PR #12 is pending remote CI/merge; host secret support follows separately.
