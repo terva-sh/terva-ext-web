@@ -21,6 +21,7 @@ dependencies:
   - TKT-01M2NQ0DEFWGV6VTRQTHSM80CT
   - TKT-01M2NQ0DK05JAWQRF7TBGF1CY7
   - TKT-01M2NQT58ZQPSE95M1WEXPN8SF
+  - TKT-01M2NTZ8KJ9CXBV1RTMZVXRP77
 blocks_on: none
 references:
   - ref: file:docs/plans/terva-ext-web.md
@@ -42,12 +43,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T18:34:36Z
+updated_at: 2026-09-16T19:27:03Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/critical-path
+  id: agent:codex/modernization-run
   name: ""
 extensions: {}
 ---

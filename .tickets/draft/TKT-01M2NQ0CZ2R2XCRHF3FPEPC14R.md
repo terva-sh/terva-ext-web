@@ -42,7 +42,7 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:22:29Z
+updated_at: 2026-09-16T19:25:50Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -86,3 +86,7 @@ Expected deliverable: SDK-backed registration/session/result transport while ret
 Validation: Baseline then just CI, vendor sync, race/conformance and five-target snapshot.
 
 Readiness/coordination: main.go overlaps the cwd fix: prefer landing that small fix first, but it is not a semantic dependency; adapt its test if work overlaps.
+
+**agent:codex/modernization-run** at 2026-09-16T19:25:50Z
+
+User explicitly approved upgrading to Go 1.27 on 2026-09-16. Update module, CI and source-launch requirements together in the SDK batch.
