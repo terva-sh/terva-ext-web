@@ -3,7 +3,7 @@ schema: 3
 id: TKT-01M2NQ0CZ2R2XCRHF3FPEPC14R
 title: Migrate protocol integration to the verified Terva SDK
 type: task
-status: draft
+status: in-progress
 status_reason: null
 priority: high
 due_on: null
@@ -39,10 +39,17 @@ references:
     path: docs/plans/modernization-critical-path.md
   - ref: file:docs/plans/sdk-verification.md
     path: docs/plans/sdk-verification.md
-claim: null
+claim:
+  actor: agent:codex/modernization-run
+  branch: feat/terva-sdk
+  worktree: /home/sothr/.t3/worktrees/terva-ext-web/t3code-7d71b129
+  commit: 94ef28e81bbdcea20be708e5f3b22fd25ef96e98
+  session: null
+  claimed_at: 2026-09-16T19:27:25Z
+  expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:25:50Z
+updated_at: 2026-09-16T19:28:39Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -72,6 +79,10 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 ## Definition of done
 
 - [ ] Record decisions and validation evidence in the ticket; commit intended changes and pass git ticket check before handoff
+
+## Implementation plan
+
+Baseline just ci passes before SDK edits. Replace main.go registration, results and lifecycle with published ext APIs; retain one Host().CWD snapshot per save and lazy legacy configuration. Move registration inspection to subprocess wire assertions because SDK has no Tools accessor. Retire handwritten package, adopt documented v0.137.0 protocol-6 harness with min_protocol 2, and preserve all application tests. Upgrade Go requirement/CI/launcher together, inspect module graph/vendor changes, run race/conformance/vendor/snapshot gates and verify Go 1.27 CI through the real runner. Keep actual-host and expanded conformance coverage in their following ticket.
 
 ## Notes
 
