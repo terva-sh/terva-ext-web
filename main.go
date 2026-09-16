@@ -130,7 +130,7 @@ func register(e *ext.Extension) {
 	e.OnConfig(func(ext.Config) { state.snapshot() })
 	rl := newRateLimiter(10)
 
-	e.Tool("web_search",
+	registerBoundedTool(e, "web_search",
 		"Search the web and return ranked results (title, URL, snippet). Use for current events, facts, documentation, or to find pages to read with web_fetch.",
 		json.RawMessage(searchSchema),
 		func(args json.RawMessage) ext.ToolResult {
@@ -177,7 +177,7 @@ func register(e *ext.Extension) {
 		},
 		ext.WithAuthority(ext.AuthorityNetworkRead))
 
-	e.Tool("web_fetch",
+	registerBoundedTool(e, "web_fetch",
 		"Fetch a web page (http/https) and return its main text content. Results are cached briefly: paging with offset (or repeating the call) within that window reads the same snapshot, so it won't drift mid-read; after the cache expires a re-fetch may differ, with new content typically appended at the end. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(fetchSchema),
 		func(args json.RawMessage) ext.ToolResult {
@@ -211,7 +211,7 @@ func register(e *ext.Extension) {
 		},
 		ext.WithAuthority(ext.AuthorityNetworkRead))
 
-	e.Tool("web_images",
+	registerBoundedTool(e, "web_images",
 		"List the image URLs on a page that web_fetch represented as [image:N] placeholders. Cheap when the page was recently fetched (it is served from cache).",
 		json.RawMessage(imagesSchema),
 		func(args json.RawMessage) ext.ToolResult {
@@ -238,7 +238,7 @@ func register(e *ext.Extension) {
 		},
 		ext.WithAuthority(ext.AuthorityNetworkRead))
 
-	e.Tool("web_links",
+	registerBoundedTool(e, "web_links",
 		"List every hyperlink on a page (absolute URL plus anchor text). Use to enumerate a page's outbound links without scraping the fetched text yourself. Cheap when the page was recently fetched (served from cache).",
 		json.RawMessage(linksSchema),
 		func(args json.RawMessage) ext.ToolResult {
@@ -265,7 +265,7 @@ func register(e *ext.Extension) {
 		},
 		ext.WithAuthority(ext.AuthorityNetworkRead))
 
-	e.Tool("web_fetch_raw",
+	registerBoundedTool(e, "web_fetch_raw",
 		"Fetch a page and save its UNRENDERED source (HTML/JSON/text, exactly as the server sent it) to a workspace file for you to grep or parse yourself. A fallback for when web_fetch/web_images/web_links don't surface what you need. Served from the same cache as web_fetch. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(webFetchRawSchema),
 		func(args json.RawMessage) ext.ToolResult {
@@ -320,7 +320,7 @@ func register(e *ext.Extension) {
 		},
 		ext.WithAuthority(ext.AuthorityNetworkRead))
 
-	e.Tool("web_fetch_image",
+	registerBoundedTool(e, "web_fetch_image",
 		"Fetch an image (PNG/JPEG/GIF/WebP) by URL and return it for you to view, and/or save it into the workspace. Use max_dimension to downscale a large image. Private/internal addresses are blocked unless explicitly allowlisted.",
 		json.RawMessage(webFetchImageSchema),
 		func(args json.RawMessage) ext.ToolResult {
@@ -373,6 +373,15 @@ func register(e *ext.Extension) {
 				fmt.Fprintf(&meta, " (resized from %d×%d)", img.OrigW, img.OrigH)
 			}
 
+			inject := in.Inject == nil || *in.Inject
+			var imageContent ext.ToolContent
+			if inject {
+				imageContent = ext.ImageBytes(img.MimeType, img.Data)
+				if !resultFits(ext.ToolResult{Content: []ext.ToolContent{imageContent, ext.Text(meta.String())}}) {
+					return toolErrorf("Image exceeds the host message limit; reduce max_dimension or use inject:false with save_path. Nothing was saved.")
+				}
+			}
+
 			if strings.TrimSpace(in.SavePath) != "" {
 				rel, werr := saveToWorkspace(cwd, in.SavePath, img.Data, in.Overwrite)
 				if werr != nil {
@@ -381,15 +390,14 @@ func register(e *ext.Extension) {
 				fmt.Fprintf(&meta, "\nSaved to %s", rel)
 			}
 
-			inject := in.Inject == nil || *in.Inject
 			if inject {
-				return ext.ToolResult{Content: []ext.ToolContent{ext.ImageBytes(img.MimeType, img.Data), ext.Text(meta.String())}}
+				return ext.ToolResult{Content: []ext.ToolContent{imageContent, ext.Text(meta.String())}}
 			}
 			return ext.TextResult(meta.String())
 		},
 		ext.WithAuthority(ext.AuthorityNetworkRead))
 
-	e.Command("web-cache",
+	registerBoundedCommand(e, "web-cache",
 		"inspect the web page cache (`/web-cache`) or empty it (`/web-cache clear`)",
 		func(args string) ext.Response {
 			rt := state.snapshot()

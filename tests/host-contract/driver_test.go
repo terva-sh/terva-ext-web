@@ -1,8 +1,12 @@
 package hostcontract
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/png"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -115,6 +119,41 @@ func TestPublishedHostDriverLaunch(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(cwd, "result")); !os.IsNotExist(err) {
 		t.Fatal("saved in old session")
+	}
+
+	// A valid encoded image can fit the configured 5 MiB application limit yet
+	// exceed the host's 4 MiB JSON frame after base64. It must round-trip as an
+	// actionable error, then work as a save-only request without losing bytes.
+	noisy := image.NewNRGBA(image.Rect(0, 0, 1000, 1000))
+	_, _ = rand.New(rand.NewSource(42)).Read(noisy.Pix)
+	var pngData bytes.Buffer
+	if err := png.Encode(&pngData, noisy); err != nil {
+		t.Fatal(err)
+	}
+	if pngData.Len() <= 3<<20 || pngData.Len() > 5<<20 {
+		t.Fatal("fixture does not straddle image/wire limits")
+	}
+	imageServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(pngData.Bytes())
+	}))
+	defer imageServer.Close()
+	imageArgs, _ := json.Marshal(map[string]any{"url": imageServer.URL, "save_path": "large.png"})
+	imageResult, err := d.InvokeTool(ctx, "web_fetch_image", imageArgs, 10*time.Second)
+	if err != nil || !imageResult.IsError || len(imageResult.Content) == 0 || !strings.Contains(imageResult.Content[0].Text, "host message limit") {
+		t.Fatalf("large image did not return actionable wire error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(next, "large.png")); !os.IsNotExist(err) {
+		t.Fatal("oversized injection wrote a file")
+	}
+	imageArgs, _ = json.Marshal(map[string]any{"url": imageServer.URL, "save_path": "large.png", "inject": false})
+	imageResult, err = d.InvokeTool(ctx, "web_fetch_image", imageArgs, 10*time.Second)
+	if err != nil || imageResult.IsError {
+		t.Fatalf("save-only failed: %v", err)
+	}
+	imageBytes, err := os.ReadFile(filepath.Join(next, "large.png"))
+	if err != nil || !bytes.Equal(imageBytes, pngData.Bytes()) {
+		t.Fatal("save-only changed image bytes")
 	}
 	d.Stop(3 * time.Second)
 	if malformed.Load() != 0 {

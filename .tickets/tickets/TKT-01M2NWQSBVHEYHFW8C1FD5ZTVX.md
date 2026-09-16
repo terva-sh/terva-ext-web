@@ -30,7 +30,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T19:57:41Z
-updated_at: 2026-09-16T19:58:30Z
+updated_at: 2026-09-16T20:00:48Z
 created_by:
   id: agent:codex/modernization-run
   name: ""
@@ -57,3 +57,9 @@ Release review found a published SDK/host limit mismatch: extproto reads at most
 ## Implementation plan
 
 Bound marshaled content (including JSON/base64 expansion) below the published 4 MiB host ceiling with 4 KiB envelope reserve for generated host IDs. Wrap all registered tool results and cache command display output; reject oversized image injection before writes with resize/save-only guidance. Preserve configured fetch/download byte limits. Verify escaped text, large images and normal results, including actual host-driver large-image round-trip and save-only fallback.
+
+## Notes
+
+**agent:codex/modernization-run** at 2026-09-16T20:00:48Z
+
+Verified the mismatch with a deterministic PNG over 3 MiB but below the application 5 MiB limit. Actual published host-driver test now receives an actionable bounded error for injection (no file written) and saves identical bytes with inject:false. Added serialized text/base64/escaping budget tests and bounded all tool results plus cache command responses with 4 KiB envelope reserve. Normal output unchanged. This is a release-review deviation; separate from merged secret PR #13.
