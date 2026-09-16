@@ -7,28 +7,15 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 )
 
 // Resolve applies explicit host values without manifest defaults. Errors name
-// fields, never their values: even malformed legacy JSON may contain secrets.
-func Resolve(dataDir, extensionDir string, host map[string]json.RawMessage) (Config, error) {
+// fields, never their values, because configuration may contain secrets.
+func Resolve(host map[string]json.RawMessage) (Config, error) {
 	c := Config{SearchBackend: "tavily", FetchMaxBytes: DefaultFetchMaxBytes, FetchImageMaxBytes: DefaultFetchImageMaxBytes, FetchTimeoutSec: DefaultFetchTimeoutSec, FetchCacheTTLSec: DefaultFetchCacheTTLSec, FetchCacheMaxEntries: DefaultFetchCacheMaxEntries, FetchCacheMaxBytes: DefaultFetchCacheMaxBytes, AllowLocalHosts: append([]string(nil), DefaultAllowLocalHosts...)}
-	source := "legacy"
-	if raw, ok := host["configuration_source"]; ok {
-		if err := decodeField("configuration_source", raw, &source); err != nil {
-			return c, err
-		}
-	}
-	if value, ok := webEnv("CONFIGURATION_SOURCE"); ok {
-		source = value
-	}
-	if source != "legacy" && source != "host" {
-		return c, invalid("configuration_source")
-	}
 	fields := map[string]any{
 		"search_backend": &c.SearchBackend, "searxng_url": &c.SearxngURL, "tavily_api_key": &c.TavilyAPIKey,
 		"user_agent": &c.UserAgent, "allow_local_hosts": &c.AllowLocalHosts, "fetch_max_bytes": &c.FetchMaxBytes,
@@ -40,37 +27,7 @@ func Resolve(dataDir, extensionDir string, host map[string]json.RawMessage) (Con
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	if source == "legacy" {
-		for _, dir := range []string{dataDir, extensionDir} {
-			if dir == "" {
-				continue
-			}
-			b, err := os.ReadFile(filepath.Join(dir, "config.json"))
-			if os.IsNotExist(err) {
-				continue
-			}
-			if err != nil {
-				return c, fmt.Errorf("legacy config.json cannot be read")
-			}
-			var legacy map[string]json.RawMessage
-			if err := json.Unmarshal(b, &legacy); err != nil || legacy == nil {
-				return c, fmt.Errorf("legacy config.json must be a JSON object")
-			}
-			for _, key := range keys {
-				if raw, ok := legacy[key]; ok {
-					if err := decodeField(key, raw, fields[key]); err != nil {
-						return c, err
-					}
-				}
-			}
-			break
-		}
-	}
 	for _, key := range keys {
-		// Legacy credential ownership changes only after explicit host opt-in.
-		if key == "tavily_api_key" && source != "host" {
-			continue
-		}
 		if raw, ok := host[key]; ok {
 			if key == "allow_local_hosts" {
 				var list string
@@ -88,7 +45,7 @@ func Resolve(dataDir, extensionDir string, host map[string]json.RawMessage) (Con
 		if key == "tavily_api_key" {
 			continue
 		}
-		value, ok := webEnv(strings.ToUpper(key))
+		value, ok := os.LookupEnv("TERVA_EXT_WEB_" + strings.ToUpper(key))
 		if !ok {
 			continue
 		}
@@ -131,12 +88,6 @@ func Resolve(dataDir, extensionDir string, host map[string]json.RawMessage) (Con
 	return c, validate(c)
 }
 
-func webEnv(suffix string) (string, bool) {
-	if value, ok := os.LookupEnv("TERVA_EXT_WEB_" + suffix); ok {
-		return value, true
-	}
-	return os.LookupEnv("ZOT_WEB_" + suffix)
-}
 func invalid(key string) error { return fmt.Errorf("invalid setting %s", key) }
 func decodeField(key string, raw json.RawMessage, dest any) error {
 	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) || json.Unmarshal(raw, dest) != nil {

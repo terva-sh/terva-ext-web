@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -21,112 +20,80 @@ func isolateResolveEnv(t *testing.T) {
 		}
 	}
 }
+
 func TestResolvePrecedence(t *testing.T) {
 	isolateResolveEnv(t)
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte(`{"search_backend":"searxng","searxng_url":"https://example.invalid","fetch_inline_images":true,"fetch_cache_ttl_sec":900,"allow_local_hosts":["legacy.invalid"],"user_agent":"legacy"}`), 0600); err != nil {
-		t.Fatal(err)
-	}
-	c, err := Resolve(dir, "", nil)
-	if err != nil || c.SearchBackend != "searxng" {
-		t.Fatalf("legacy not preserved: %v", err)
-	}
 	host := map[string]json.RawMessage{"search_backend": json.RawMessage(`"tavily"`), "fetch_inline_images": json.RawMessage(`false`), "fetch_cache_ttl_sec": json.RawMessage(`0`), "user_agent": json.RawMessage(`""`), "allow_local_hosts": json.RawMessage(`"[]"`)}
-	c, err = Resolve(dir, "", host)
+	c, err := Resolve(host)
 	if err != nil || c.SearchBackend != "tavily" || c.FetchInlineImages || c.FetchCacheTTLSec != 0 || c.UserAgent != "" || len(c.AllowLocalHosts) != 0 {
 		t.Fatalf("explicit host values lost: %v", err)
 	}
-	t.Setenv("ZOT_WEB_USER_AGENT", "old-env")
-	t.Setenv("TERVA_EXT_WEB_USER_AGENT", "new-env")
-	t.Setenv("ZOT_WEB_ALLOW_LOCAL_HOSTS", "old.invalid")
-	t.Setenv("TERVA_EXT_WEB_ALLOW_LOCAL_HOSTS", "new.invalid")
-	c, err = Resolve(dir, "", host)
-	if err != nil || c.UserAgent != "new-env" || !reflect.DeepEqual(c.AllowLocalHosts, []string{"new.invalid"}) {
+	t.Setenv("TERVA_EXT_WEB_USER_AGENT", "env-client")
+	t.Setenv("TERVA_EXT_WEB_ALLOW_LOCAL_HOSTS", " new.invalid, ,10.0.0.0/8 ")
+	c, err = Resolve(host)
+	if err != nil || c.UserAgent != "env-client" || !reflect.DeepEqual(c.AllowLocalHosts, []string{"new.invalid", "10.0.0.0/8"}) {
 		t.Fatalf("env precedence failed: %v", err)
 	}
 	t.Setenv("TERVA_EXT_WEB_USER_AGENT", "")
-	c, err = Resolve(dir, "", host)
+	c, err = Resolve(host)
 	if err != nil || c.UserAgent != "" {
 		t.Fatal("empty explicit env lost")
 	}
 }
+
+func TestResolveIgnoresRetiredOverrides(t *testing.T) {
+	isolateResolveEnv(t)
+	want, err := Resolve(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{"SEARCH_BACKEND", "TAVILY_API_KEY", "SEARXNG_URL", "USER_AGENT", "ALLOW_LOCAL_HOSTS", "FETCH_MAX_BYTES", "FETCH_IMAGE_MAX_BYTES", "FETCH_TIMEOUT_SEC", "FETCH_INLINE_IMAGES", "FETCH_CACHE_TTL_SEC", "FETCH_CACHE_MAX_ENTRIES", "FETCH_CACHE_MAX_BYTES", "CONFIGURATION_SOURCE"} {
+		t.Setenv("ZOT_WEB_"+suffix, "ignored-value")
+	}
+	t.Setenv("TERVA_EXT_WEB_CONFIGURATION_SOURCE", "legacy")
+	got, err := Resolve(map[string]json.RawMessage{"configuration_source": json.RawMessage(`"legacy"`)})
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("retired inputs changed configuration: %v", err)
+	}
+}
+
 func TestResolveRejectsInvalidWithoutEcho(t *testing.T) {
 	isolateResolveEnv(t)
 	for _, tc := range []struct{ key, value string }{
-		{"fetch_timeout_sec", "0"}, {"fetch_max_bytes", "33554433"}, {"fetch_inline_images", `"private-marker"`}, {"fetch_cache_ttl_sec", "null"}, {"allow_local_hosts", `"[\\\"bad/private-marker\\\"]"`}, {"searxng_url", `"https://user:private-marker@example.invalid"`}, {"configuration_source", `"private-marker"`},
+		{"fetch_timeout_sec", "0"}, {"fetch_max_bytes", "33554433"}, {"fetch_inline_images", `"private-marker"`}, {"fetch_cache_ttl_sec", "null"}, {"allow_local_hosts", `"[\\\"bad/private-marker\\\"]"`}, {"searxng_url", `"https://user:private-marker@example.invalid"`},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
-			_, err := Resolve("", "", map[string]json.RawMessage{tc.key: json.RawMessage(tc.value)})
+			_, err := Resolve(map[string]json.RawMessage{tc.key: json.RawMessage(tc.value)})
 			if err == nil || strings.Contains(err.Error(), "private-marker") {
 				t.Fatalf("unsafe/missing error: %v", err)
 			}
 		})
 	}
-	t.Setenv("ZOT_WEB_FETCH_TIMEOUT_SEC", "25")
 	t.Setenv("TERVA_EXT_WEB_FETCH_TIMEOUT_SEC", "")
-	if _, err := Resolve("", "", nil); err == nil {
-		t.Fatal("invalid new env fell through")
-	}
-}
-func TestResolveLegacyFileFailuresAndHostMode(t *testing.T) {
-	isolateResolveEnv(t)
-	data, install := t.TempDir(), t.TempDir()
-	if err := os.WriteFile(filepath.Join(data, "config.json"), []byte(`{"tavily_api_key":"private-marker",`), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(install, "config.json"), []byte(`{"search_backend":"searxng"}`), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Resolve(data, install, nil); err == nil || strings.Contains(err.Error(), "private-marker") {
-		t.Fatal("invalid data file not safely rejected")
-	}
-	c, err := Resolve(data, install, map[string]json.RawMessage{"configuration_source": json.RawMessage(`"host"`)})
-	if err != nil || c.SearchBackend != "tavily" {
-		t.Fatalf("host mode read legacy: %v", err)
+	if _, err := Resolve(nil); err == nil {
+		t.Fatal("invalid environment override fell through")
 	}
 }
 
-func TestSecretImportPrecedenceRollbackAndMissingHost(t *testing.T) {
+func TestSecretHostAndEnvironmentPrecedence(t *testing.T) {
 	isolateResolveEnv(t)
-	dir := t.TempDir()
-	// Fictional values are generated per test; no installed credential is read.
-	legacyKey := "synthetic-legacy-" + filepath.Base(dir)
-	hostKey := "synthetic-host-" + filepath.Base(dir)
-	envKey := "synthetic-env-" + filepath.Base(dir)
-	original, _ := json.Marshal(map[string]string{"tavily_api_key": legacyKey})
-	path := filepath.Join(dir, "config.json")
-	if err := os.WriteFile(path, original, 0600); err != nil {
-		t.Fatal(err)
-	}
-	raw, _ := json.Marshal(hostKey)
+	raw, _ := json.Marshal("synthetic-host-secret")
 	values := map[string]json.RawMessage{"tavily_api_key": raw}
 	check := func(want string) {
 		t.Helper()
-		c, err := Resolve(dir, "", values)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if c.TavilyAPIKey != want {
-			t.Fatal("credential source mismatch")
-		}
-		b, err := os.ReadFile(path)
-		if err != nil || string(b) != string(original) {
-			t.Fatal("legacy fixture changed")
+		c, err := Resolve(values)
+		if err != nil || c.TavilyAPIKey != want {
+			t.Fatalf("credential source mismatch: %v", err)
 		}
 	}
-	check(legacyKey)
-	values["configuration_source"] = json.RawMessage(`"host"`)
-	check(hostKey)
-	check(hostKey) // opt-in/retry is idempotent
-	t.Setenv("TAVILY_API_KEY", envKey)
-	check(envKey)
+	check("synthetic-host-secret")
+	t.Setenv("TAVILY_API_KEY", "synthetic-env-secret")
+	check("synthetic-env-secret")
 	t.Setenv("TAVILY_API_KEY", "")
 	check("")
 	if err := os.Unsetenv("TAVILY_API_KEY"); err != nil {
 		t.Fatal(err)
 	}
 	delete(values, "tavily_api_key")
-	check("") // absent/undecryptable never resurrects legacy
-	values["configuration_source"] = json.RawMessage(`"legacy"`)
-	check(legacyKey)
+	check("") // Missing or undecryptable host keys remain unconfigured.
 }

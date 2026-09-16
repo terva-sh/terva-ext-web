@@ -124,7 +124,7 @@ func register(e *ext.Extension) {
 	e.OnSession(func(ext.Session) {}) // SDK updates Host() on its ordered reader.
 
 	state := &runtimeStore{
-		read:   func() (ext.HostInfo, ext.Config) { return e.Host(), e.Config() },
+		read:   func() ext.Config { return e.Config() },
 		notify: func(message string) { e.Notify("error", message) },
 	}
 	e.OnConfig(func(ext.Config) { state.snapshot() })

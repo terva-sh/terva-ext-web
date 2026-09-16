@@ -23,6 +23,7 @@ dependencies:
   - TKT-01M2NQT58ZQPSE95M1WEXPN8SF
   - TKT-01M2NTZ8KJ9CXBV1RTMZVXRP77
   - TKT-01M2NWQSBVHEYHFW8C1FD5ZTVX
+  - TKT-01M2P05BFER2BYNEAVRMBNQN5Y
 blocks_on: none
 references:
   - ref: file:docs/plans/terva-ext-web.md
@@ -44,12 +45,12 @@ references:
 claim: null
 archive: null
 created_at: 2026-09-16T18:17:33Z
-updated_at: 2026-09-16T19:58:10Z
+updated_at: 2026-09-16T21:09:52Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
 updated_by:
-  id: agent:codex/modernization-run
+  id: agent:codex/terva-cleanup
   name: ""
 extensions: {}
 ---
@@ -69,6 +70,7 @@ Source: docs/plans/terva-ext-web.md. This is scoped backlog work, not an impleme
 - [ ] Record test evidence for the release candidate and unresolved limitations in release documentation
 - [ ] Use the approved platform/access matrix and bind the complete validation report to one candidate commit and checksums; identify revalidation triggers after source or packaging changes
 - [ ] Test installation discovery and rollback with preserved synthetic old settings and verify the two web identities are never enabled together
+- [ ] Exercise manual transfer of old settings into Terva host configuration; prove retired config files and ZOT_WEB variables are ignored and preserved, and rollback uses the old installation
 
 ## Definition of done
 
@@ -87,3 +89,7 @@ Expected deliverable: Candidate-bound runtime, source install, archive install, 
 Validation: Run on the agreed advertised platform matrix and supported host versions; verify actual manifests, skills and checksums.
 
 Readiness/coordination: Only Linux amd64 launch is established; the matrix spike exposes missing access early. Missing access is not a passing test.
+
+**agent:codex/terva-cleanup** at 2026-09-16T21:09:52Z
+
+Native source/archive validation now passes on all five targets for candidate 7fde307 (PR #16). User-selected Terva-only cleanup supersedes the old 0.4.x legacy mode: configuration must be entered into Terva manually and ZOT_WEB overrides renamed. Do not test legacy-mode rollback in the replacement; test disabling it and enabling the preserved old installation instead. Revalidate native archives after the cleanup; older reports certify only their recorded candidate.

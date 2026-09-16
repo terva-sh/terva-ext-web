@@ -20,15 +20,6 @@
   ],
   "config": [
     {
-      "key": "configuration_source",
-      "type": "select",
-      "description": "legacy preserves old files; host ignores them. Set host after entering your choices.",
-      "options": [
-        "legacy",
-        "host"
-      ]
-    },
-    {
       "key": "search_backend",
       "type": "select",
       "description": "Search backend (application default tavily).",
