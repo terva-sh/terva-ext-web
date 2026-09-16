@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -100,8 +101,21 @@ func Resolve(dataDir, extensionDir string, host map[string]json.RawMessage) (Con
 			continue
 		}
 		raw := json.RawMessage(value)
-		if _, ok := fields[key].(*string); ok {
+		switch fields[key].(type) {
+		case *string:
 			raw, _ = json.Marshal(value)
+		case *bool:
+			v, err := strconv.ParseBool(value)
+			if err != nil {
+				return c, invalid(key)
+			}
+			raw, _ = json.Marshal(v)
+		case *int, *int64:
+			v, err := strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return c, invalid(key)
+			}
+			raw, _ = json.Marshal(v)
 		}
 		if err := decodeField(key, raw, fields[key]); err != nil {
 			return c, err
@@ -109,6 +123,10 @@ func Resolve(dataDir, extensionDir string, host map[string]json.RawMessage) (Con
 	}
 	if value, ok := os.LookupEnv("TAVILY_API_KEY"); ok {
 		c.TavilyAPIKey = value
+	}
+	c.SearchBackend = strings.ToLower(strings.TrimSpace(c.SearchBackend))
+	for i := range c.AllowLocalHosts {
+		c.AllowLocalHosts[i] = strings.TrimSpace(c.AllowLocalHosts[i])
 	}
 	return c, validate(c)
 }

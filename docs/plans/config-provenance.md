@@ -63,7 +63,7 @@ do not add competing renamed credential variables.
 | fetch_image_max_bytes | int | 5242880; positive, at most 20971520 |
 | fetch_timeout_sec | int | 25; positive, at most 60 |
 | fetch_inline_images | bool | false; explicit false overrides legacy true |
-| fetch_cache_ttl_sec | int | 600; 0 disables, maximum 3600 |
+| fetch_cache_ttl_sec | int | 600; 0 means no expiry, maximum 3600 |
 | fetch_cache_max_entries | int | 32; 0 disables cache, maximum 128 |
 | fetch_cache_max_bytes | int | 67108864; 0 retains historical unbounded-byte meaning with entry cap; maximum 268435456 |
 
@@ -108,7 +108,7 @@ Each case must assert effective values and safe diagnostics, not print keys.
 | no host map/file/env | application defaults; search unconfigured |
 | legacy backend searxng, host key absent | legacy backend preserved |
 | same legacy, host backend tavily (equal to default) | explicit tavily wins |
-| legacy true/TTL 900, host false/0 | false and disabled TTL preserved |
+| legacy true/TTL 900, host false/0 | false and no-expiry TTL preserved |
 | host null, malformed bool/int, limit overflow | candidate rejected, no partial swap |
 | legacy UA custom, explicit host empty | default UA; no legacy resurrection |
 | empty host form submission | host omits nonsecret key; legacy/default fallback (not explicit empty) |

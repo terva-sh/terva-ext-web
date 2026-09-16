@@ -94,16 +94,40 @@ during the fetch cannot redirect its eventual save into a different workspace.
 above). After changing dependencies, refresh it with `just vendor` (runs
 `go mod tidy` + `go mod vendor`) and commit the result alongside
 `go.mod`/`go.sum`. **Re-evaluate this approach if `vendor/` grows large**
-(currently ~6 MB across a handful of modules): past some point, shipping
+(currently ~8.4 MiB including the SDK): past some point, shipping
 prebuilt per-platform binaries (goreleaser) beats carrying a big vendor tree.
 
 ## Configure
 
-Settings come from `config.json` in the host-provided data directory, with
-existing `ZOT_WEB_*` environment overrides and `TAVILY_API_KEY` unchanged.
-If the data-directory file is absent, the host-provided installation directory
-is read as a fallback. Resolve these directories through Terva rather than
-assuming a basename. No configuration or credential migration occurs here.
+Configure nonsecret settings in Terva's extension configuration form. Fields
+have application defaults, so an explicitly saved value—even false or zero—
+overrides a legacy value. Precedence is `TERVA_EXT_WEB_*`, then `ZOT_WEB_*`,
+then explicit host values, then legacy file values, then application defaults.
+`TAVILY_API_KEY` remains the credential override.
+
+`configuration_source` defaults to `legacy`: read `config.json` in the
+host-reported data directory, falling back to the installation directory only
+if absent. Existing values remain available while you enter host settings.
+Choose `host` to ignore legacy files; this is opt-in and never changes or deletes
+a file. Until the separate host-secret migration, Tavily in host mode requires
+`TAVILY_API_KEY`. Rollback selects `legacy` or restores the old installation.
+Legacy mode remains supported throughout 0.4.x; removing it needs a later
+migration decision.
+
+Valid live updates take effect for later calls and start a fresh cache. Calls
+already running finish with their original settings and private cache. Rejected
+updates retain working settings and report the invalid field without its value.
+On initial invalid settings, all network tools fail closed. Missing search
+credentials block search only. Invalid/out-of-range settings now fail visibly
+instead of the legacy loader's silent coercion/clamping. File edits and process
+environment changes require restart; host settings update live.
+
+The host allowlist field accepts JSON array text, such as `["localhost"]` or
+`[]`. It replaces the lower-priority list. Environment allowlists are the
+exception to scalar precedence: the selected namespace appends its comma list;
+if both namespaces exist, only the new one appends. Empty optional strings clear
+a value; empty/invalid numeric settings reject. Blank nonsecret form input means
+unset on the host; use host mode to remove fallback to legacy values.
 
 `just configure-searxng` (above) writes this file for you; to do it by hand,
 start from the default Tavily backend:
@@ -133,20 +157,20 @@ Or switch to a self-hosted SearXNG instance (no key, private):
 
 ### All settings
 
-| config.json key | env override | default | meaning |
+| setting key | preferred env override | default | meaning |
 |---|---|---|---|
-| `search_backend` | `ZOT_WEB_SEARCH_BACKEND` | `tavily` | `tavily` or `searxng` |
+| `search_backend` | `TERVA_EXT_WEB_SEARCH_BACKEND` | `tavily` | `tavily` or `searxng` |
 | `tavily_api_key` | `TAVILY_API_KEY` | — | Tavily bearer token |
-| `searxng_url` | `ZOT_WEB_SEARXNG_URL` | — | SearXNG base URL |
-| `fetch_max_bytes` | `ZOT_WEB_FETCH_MAX_BYTES` | `2097152` | response body cap (clamped to max `33554432`) |
-| `fetch_image_max_bytes` | `ZOT_WEB_FETCH_IMAGE_MAX_BYTES` | `5242880` | max encoded size of a `web_fetch_image` result after resize (clamped to max `20971520`) |
-| `fetch_timeout_sec` | `ZOT_WEB_FETCH_TIMEOUT_SEC` | `25` | per-fetch timeout (clamped to max `60`) |
-| `fetch_inline_images` | `ZOT_WEB_FETCH_INLINE_IMAGES` | `false` | keep image URLs inline instead of `[image:N]` placeholders |
-| `fetch_cache_ttl_sec` | `ZOT_WEB_FETCH_CACHE_TTL_SEC` | `600` | how long a rendered page stays cached (`0` = no expiry; clamped to max `3600`) |
-| `fetch_cache_max_entries` | `ZOT_WEB_FETCH_CACHE_MAX_ENTRIES` | `32` | max cached pages, LRU-evicted (`0` = caching off; clamped to max `128`) |
-| `fetch_cache_max_bytes` | `ZOT_WEB_FETCH_CACHE_MAX_BYTES` | `67108864` | total bytes the page cache may retain, LRU-evicted (`0` = no byte bound; clamped to max `268435456`) |
-| `user_agent` | `ZOT_WEB_USER_AGENT` | `terva-ext-web/<version>` | User-Agent for every fetch; `browser` expands to a common desktop-browser UA |
-| `allow_local_hosts` | `ZOT_WEB_ALLOW_LOCAL_HOSTS` (comma-sep) | `localhost, 127.0.0.1, ::1` | SSRF escape hatch (see below); the config key replaces the default, the env var appends |
+| `searxng_url` | `TERVA_EXT_WEB_SEARXNG_URL` | — | SearXNG base URL |
+| `fetch_max_bytes` | `TERVA_EXT_WEB_FETCH_MAX_BYTES` | `2097152` | response body cap (maximum `33554432`) |
+| `fetch_image_max_bytes` | `TERVA_EXT_WEB_FETCH_IMAGE_MAX_BYTES` | `5242880` | max encoded size of a `web_fetch_image` result after resize (maximum `20971520`) |
+| `fetch_timeout_sec` | `TERVA_EXT_WEB_FETCH_TIMEOUT_SEC` | `25` | per-fetch timeout (maximum `60`) |
+| `fetch_inline_images` | `TERVA_EXT_WEB_FETCH_INLINE_IMAGES` | `false` | keep image URLs inline instead of `[image:N]` placeholders |
+| `fetch_cache_ttl_sec` | `TERVA_EXT_WEB_FETCH_CACHE_TTL_SEC` | `600` | how long a rendered page stays cached (`0` = no expiry; maximum `3600`) |
+| `fetch_cache_max_entries` | `TERVA_EXT_WEB_FETCH_CACHE_MAX_ENTRIES` | `32` | max cached pages, LRU-evicted (`0` = caching off; maximum `128`) |
+| `fetch_cache_max_bytes` | `TERVA_EXT_WEB_FETCH_CACHE_MAX_BYTES` | `67108864` | total bytes the page cache may retain, LRU-evicted (`0` = no byte bound; maximum `268435456`) |
+| `user_agent` | `TERVA_EXT_WEB_USER_AGENT` | `terva-ext-web/<version>` | User-Agent for every fetch; `browser` expands to a common desktop-browser UA |
+| `allow_local_hosts` | `TERVA_EXT_WEB_ALLOW_LOCAL_HOSTS` (comma-sep) | `localhost, 127.0.0.1, ::1` | SSRF escape hatch (see below); the config key replaces the default, the env var appends |
 
 ### User-Agent
 
@@ -158,7 +182,7 @@ be overridden at three levels (most specific wins):
    `web_fetch_image` — the model can retry a blocked page with
    `user_agent: "browser"`. An explicit per-call UA always forces a fresh
    fetch (bypassing the cached snapshot) so the retry actually hits the site;
-2. the `user_agent` config setting / `ZOT_WEB_USER_AGENT` env var;
+2. the `user_agent` config setting / `TERVA_EXT_WEB_USER_AGENT` env var;
 3. the built-in default.
 
 The value `browser` (any case) expands to a current desktop-Chrome UA string;
@@ -342,7 +366,7 @@ Each entry is one of:
 - a **CIDR** — matched against the resolved address (e.g. `192.168.1.0/24`).
 
 An explicit `"allow_local_hosts": []` locks loopback back down for hardened
-setups. The `ZOT_WEB_ALLOW_LOCAL_HOSTS` env var (comma-separated) *appends* to
+setups. The `TERVA_EXT_WEB_ALLOW_LOCAL_HOSTS` env var (comma-separated) *appends* to
 whatever the file produced rather than replacing it.
 
 This is a precise escape hatch, not an "allow all local" switch: only the

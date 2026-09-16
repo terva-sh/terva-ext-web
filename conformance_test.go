@@ -652,3 +652,25 @@ func TestConformanceShutdownDuringDownload(t *testing.T) {
 		t.Fatalf("shutdown created file: %v", err)
 	}
 }
+
+func TestConformanceInvalidConfigBlocksEveryNetworkTool(t *testing.T) {
+	cwd := t.TempDir()
+	if err := os.WriteFile(filepath.Join(cwd, "config.json"), []byte(`{"fetch_max_bytes":"private-marker"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	d := startExtension(t)
+	defer func() { _ = d.cmd.Process.Kill() }()
+	assertStartup(t, d.readUntil("ready"))
+	d.send(hostProfiles[0].helloAck(cwd))
+	for _, name := range []string{"web_search", "web_fetch", "web_images", "web_links", "web_fetch_raw", "web_fetch_image"} {
+		d.send(map[string]any{"type": "tool_call", "id": name, "name": name, "args": map[string]any{}})
+		f := d.awaitToolResult(name)
+		b, _ := json.Marshal(f)
+		if f["is_error"] != true || !bytes.Contains(b, []byte("invalid setting fetch_max_bytes")) || bytes.Contains(b, []byte("private-marker")) {
+			t.Errorf("%s did not safely block: %s", name, b)
+		}
+	}
+	d.send(map[string]any{"type": "shutdown"})
+	d.readUntil("shutdown_ack")
+	d.expectCleanExit()
+}

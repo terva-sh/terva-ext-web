@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -14,6 +15,7 @@ import (
 )
 
 func TestRuntimeUpdateKeepsInflightCacheSeparate(t *testing.T) {
+	isolateRuntimeEnv(t)
 	for _, change := range []string{"allow_local_hosts", "user_agent", "search_backend"} {
 		t.Run(change, func(t *testing.T) {
 			started := make(chan struct{})
@@ -76,6 +78,7 @@ func TestRuntimeUpdateKeepsInflightCacheSeparate(t *testing.T) {
 const frameTimeoutForRuntime = 5 * time.Second
 
 func TestRuntimeRejectsUpdateWithoutLosingWorkingSettings(t *testing.T) {
+	isolateRuntimeEnv(t)
 	values := ext.Config{"configuration_source": json.RawMessage(`"host"`)}
 	var notices []string
 	state := runtimeStore{read: func() (ext.HostInfo, ext.Config) { return ext.HostInfo{}, values }, notify: func(s string) { notices = append(notices, s) }}
@@ -90,4 +93,43 @@ func TestRuntimeRejectsUpdateWithoutLosingWorkingSettings(t *testing.T) {
 	if state.snapshot() != old || len(notices) != 1 {
 		t.Fatal("repeated rejection changed state")
 	}
+}
+
+func isolateRuntimeEnv(t *testing.T) {
+	t.Helper()
+	for _, kv := range os.Environ() {
+		key, _, _ := strings.Cut(kv, "=")
+		if strings.HasPrefix(key, "TERVA_EXT_WEB_") || strings.HasPrefix(key, "ZOT_WEB_") || key == "TAVILY_API_KEY" {
+			t.Setenv(key, "")
+			if err := os.Unsetenv(key); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+func TestRuntimeConcurrentUpdates(t *testing.T) {
+	isolateRuntimeEnv(t)
+	var mu sync.Mutex
+	values := ext.Config{"configuration_source": json.RawMessage(`"host"`)}
+	state := runtimeStore{read: func() (ext.HostInfo, ext.Config) { mu.Lock(); defer mu.Unlock(); return ext.HostInfo{}, values }, notify: func(string) { t.Error("unexpected rejection") }}
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 30; j++ {
+				if r := state.snapshot(); r.configErr != nil || r.fetcher == nil {
+					t.Error("incoherent snapshot")
+				}
+			}
+		}()
+	}
+	for i := 0; i < 30; i++ {
+		raw, _ := json.Marshal(i)
+		mu.Lock()
+		values = ext.Config{"configuration_source": json.RawMessage(`"host"`), "fetch_cache_ttl_sec": raw}
+		mu.Unlock()
+		state.snapshot()
+	}
+	wg.Wait()
 }
