@@ -47,7 +47,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:41:58Z
+updated_at: 2026-09-16T19:47:11Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -102,3 +102,7 @@ The cwd-save fix pulled forward subprocess environment isolation (drop TAVILY_AP
 **agent:codex/modernization-run** at 2026-09-16T19:41:58Z
 
 Expanded real subprocess suite passes under race: all six tools with successful synthetic local responses and exact image bytes, malformed JSON and >4 MiB frame recovery, concurrent downloads, both session-switch saves and shutdown during blocked fetch. Actual published v0.137.0 extdriver launch also passes via isolated host-contract module: launcher, ready, six tools, command, ordered session/save, stdout monitor and shutdown. Floor/current coincide at verified v0.137.0. docs/plans/sdk-conformance.md distinguishes host-driver evidence from full CLI installation/upgrade smoke, which remains a release gate. No per-call cancellation claim.
+
+**agent:codex/modernization-run** at 2026-09-16T19:47:11Z
+
+Remote PR #11 passed extension conformance but failed the newly expanded published-host step. Inspection shows Alpine CI installed git/gcc/musl but not Bash, required by the actual launcher now under test. Added Bash to test dependencies; rerunning remote gate. The tea run-logs API is unavailable on this forge (404), so the stage failure was inspected from public job metadata; missing Bash is directly established by workflow contents.
