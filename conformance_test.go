@@ -293,11 +293,14 @@ func TestConformance(t *testing.T) {
 func assertStartup(t *testing.T, frames []map[string]any) {
 	t.Helper()
 	var hello, subscribe map[string]any
+	command := false
 	toolAuth := map[string]string{}
 	for _, f := range frames {
 		switch f["type"] {
 		case "hello":
 			hello = f
+		case "register_command":
+			command = command || f["name"] == "web-cache"
 		case "register_tool":
 			name, _ := f["name"].(string)
 			auth, _ := f["authority"].(string)
@@ -310,6 +313,9 @@ func assertStartup(t *testing.T, frames []map[string]any) {
 		}
 	}
 
+	if !command {
+		t.Error("web-cache command not registered")
+	}
 	if hello == nil {
 		t.Fatal("no hello frame in startup")
 	}
@@ -323,7 +329,7 @@ func assertStartup(t *testing.T, frames []map[string]any) {
 		t.Errorf("registered %d tools, want 6", len(toolAuth))
 	}
 	caps := toStringSet(hello["capabilities"])
-	for _, want := range []string{"tools", "events"} {
+	for _, want := range []string{"tools", "events", "commands"} {
 		if !caps[want] {
 			t.Errorf("hello capabilities missing %q (got %v)", want, hello["capabilities"])
 		}
@@ -437,4 +443,31 @@ func TestConformanceSessionSwitchSaves(t *testing.T) {
 			d.expectCleanExit()
 		})
 	}
+}
+
+func TestConformanceCommands(t *testing.T) {
+	d := startExtension(t)
+	defer func() { _ = d.cmd.Process.Kill() }()
+	assertStartup(t, d.readUntil("ready"))
+	d.send(hostProfiles[0].helloAck(t.TempDir()))
+	for _, tc := range []struct{ args, action, text string }{
+		{"", "display", "web cache is empty"},
+		{"clear", "display", "web cache cleared (0 entries dropped)"},
+		{"invalid", "noop", "unknown argument"},
+	} {
+		d.send(map[string]any{"type": "command_invoked", "id": "cmd", "name": "web-cache", "args": tc.args})
+		frames := d.readUntil("command_response")
+		f := frames[len(frames)-1]
+		field := "display"
+		if tc.action == "noop" {
+			field = "error"
+		}
+		text, _ := f[field].(string)
+		if f["id"] != "cmd" || f["action"] != tc.action || !strings.Contains(text, tc.text) {
+			t.Errorf("command %q: %v", tc.args, f)
+		}
+	}
+	d.send(map[string]any{"type": "shutdown"})
+	d.readUntil("shutdown_ack")
+	d.expectCleanExit()
 }

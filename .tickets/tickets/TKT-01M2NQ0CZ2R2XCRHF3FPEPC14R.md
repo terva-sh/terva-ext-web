@@ -47,7 +47,7 @@ claim:
   expires_at: null
 archive: null
 created_at: 2026-09-16T18:17:32Z
-updated_at: 2026-09-16T19:29:49Z
+updated_at: 2026-09-16T19:31:03Z
 created_by:
   id: agent:codex/modernization-tickets
   name: ""
@@ -103,3 +103,7 @@ User explicitly approved upgrading to Go 1.27 on 2026-09-16. Update module, CI a
 **agent:codex/modernization-run** at 2026-09-16T19:29:49Z
 
 Migrated to ext SDK with min_protocol 2, OnSession subscription and Host().CWD snapshot. Published v0.137.0 harness replaces obsolete zot/early-Terva profiles; actual host tests remain next batch. Registration authority checks moved from inaccessible in-process registry to real SDK wire (exact six tools, network-read, not read_only). Legacy configuration and manifest ask rules unchanged. Combined module selection upgrades x/image 0.42→0.44, x/net 0.55→0.56 and x/text 0.38→0.40, and introduces age/hpke/crypto/sys through SDK imports. Inspected resulting decoder/parser/normalization and vendor package changes; go mod verify and full uncached race+conformance suite pass. Direct CI registry probe requires authentication (401); actual CI execution will verify the approved Go 1.27 image. Removed retired protocol package and repointed typed references to main.go.
+
+**agent:codex/modernization-run** at 2026-09-16T19:31:03Z
+
+Post-removal CI caught a third handwritten-protocol test file left behind (command_test.go). Removed it and preserved application command/display/error coverage in a real subprocess conformance test; startup checks now also assert web-cache registration and command capability. This supersedes the earlier complete-removal statement until the rerun passes.
