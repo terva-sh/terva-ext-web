@@ -38,41 +38,10 @@ vendor:
 install host=HOST: build
     {{host}} ext install "$PWD"
 
-# Point the installed extension at a SearXNG backend (default: SEARXNG_URL).
+# Set the search backend through Terva's declared configuration API.
+# For a private non-loopback instance, also configure allow_local_hosts in Terva.
 configure-searxng url=SEARXNG_URL host=HOST:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # Resolve the installed data dir from `ext list` — portable across OSes
-    # and a custom $TERVA_HOME. The dir is the last column; the path
-    # may contain spaces, so take everything from the first '/'. URL defaults to
-    # SEARXNG_URL; pass one to override (a bare host:port gets an http:// prefix).
-    url="{{url}}"
-    [[ "$url" == *://* ]] || url="http://$url"
-    host="{{host}}"
-    # Match the manifest name or source basename in host-reported paths.
-    bname="$(basename "$PWD")"
-    line="$("$host" ext list | grep -E "/(web|${bname})\$" | head -1 || true)"
-    [[ -n "$line" ]] || { echo "extension not installed in $host; run \`just install\` first" >&2; exit 1; }
-    dir="/${line#*/}"
-
-    # Searches share web_fetch's SSRF guard, and an allow_local_hosts key in
-    # config.json REPLACES the built-in loopback default — so restate that
-    # default and add the SearXNG host itself, which covers instances on
-    # LAN/VPN addresses. A public host in the list is harmless (the allowlist
-    # is only consulted for private/reserved addresses).
-    shost="${url#*://}"; shost="${shost%%/*}"; shost="${shost##*@}"
-    if [[ "$shost" == \[* ]]; then shost="${shost#[}"; shost="${shost%%]*}"; else shost="${shost%%:*}"; fi
-    allow='"localhost", "127.0.0.1", "::1"'
-    case "$shost" in localhost|127.0.0.1|::1) ;; *) allow="$allow, \"$shost\"" ;; esac
-    cat > "$dir/config.json" <<JSON
-    {
-      "search_backend": "searxng",
-      "searxng_url": "$url",
-      "allow_local_hosts": [$allow]
-    }
-    JSON
-    echo "configured searxng -> $url"
-    echo "wrote $dir/config.json"
+    {{quote(host)}} ext config web set search_backend=searxng {{quote("searxng_url=" + url)}}
 
 # Vet + gofmt check. gofmt walks the filesystem, so exclude the vendored
 # third-party tree (go vet ./... already skips vendor/ in module mode).

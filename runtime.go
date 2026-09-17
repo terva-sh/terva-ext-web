@@ -22,7 +22,7 @@ type runtimeStore struct {
 	mu      sync.Mutex
 	current *webRuntime
 	last    string
-	read    func() (ext.HostInfo, ext.Config)
+	read    func() ext.Config
 	notify  func(string)
 }
 
@@ -31,14 +31,14 @@ func (s *runtimeStore) snapshot() *webRuntime {
 	defer s.mu.Unlock()
 	// Read under the lock so a delayed config callback cannot replace a newer
 	// snapshot with an older event payload. The SDK owns the current map.
-	host, values := s.read()
+	values := s.read()
 	encoded, _ := json.Marshal(values)
 	key := string(encoded)
 	if s.current != nil && key == s.last {
 		return s.current
 	}
 	s.last = key
-	cfg, err := config.Resolve(host.DataDir, host.ExtensionDir, values)
+	cfg, err := config.Resolve(values)
 	if err != nil {
 		s.notify("web configuration rejected: " + err.Error())
 		if s.current == nil || s.current.configErr != nil {

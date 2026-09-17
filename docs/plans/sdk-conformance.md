@@ -20,18 +20,19 @@ Two distinct automated layers now run in `just ci` and Forgejo:
   `extdriver`, launches our copied Bash launcher and race-instrumented binary
   from a temporary install, and tests ready, six registrations, command,
   session event, network save, shutdown and the host's malformed-frame monitor.
-  This exercises the authoritative host wire implementation, not a fabricated
+  This exercises the authoritative host wire implementation, including the real
   hello_ack. The separate module records the host pin and dependency checksums.
 
-Both pass on Linux amd64 with Go 1.27.1 (2026-09-16). The earlier authority
+Both initially passed on Linux amd64 with Go 1.27.1. The later
+[native rehearsal](platform-validation.md) passed on all five release targets. The earlier authority
 matrix also runs the real host permission resolver against our actual manifest.
 Tests strip web/provider overrides, use temporary homes/data/workspaces and
 local HTTP fixtures, and do not read installed config or call real providers.
 
 Limits: this is not a full interactive Terva CLI or installed-release test.
 Discovery/trust/UI setup, real source installation, upgrade and rollback remain
-release-validation checks. Other OS/architectures have cross-build evidence
-only until GitHub tag-time native validation. SDK shutdown exits the process;
+release-validation checks. The native reports cover their recorded candidate and archives; changed code
+or packaging needs a new run. SDK shutdown exits the process;
 it is not per-call cancellation, and active network handlers are not promised
 to finish after shutdown. The test intentionally asserts no completed save
 while the server remains blocked, not cancellation metadata the SDK lacks.

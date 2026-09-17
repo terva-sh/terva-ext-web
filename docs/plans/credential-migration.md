@@ -1,28 +1,33 @@
-# Credential migration evidence
+# Credential migration
 
-The default-free tavily_api_key secret field is consumed only in explicit
-host configuration mode. Legacy mode retains old file/environment ownership;
-TAVILY_API_KEY overrides either mode, including explicit empty. This avoids
-interpreting a missing (possibly undecryptable) host field as permission to
-resurrect a legacy credential. Import is operator entry through the host form
-followed by host-mode opt-in; retry is idempotent and rollback preserves files.
+Terva's `tavily_api_key` secret field supplies the Tavily key.
+`TAVILY_API_KEY` overrides it; an explicitly empty variable disables the key.
+A missing or undecryptable host secret never falls back to an old file.
 
-No credential file is changed or deleted and no key rotated. data_secrets is
-true because old config files may remain. Host encryption is optional setup:
-published v0.137.0 docs/extensions.md documents `terva secret init`, while the
-host form seals only when encryption is configured. A secret field masks UI
-input; it does not itself prove encrypted storage. Runtime broker is for
-runtime-acquired credentials and is not needed here; min_protocol remains 2.
+The user retired legacy configuration support on 2026-09-16. This replaces the
+previous host-mode opt-in process. Before switching installations, enter the
+settings and key through Terva, then verify search. Do not enable the old and
+new extensions together because both use the `web` identity.
 
-Synthetic tests cover legacy/host duplicate values, repeated opt-in, env
-precedence and explicit empty, omitted/undecryptable host-field behavior,
-rollback and unchanged legacy fixture bytes. Subprocess tests capture stdout
-and stderr for configured and malformed secret values without calling a real
-provider. Local fake-provider tests echo a synthetic credential in errors and
-result fields; neither may expose it. No real credential files were inspected.
+Standalone configuration files, `ZOT_WEB_*` variables and
+`configuration_source` are ignored. The extension does not read, import,
+rewrite or delete old credential files, and it does not rotate keys. Preserve
+the old installation and settings until the replacement passes its smoke test.
+Rollback disables the replacement before re-enabling the old installation.
+There is no legacy mode in the replacement.
 
-Provider-response error snippets were removed because a provider can echo its
-authorization input. Status-based guidance remains, and configured-key echoes
-are redacted from successful result fields and printable transport errors.
-Underlying error identity is preserved for SSRF/timeout inspection. This is a
-credential-output safeguard, not a claim of generic result trust metadata.
+The manifest keeps `data_secrets: true` because old files may remain in its
+data directory. A masked secret field does not establish encryption at rest.
+Terva documents `terva secret init`; follow its backup and recovery instructions
+before enabling encryption. This is host setup, not an extension side effect.
+The extension needs no runtime secret broker and retains minimum protocol 2.
+
+Tests cover host/environment precedence, explicit empty credentials, missing
+host secrets and unchanged old files. Subprocess tests inspect stdout and
+stderr for synthetic-key leaks. Fake providers echo fixture keys in response
+fields and errors to exercise redaction. No installed credentials are used.
+
+Provider errors omit raw response bodies because a provider may echo request
+credentials. Status-based guidance remains. Result fields and printable
+transport errors redact the configured key while preserving error identity for
+SSRF and timeout handling. This does not make retrieved content trusted.

@@ -73,7 +73,7 @@ Never read installed user credentials or enable old/new installations together.
 Checksums bind evidence to the exact candidate; changing source invalidates that
 candidate's report. Go 1.27+, Bash and a C compiler are needed for source/race
 checks; archives require Bash and the native executable, not Go. Reports must
-distinguish protocol-harness success from actual host launch. Configuration and
+distinguish subprocess protocol checks from actual host launch. Configuration and
 release tickets supply the final migration fixtures and assertions.
 
 ## GitHub mirror and executable validation
@@ -133,7 +133,7 @@ These findings are tracked in TKT-01M2NYSRTKARHFGRF6XFEMM8A6 (Fix native Windows
 save paths and cache eviction ordering) and TKT-01M2NZD0DP9MTFSJ62F8BZV96V
 (Invoke Bash explicitly for native Windows host launch).
 
-## Passing native evidence — 2026-09-16
+## Passing native evidence, 2026-09-16
 
 [Manual run 35148398553](https://github.com/terva-sh/terva-ext-web/actions/runs/35148398553)
 passed packaging and all five native jobs at candidate
@@ -165,3 +165,15 @@ versioned archives. Full CLI install, legacy settings upgrade and rollback are
 still tracked by TKT-01M2NQ0DQ10D7KQC2H7W1XVX0A (Validate replacement installation,
 upgrades and release platforms); native driver loading does not replace those
 checks.
+
+## Terva-only configuration revalidation
+
+[Run 35150980130](https://github.com/terva-sh/terva-ext-web/actions/runs/35150980130)
+passed packaging and all five native source/archive jobs for cleanup candidate
+`b162e831b076d85084f89c701293fdfbb436f129`. The [ten reports](../validation/native-terva-only-2026-09-16.json)
+record the new archive and binary hashes. This run covers removal of legacy
+configuration, the host-configured test fixtures, ignored-file regressions and
+the rewritten README and research skill in the archives.
+
+The old reports remain as evidence for their own candidate. Full CLI installation,
+manual migration and rollback still require the release-validation ticket.

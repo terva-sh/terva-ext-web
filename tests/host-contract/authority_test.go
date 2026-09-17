@@ -15,7 +15,6 @@ import (
 func TestAuthorityAndManifestPolicy(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("TERVA_HOME", home)
-	t.Setenv("ZOT_HOME", home)
 	cwd := t.TempDir()
 	manifest, err := os.ReadFile("../../extension.json")
 	if err != nil {

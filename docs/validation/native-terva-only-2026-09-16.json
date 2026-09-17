@@ -1,0 +1,251 @@
+{
+  "workflow_url": "https://github.com/terva-sh/terva-ext-web/actions/runs/35150980130",
+  "candidate": "b162e831b076d85084f89c701293fdfbb436f129",
+  "reports": [
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "darwin/amd64",
+      "native_machine": "x86_64",
+      "go": "go version go1.27.0 darwin/amd64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "archive",
+      "checks": [
+        "native machine and Go target agree",
+        "archive checksum",
+        "launcher without Go, path with spaces, version and skill",
+        "archive subprocess conformance",
+        "published host-driver archive launch and permission contract"
+      ],
+      "runner_image": "macos15",
+      "runner_image_version": "20260824.0482.1",
+      "workflow_run": "35150980130",
+      "archive": "terva-ext-web_0.4.0-next_darwin_amd64.tar.gz",
+      "archive_sha256": "8a58fa0097207a4c3aa555f01e93041475727c8bedd8146c1d73da8622d675c8",
+      "binary_sha256": "0c175595b5e3296b830cadc6f014a2bca244b44ab9716a0c46f38ad8be6b3adf",
+      "version": "0.4.0-next",
+      "files": [
+        "LICENSE",
+        "README.md",
+        "extension.json",
+        "run.sh",
+        "skills/web-research/SKILL.md",
+        "terva-ext-web"
+      ],
+      "status": "passed"
+    },
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "darwin/amd64",
+      "native_machine": "x86_64",
+      "go": "go version go1.27.0 darwin/amd64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "source",
+      "checks": [
+        "native machine and Go target agree",
+        "go vet ./... in .",
+        "go test -race -tags conformance -count=1 ./... in .",
+        "go test -race -count=1 ./... in tests/host-contract"
+      ],
+      "runner_image": "macos15",
+      "runner_image_version": "20260824.0482.1",
+      "workflow_run": "35150980130",
+      "status": "passed"
+    },
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "darwin/arm64",
+      "native_machine": "arm64",
+      "go": "go version go1.27.0 darwin/arm64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "archive",
+      "checks": [
+        "native machine and Go target agree",
+        "archive checksum",
+        "launcher without Go, path with spaces, version and skill",
+        "archive subprocess conformance",
+        "published host-driver archive launch and permission contract"
+      ],
+      "runner_image": "macos15",
+      "runner_image_version": "20260907.0337.1",
+      "workflow_run": "35150980130",
+      "archive": "terva-ext-web_0.4.0-next_darwin_arm64.tar.gz",
+      "archive_sha256": "5c9e664e784aafda19b92d8ac5eb2098f2e230e0de755c676c422590b7b5fcbf",
+      "binary_sha256": "a94013ec645bfd25879b74b31000facbed3f5ab8db342f11c2b28a58c7f80180",
+      "version": "0.4.0-next",
+      "files": [
+        "LICENSE",
+        "README.md",
+        "extension.json",
+        "run.sh",
+        "skills/web-research/SKILL.md",
+        "terva-ext-web"
+      ],
+      "status": "passed"
+    },
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "darwin/arm64",
+      "native_machine": "arm64",
+      "go": "go version go1.27.0 darwin/arm64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "source",
+      "checks": [
+        "native machine and Go target agree",
+        "go vet ./... in .",
+        "go test -race -tags conformance -count=1 ./... in .",
+        "go test -race -count=1 ./... in tests/host-contract"
+      ],
+      "runner_image": "macos15",
+      "runner_image_version": "20260907.0337.1",
+      "workflow_run": "35150980130",
+      "status": "passed"
+    },
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "linux/amd64",
+      "native_machine": "x86_64",
+      "go": "go version go1.27.0 linux/amd64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "archive",
+      "checks": [
+        "native machine and Go target agree",
+        "archive checksum",
+        "launcher without Go, path with spaces, version and skill",
+        "archive subprocess conformance",
+        "published host-driver archive launch and permission contract"
+      ],
+      "runner_image": "ubuntu24",
+      "runner_image_version": "20260907.300.1",
+      "workflow_run": "35150980130",
+      "archive": "terva-ext-web_0.4.0-next_linux_amd64.tar.gz",
+      "archive_sha256": "5642ec617d207d06ddff89d8522468481ba88fed26d573b7fcd823b0270b0f80",
+      "binary_sha256": "2335222c3d361771b3e6333936303d3b5216d28e86634c4c42d7843ff465868d",
+      "version": "0.4.0-next",
+      "files": [
+        "LICENSE",
+        "README.md",
+        "extension.json",
+        "run.sh",
+        "skills/web-research/SKILL.md",
+        "terva-ext-web"
+      ],
+      "status": "passed"
+    },
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "linux/amd64",
+      "native_machine": "x86_64",
+      "go": "go version go1.27.0 linux/amd64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "source",
+      "checks": [
+        "native machine and Go target agree",
+        "go vet ./... in .",
+        "go test -race -tags conformance -count=1 ./... in .",
+        "go test -race -count=1 ./... in tests/host-contract"
+      ],
+      "runner_image": "ubuntu24",
+      "runner_image_version": "20260907.300.1",
+      "workflow_run": "35150980130",
+      "status": "passed"
+    },
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "linux/arm64",
+      "native_machine": "aarch64",
+      "go": "go version go1.27.0 linux/arm64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "archive",
+      "checks": [
+        "native machine and Go target agree",
+        "archive checksum",
+        "launcher without Go, path with spaces, version and skill",
+        "archive subprocess conformance",
+        "published host-driver archive launch and permission contract"
+      ],
+      "runner_image": "ubuntu24-arm64",
+      "runner_image_version": "20260907.118.1",
+      "workflow_run": "35150980130",
+      "archive": "terva-ext-web_0.4.0-next_linux_arm64.tar.gz",
+      "archive_sha256": "f3ecb2e2ae6898f36fd87e2aac551fcf867b4ee0ece19765824d2bcd929fc40c",
+      "binary_sha256": "5cc9648e436750cc5e20ebad8722bcfaead38930a166f6b9a4c4e71a2bc27752",
+      "version": "0.4.0-next",
+      "files": [
+        "LICENSE",
+        "README.md",
+        "extension.json",
+        "run.sh",
+        "skills/web-research/SKILL.md",
+        "terva-ext-web"
+      ],
+      "status": "passed"
+    },
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "linux/arm64",
+      "native_machine": "aarch64",
+      "go": "go version go1.27.0 linux/arm64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "source",
+      "checks": [
+        "native machine and Go target agree",
+        "go vet ./... in .",
+        "go test -race -tags conformance -count=1 ./... in .",
+        "go test -race -count=1 ./... in tests/host-contract"
+      ],
+      "runner_image": "ubuntu24-arm64",
+      "runner_image_version": "20260907.118.1",
+      "workflow_run": "35150980130",
+      "status": "passed"
+    },
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "windows/amd64",
+      "native_machine": "AMD64",
+      "go": "go version go1.27.0 windows/amd64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "archive",
+      "checks": [
+        "native machine and Go target agree",
+        "archive checksum",
+        "launcher without Go, path with spaces, version and skill",
+        "archive subprocess conformance",
+        "published host-driver archive launch and permission contract"
+      ],
+      "runner_image": "win25-vs2026",
+      "runner_image_version": "20260907.229.1",
+      "workflow_run": "35150980130",
+      "archive": "terva-ext-web_0.4.0-next_windows_amd64.zip",
+      "archive_sha256": "b1f913033c85abdb136e4558880067da1e0acf290c6c7061f075e410a3f332f3",
+      "binary_sha256": "f0b707ca17684038506ed73b2b63142b899b94af3c60004c3ce1afa36a58a982",
+      "version": "0.4.0-next",
+      "files": [
+        "LICENSE",
+        "README.md",
+        "extension.json",
+        "run.sh",
+        "skills\\web-research\\SKILL.md",
+        "terva-ext-web.exe"
+      ],
+      "status": "passed"
+    },
+    {
+      "commit": "b162e831b076d85084f89c701293fdfbb436f129",
+      "platform": "windows/amd64",
+      "native_machine": "AMD64",
+      "go": "go version go1.27.0 windows/amd64",
+      "host_driver": "terva.sh/terva v0.137.0 (floor/current)",
+      "mode": "source",
+      "checks": [
+        "native machine and Go target agree",
+        "go vet ./... in .",
+        "go test -race -tags conformance -count=1 ./... in .",
+        "go test -race -count=1 ./... in tests\\host-contract"
+      ],
+      "runner_image": "win25-vs2026",
+      "runner_image_version": "20260907.229.1",
+      "workflow_run": "35150980130",
+      "status": "passed"
+    }
+  ]
+}

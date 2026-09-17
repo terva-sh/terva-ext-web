@@ -51,7 +51,6 @@ func TestPublishedHostDriverLaunch(t *testing.T) {
 	}
 	home, cwd, install := t.TempDir(), t.TempDir(), t.TempDir()
 	t.Setenv("TERVA_HOME", home)
-	t.Setenv("ZOT_HOME", home)
 	bin := "terva-ext-web"
 	if runtime.GOOS == "windows" {
 		bin += ".exe"

@@ -133,7 +133,7 @@ func startExtension(t *testing.T) *driver {
 		}
 		env = append(env, kv)
 	}
-	cmd.Env = append(env, "ZOT_HOME="+home, "TERVA_HOME="+home)
+	cmd.Env = append(env, "TERVA_HOME="+home)
 
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
@@ -551,14 +551,12 @@ func TestConformanceAllTools(t *testing.T) {
 	}))
 	defer server.Close()
 	cwd := t.TempDir()
-	cfg, _ := json.Marshal(map[string]any{"search_backend": "searxng", "searxng_url": server.URL})
-	if err := os.WriteFile(filepath.Join(cwd, "config.json"), cfg, 0600); err != nil {
-		t.Fatal(err)
-	}
 	d := startExtension(t)
 	defer func() { _ = d.cmd.Process.Kill() }()
 	assertStartup(t, d.readUntil("ready"))
-	d.send(hostProfiles[0].helloAck(cwd))
+	ack := hostProfiles[0].helloAck(cwd)
+	ack["config"] = map[string]any{"search_backend": "searxng", "searxng_url": server.URL}
+	d.send(ack)
 	for _, tc := range []struct {
 		name string
 		args map[string]any
@@ -662,13 +660,12 @@ func TestConformanceShutdownDuringDownload(t *testing.T) {
 
 func TestConformanceInvalidConfigBlocksEveryNetworkTool(t *testing.T) {
 	cwd := t.TempDir()
-	if err := os.WriteFile(filepath.Join(cwd, "config.json"), []byte(`{"fetch_max_bytes":"private-marker"}`), 0600); err != nil {
-		t.Fatal(err)
-	}
 	d := startExtension(t)
 	defer func() { _ = d.cmd.Process.Kill() }()
 	assertStartup(t, d.readUntil("ready"))
-	d.send(hostProfiles[0].helloAck(cwd))
+	ack := hostProfiles[0].helloAck(cwd)
+	ack["config"] = map[string]any{"fetch_max_bytes": "private-marker"}
+	d.send(ack)
 	for _, name := range []string{"web_search", "web_fetch", "web_images", "web_links", "web_fetch_raw", "web_fetch_image"} {
 		d.send(map[string]any{"type": "tool_call", "id": name, "name": name, "args": map[string]any{}})
 		f := d.awaitToolResult(name)
@@ -690,7 +687,7 @@ func TestConformanceHostConfigUpdates(t *testing.T) {
 	assertStartup(t, d.readUntil("ready"))
 	cwd := t.TempDir()
 	ack := hostProfiles[0].helloAck(cwd)
-	ack["config"] = map[string]any{"configuration_source": "host", "user_agent": "first"}
+	ack["config"] = map[string]any{"user_agent": "first"}
 	d.send(ack)
 	call := func(id string) map[string]any {
 		d.send(map[string]any{"type": "tool_call", "id": id, "name": "web_fetch_raw", "args": map[string]any{"url": server.URL, "save_path": id}})
@@ -698,7 +695,7 @@ func TestConformanceHostConfigUpdates(t *testing.T) {
 	}
 	for _, ua := range []string{"first", "second"} {
 		if ua == "second" {
-			d.send(map[string]any{"type": "event", "event": "config_update", "config": map[string]any{"configuration_source": "host", "user_agent": ua}})
+			d.send(map[string]any{"type": "event", "event": "config_update", "config": map[string]any{"user_agent": ua}})
 		}
 		if f := call(ua); f["is_error"] == true {
 			t.Fatalf("call failed: %v", f)
@@ -708,7 +705,7 @@ func TestConformanceHostConfigUpdates(t *testing.T) {
 			t.Fatalf("stale config/cache after %s: %q %v", ua, b, err)
 		}
 	}
-	d.send(map[string]any{"type": "event", "event": "config_update", "config": map[string]any{"configuration_source": "host", "allow_local_hosts": "[]"}})
+	d.send(map[string]any{"type": "event", "event": "config_update", "config": map[string]any{"allow_local_hosts": "[]"}})
 	if f := call("blocked"); f["is_error"] != true {
 		t.Fatal("tightened allowlist reused cached response")
 	}
@@ -732,7 +729,7 @@ func TestConformanceSecretDiagnostics(t *testing.T) {
 			if malformed {
 				value = map[string]string{"invalid": key}
 			}
-			ack["config"] = map[string]any{"configuration_source": "host", "tavily_api_key": value}
+			ack["config"] = map[string]any{"tavily_api_key": value}
 			d.send(ack)
 			// Empty query fails before any provider request, even with a configured key.
 			d.send(map[string]any{"type": "tool_call", "id": "secret-check", "name": "web_search", "args": map[string]any{"query": ""}})
@@ -747,6 +744,45 @@ func TestConformanceSecretDiagnostics(t *testing.T) {
 			d.expectCleanExit()
 			if strings.Contains(d.stderr.String(), key) {
 				t.Fatal("credential reached stderr")
+			}
+		})
+	}
+}
+
+func TestConformanceIgnoresLegacyFiles(t *testing.T) {
+	for _, content := range []string{`{"search_backend":"searxng","tavily_api_key":"synthetic-retired-key","allow_local_hosts":[]}`, `{"invalid-json":`} {
+		t.Run(content[:10], func(t *testing.T) {
+			data, install := t.TempDir(), t.TempDir()
+			for _, dir := range []string{data, install} {
+				if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte(content), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			d := startExtension(t)
+			defer func() { _ = d.cmd.Process.Kill() }()
+			assertStartup(t, d.readUntil("ready"))
+			ack := hostProfiles[0].helloAck(data)
+			ack["extension_dir"] = install
+			d.send(ack)
+			d.send(map[string]any{"type": "tool_call", "id": "search", "name": "web_search", "args": map[string]any{"query": "fixture"}})
+			result, _ := json.Marshal(d.awaitToolResult("search"))
+			if !bytes.Contains(result, []byte("no API key")) || bytes.Contains(result, []byte("synthetic-retired-key")) {
+				t.Fatal("retired files supplied a credential or blocked startup")
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("fixture")) }))
+			defer server.Close()
+			d.send(map[string]any{"type": "tool_call", "id": "fetch", "name": "web_fetch", "args": map[string]any{"url": server.URL}})
+			if result := d.awaitToolResult("fetch"); result["is_error"] == true {
+				t.Fatal("retired file changed fetch policy")
+			}
+			d.send(map[string]any{"type": "shutdown"})
+			d.readUntil("shutdown_ack")
+			d.expectCleanExit()
+			for _, dir := range []string{data, install} {
+				got, err := os.ReadFile(filepath.Join(dir, "config.json"))
+				if err != nil || string(got) != content {
+					t.Fatal("retired file was changed")
+				}
 			}
 		})
 	}

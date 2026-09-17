@@ -123,7 +123,7 @@ type SSRFBlockedError struct {
 }
 
 func (e *SSRFBlockedError) Error() string {
-	return "web_fetch: host is blocked by SSRF protection; add it to allow_local_hosts in config.json or ZOT_WEB_ALLOW_LOCAL_HOSTS to permit"
+	return "web_fetch: host is blocked by SSRF protection; add it to allow_local_hosts in Terva configuration or TERVA_EXT_WEB_ALLOW_LOCAL_HOSTS to permit"
 }
 
 // Full returns the detailed message with the blocked hostname, for operator

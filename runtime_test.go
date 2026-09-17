@@ -28,9 +28,9 @@ func TestRuntimeUpdateKeepsInflightCacheSeparate(t *testing.T) {
 			}))
 			defer server.Close()
 			defer once.Do(func() { close(release) })
-			values := ext.Config{"configuration_source": json.RawMessage(`"host"`)}
+			values := ext.Config{}
 			var mu sync.Mutex
-			state := runtimeStore{read: func() (ext.HostInfo, ext.Config) { mu.Lock(); defer mu.Unlock(); return ext.HostInfo{}, values }, notify: func(s string) { t.Errorf("unexpected notification %s", s) }}
+			state := runtimeStore{read: func() ext.Config { mu.Lock(); defer mu.Unlock(); return values }, notify: func(s string) { t.Errorf("unexpected notification %s", s) }}
 			old := state.snapshot()
 			done := make(chan error, 1)
 			go func() { _, err := old.fetcher.Raw(context.Background(), server.URL, ""); done <- err }()
@@ -40,7 +40,7 @@ func TestRuntimeUpdateKeepsInflightCacheSeparate(t *testing.T) {
 				t.Fatal("old fetch did not start")
 			}
 			mu.Lock()
-			values = ext.Config{"configuration_source": json.RawMessage(`"host"`)}
+			values = ext.Config{}
 			switch change {
 			case "allow_local_hosts":
 				values[change] = json.RawMessage(`"[]"`)
@@ -79,9 +79,9 @@ const frameTimeoutForRuntime = 5 * time.Second
 
 func TestRuntimeRejectsUpdateWithoutLosingWorkingSettings(t *testing.T) {
 	isolateRuntimeEnv(t)
-	values := ext.Config{"configuration_source": json.RawMessage(`"host"`)}
+	values := ext.Config{}
 	var notices []string
-	state := runtimeStore{read: func() (ext.HostInfo, ext.Config) { return ext.HostInfo{}, values }, notify: func(s string) { notices = append(notices, s) }}
+	state := runtimeStore{read: func() ext.Config { return values }, notify: func(s string) { notices = append(notices, s) }}
 	old := state.snapshot()
 	values = ext.Config{"fetch_max_bytes": json.RawMessage(`"private-marker"`)}
 	if state.snapshot() != old {
@@ -110,8 +110,8 @@ func isolateRuntimeEnv(t *testing.T) {
 func TestRuntimeConcurrentUpdates(t *testing.T) {
 	isolateRuntimeEnv(t)
 	var mu sync.Mutex
-	values := ext.Config{"configuration_source": json.RawMessage(`"host"`)}
-	state := runtimeStore{read: func() (ext.HostInfo, ext.Config) { mu.Lock(); defer mu.Unlock(); return ext.HostInfo{}, values }, notify: func(string) { t.Error("unexpected rejection") }}
+	values := ext.Config{}
+	state := runtimeStore{read: func() ext.Config { mu.Lock(); defer mu.Unlock(); return values }, notify: func(string) { t.Error("unexpected rejection") }}
 	var wg sync.WaitGroup
 	for i := 0; i < 8; i++ {
 		wg.Add(1)
@@ -127,7 +127,7 @@ func TestRuntimeConcurrentUpdates(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		raw, _ := json.Marshal(i)
 		mu.Lock()
-		values = ext.Config{"configuration_source": json.RawMessage(`"host"`), "fetch_cache_ttl_sec": raw}
+		values = ext.Config{"fetch_cache_ttl_sec": raw}
 		mu.Unlock()
 		state.snapshot()
 	}

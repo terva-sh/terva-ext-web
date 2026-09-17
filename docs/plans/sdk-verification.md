@@ -1,6 +1,6 @@
-# Published Terva SDK verification — 2026-09-16
+# Published Terva SDK verification, 2026-09-16
 
-Select **terva.sh/terva v0.137.0** for the separate SDK migration. This is a
+This record selected `terva.sh/terva v0.137.0` for the SDK migration. This is a
 published module, retrieved into an empty temporary module cache through
 `https://proxy.golang.org` with `sum.golang.org` verification. The proxy's
 `@latest` query also resolved to v0.137.0 on this date. No local replace,
@@ -18,25 +18,22 @@ repository go.mod edit, credential file, or sibling worktree change was used.
 | SDK wire revision | 6 |
 | Public version timestamp | 2026-09-15T05:12:43Z |
 
-## Supported-host decision and capability contract
+## Supported host and capabilities
 
-Use **Terva v0.137.0 as the initial supported release/test baseline** for the
-SDK migration. It is both the selected published SDK and the current public
+Terva v0.137.0 is the initial supported host and SDK version. It is both the selected published SDK and the current public
 version; floor/current tests therefore use the same version initially, and
-must not be reported as two distinct version results. This is a support-policy
-choice with real-host validation still required by the conformance ticket,
-not a claim that a full host smoke test has already passed.
+must not be reported as two distinct version results. At the time of this probe, real-host conformance had not run. The later
+validation records are linked below.
 
-The correctness requirement is **protocol 2** for ordered session identity;
-use `RequireProtocol(2)` when migrating. Earlier Terva versions that speak
+The correctness requirement is protocol 2 for ordered session identity;
+the implementation uses `RequireProtocol(2)`. Earlier Terva versions that speak
 protocol 2 may work, but are outside the initial verified support baseline.
 Do not equate the SDK's protocol 6 constant with a need to reject all pre-v6
 hosts: only runtime secret-broker operations would introduce that requirement.
-The installed local CLI reports Terva 0.135.1, so it is not evidence that the
-selected v0.137.0 host was exercised. Obtain a versioned host fixture before
-claiming real-host conformance.
+The local CLI inspected during this probe reported Terva 0.135.1. Later tests
+use the published v0.137.0 host as a separate fixture.
 
-| Surface in published module | Contract / migration decision |
+| Published API | Contract / migration decision |
 | --- | --- |
 | ext.New, Tool, Command, Run | Replace handwritten framing/dispatch; preserve web identity, tool/command names and stdout JSON |
 | ext.ToolResult, TextResult, TextErrorResult, ImageBytes | Text/image results exist; image content encodes bytes, not a trust/provenance attribute |
@@ -54,7 +51,7 @@ claiming real-host conformance.
 | ReadFrame | SDK uses bounded framing with oversized/malformed-frame recovery; exercise it in conformance rather than retaining the old scanner |
 | bootstrap | Launcher frame before hello; older hosts can reject it. This is not an SDK operation and support cannot be handshaken before sending it |
 
-Evidence is in the **downloaded v0.137.0 module**, principally
+Evidence is in the downloaded v0.137.0 module, principally
 `packages/agent/ext/ext.go`, `packages/agent/extproto/extproto.go`, and
 `docs/extensions.md`. The separately inspected local Terva checkout remains at
 `7f754b9bb7c6754284dc4f3cc5fa6a96525de49d`; its untracked ticket was untouched.
@@ -78,15 +75,13 @@ combined-module changes in the migration commit.
 The SDK probe completed hello (including min_protocol=2), tool registration,
 ready and shutdown with JSON-only stdout on Linux amd64. Offline vendored,
 CGO-disabled builds passed for linux amd64/arm64, darwin amd64/arm64 and windows
-amd64. Only Linux amd64 was executed. A probe exchanged frames with a harness;
+amd64. Only Linux amd64 was executed. A probe exchanged frames with a test process;
 it is not a full Terva-host installation or extension behavior test.
 
-**Required migration change:** this repository currently advertises Go 1.25
-in go.mod, README, launcher messages and CI images. Raise them coherently to
-Go 1.27+, verify the selected CI image is available, then rerun all gates.
-Do not hide the higher requirement behind automatic toolchain downloads in an
-offline launcher. SDK migration must keep the race-instrumented subprocess
-checks and adapt the existing session-switch regressions.
+The later SDK batch raised go.mod, launcher instructions and CI to Go 1.27.
+Published host-driver tests and five-target native validation now supplement
+this initial probe. See [SDK conformance](sdk-conformance.md) and
+[platform validation](platform-validation.md) for the tested candidates.
 
 ## Reproducing the public retrieval
 
